@@ -1,85 +1,41 @@
-// ===============================
-// APP.JS — Núcleo da Aplicação
-// (Parte 2/8)
-// ===============================
-
-// 🔥 IMPORTA TODOS OS MÓDULOS
-import { initMap, mapReady } from './map.js';
-import { startGPS } from './gps.js';
-import { setupClientScanner } from './scanner.js';
-import { setupPackageScanner } from './scanner.js';
-import { setupMarkers } from './markers.js';
-import { setupRoutes } from './routes.js';
-import { loadClientsSidebar, setupClientActions } from './clients.js';
-import { setupSpreadsheetUpload } from './spreadsheet.js';
-import { showToast } from './utils.js';
-
-// ===============================
-// CONFIGURAÇÃO SUPABASE
-// ===============================
-
-export const supabase = window.supabase.createClient(
-    "https://dctlgztkqtktxnmiuqgr.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdGxnenRrcXRrdHhubWl1cWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MzMwNDIsImV4cCI6MjA4MDIwOTA0Mn0.Ctlx8A4QBFxa7Iu6fObw_OthHfA2XrzY47UiMMIhbIU"
-);
-
-// ===============================
-// ESTADOS GLOBAIS
-// ===============================
+import { setupMap } from "./map.js";
+import { setupGPS } from "./gps.js";
+import { setupScanner } from "./scanner.js";
+import { setupMarkers } from "./markers.js";
+import { setupRoutes } from "./routes.js";
+import { setupClientActions } from "./clients.js";
+import { setupSpreadsheetUpload } from "./spreadsheet.js";
 
 export const AppState = {
-    map: null,
-    gps: null,
-    deliveryMarkers: {},
-    clientMarkers: {},
-    matchedMarkers: {},
-    routePolylines: [],
-    navigationActive: false
+  map: null,
+  gps: null,
+  navigationActive: false,
+  routePolylines: []
 };
-
-// ===============================
-// INICIALIZAÇÃO PRINCIPAL
-// ===============================
 
 window.initMap = async function () {
-    console.log("🗺️ Inicializando mapa...");
+  console.log("Inicializando sistema...");
 
-    // inicia Google Maps
-    AppState.map = await initMap();
+  // 1. Start map
+  AppState.map = setupMap();
 
-    // aguarda mapa pronto
-    await mapReady();
+  // 2. GPS real-time
+  setupGPS();
 
-    // inicia GPS
-    AppState.gps = await startGPS(AppState.map);
+  // 3. Scanner (QR)
+  setupScanner();
 
-    // inicializa módulos
-    setupClientScanner(AppState);
-    setupPackageScanner(AppState);
-    setupMarkers(AppState);
-    setupRoutes(AppState);
-    setupClientActions(AppState);
-    setupSpreadsheetUpload(AppState);
+  // 4. Markers (carrega da planilha / supabase)
+  setupMarkers();
 
-    // carregar lista de clientes na sidebar
-    await loadClientsSidebar(AppState);
+  // 5. Routes (navegação)
+  setupRoutes();
 
-    // remove tela de loading
-    document.getElementById("loading-screen").classList.add("hidden");
+  // 6. Sidebar clientes
+  setupClientActions();
 
-    showToast("Mapa carregado!", "Sistema pronto.", "success", 3000);
+  // 7. Upload de planilha
+  setupSpreadsheetUpload();
+
+  console.log("Sistema pronto!");
 };
-
-// ===============================
-// EVENTOS GLOBAIS
-// ===============================
-
-// Evitar seleções acidentais
-document.addEventListener("mousedown", () => {
-    document.body.classList.remove("text-select");
-});
-
-// Reset ao voltar de telefone/whatsapp
-window.addEventListener("pageshow", () => {
-    document.activeElement?.blur();
-});
