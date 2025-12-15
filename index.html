@@ -1685,36 +1685,14 @@
             });
 
             map.on('click', 'delivery-markers', (e) => {
-                if (isNavigating) return; // Don't show popup during navigation
+                if (isNavigating) return; // Don't start new navigation while navigating
 
                 const feature = e.features[0];
                 const props = feature.properties;
                 const coordinates = feature.geometry.coordinates.slice();
 
-                const html = `
-                    <div class="popup-content">
-                        <div class="popup-header">
-                            <div class="popup-stop">${props.stop}</div>
-                            <div>
-                                <div class="popup-title">Parada ${props.stop}</div>
-                                <div class="popup-subtitle">Sequência de entrega</div>
-                            </div>
-                        </div>
-                        <div class="popup-address">${props.address}</div>
-                        <div class="popup-footer">
-                            <span class="popup-tag location">📍 ${props.bairro || 'Sem bairro'}</span>
-                            <span class="popup-tag packages">📦 ${props.packages} pacote${props.packages > 1 ? 's' : ''}</span>
-                        </div>
-                        <div class="popup-actions">
-                            <button class="popup-btn navigate" onclick="navigateToStop(${props.stop}, [${coordinates}], '${props.address.replace(/'/g, "\\'")}')">
-                                <i class="fas fa-directions"></i>
-                                Iniciar Navegação
-                            </button>
-                        </div>
-                    </div>
-                `;
-
-                popup.setLngLat(coordinates).setHTML(html).addTo(map);
+                // Start navigation directly
+                navigateToStop(props.stop, coordinates, props.address);
             });
 
             // Trigger geolocation on load
