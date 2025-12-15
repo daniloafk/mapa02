@@ -44,6 +44,9 @@ let routeCoordinates = []; // Store full route coordinates
 let isRecalculating = false; // Prevent multiple recalculations
 let lastRecalculationTime = 0; // Throttle recalculations
 
+// Markers state
+let markersVisible = false;
+
 // ==================== MAP INITIALIZATION ====================
 const isDark = document.documentElement.classList.contains('dark');
 
@@ -189,13 +192,13 @@ async function renderMarkers() {
     deliveryData.features.forEach(f => bounds.extend(f.geometry.coordinates));
     map.fitBounds(bounds, { padding: 80 });
 
-    updateUI();
+    markersVisible = true;
+    updateToggleMarkersButton();
 }
 
 // ==================== UPDATE UI ====================
 function updateUI() {
     hasData = deliveryData.features.length > 0;
-    const totalPackages = deliveryData.features.reduce((sum, f) => sum + f.properties.packages, 0);
 
     document.getElementById('emptyState').classList.toggle('hidden', hasData);
 
@@ -209,6 +212,53 @@ function updateUI() {
         btn.innerHTML = '<i class="fas fa-file-upload"></i>';
         btn.title = 'Carregar planilha';
     }
+
+    // Update toggle markers button
+    updateToggleMarkersButton();
+}
+
+function updateToggleMarkersButton() {
+    const toggleBtn = document.getElementById('toggleMarkersBtn');
+
+    if (hasData) {
+        toggleBtn.classList.add('visible');
+
+        if (markersVisible) {
+            toggleBtn.classList.remove('show-markers');
+            toggleBtn.classList.add('hide-markers');
+            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            toggleBtn.title = 'Ocultar marcadores';
+        } else {
+            toggleBtn.classList.remove('hide-markers');
+            toggleBtn.classList.add('show-markers');
+            toggleBtn.innerHTML = '<i class="fas fa-map-marker-alt"></i>';
+            toggleBtn.title = 'Mostrar marcadores';
+        }
+    } else {
+        toggleBtn.classList.remove('visible', 'show-markers', 'hide-markers');
+        markersVisible = false;
+    }
+}
+
+function toggleMarkers() {
+    if (!hasData) return;
+
+    if (markersVisible) {
+        // Hide markers
+        hideMarkers();
+    } else {
+        // Show markers
+        renderMarkers();
+    }
+}
+
+function hideMarkers() {
+    if (map.getLayer('delivery-markers')) map.removeLayer('delivery-markers');
+    if (map.getLayer('delivery-shadows')) map.removeLayer('delivery-shadows');
+    if (map.getSource('deliveries')) map.removeSource('deliveries');
+
+    markersVisible = false;
+    updateToggleMarkersButton();
 }
 
 
@@ -667,7 +717,7 @@ async function loadFromSupabase() {
                 }
             }));
 
-            await renderMarkers();
+            updateUI();
             showToast(`${data.length} entregas carregadas!`, 'success');
         } else {
             updateUI();
@@ -762,7 +812,7 @@ async function processFile(file) {
             }
         }));
 
-        await renderMarkers();
+        updateUI();
         showToast(`${validStops.length} entregas carregadas!`, 'success');
 
     } catch (error) {
@@ -807,6 +857,7 @@ async function confirmClear() {
         await clearSupabase();
 
         deliveryData.features = [];
+        markersVisible = false;
         popup.remove();
         cancelNavigation();
 
