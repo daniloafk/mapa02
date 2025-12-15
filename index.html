@@ -1433,6 +1433,16 @@
                 }
             });
 
+            // Find first label layer to insert route below it
+            const layers = map.getStyle().layers;
+            let labelLayerId;
+            for (const layer of layers) {
+                if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
+                    labelLayerId = layer.id;
+                    break;
+                }
+            }
+
             // Add route casing (for 3D effect)
             map.addLayer({
                 id: 'route-casing',
@@ -1447,7 +1457,7 @@
                     'line-width': 14,
                     'line-opacity': 0.4
                 }
-            }, 'delivery-shadows');
+            }, labelLayerId);
 
             // Add route outline
             map.addLayer({
@@ -1462,7 +1472,7 @@
                     'line-color': '#1565C0',
                     'line-width': 10
                 }
-            }, 'delivery-shadows');
+            }, labelLayerId);
 
             // Add route line
             map.addLayer({
@@ -1477,7 +1487,7 @@
                     'line-color': '#42A5F5',
                     'line-width': 6
                 }
-            }, 'delivery-shadows');
+            }, labelLayerId);
         }
 
         function updateETA(duration, distance) {
