@@ -724,7 +724,8 @@
             streets: 'mapbox://styles/mapbox/streets-v12',
             satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
             dark: 'mapbox://styles/mapbox/dark-v11',
-            light: 'mapbox://styles/mapbox/light-v11'
+            light: 'mapbox://styles/mapbox/light-v11',
+            navigation: 'mapbox://styles/mapbox/navigation-day-v1'
         };
 
         // Set Mapbox API Key
@@ -777,38 +778,22 @@
                 style: isDark ? mapStyles.dark : mapStyles.streets,
                 center: center,
                 zoom: 14,
-                pitch: 45,
-                bearing: -17.6,
-                antialias: true
+                pitch: 0,
+                bearing: 0,
+                maxZoom: 18,
+                minZoom: 3,
+                trackResize: true,
+                fadeDuration: 0,
+                preserveDrawingBuffer: false
             });
+
+            // Disable unnecessary features for better performance
+            map.dragRotate.disable();
+            map.touchZoomRotate.disableRotation();
 
             map.on('load', () => {
                 // Hide loading
                 document.getElementById('loadingOverlay').classList.add('hidden');
-
-                // Add 3D buildings
-                const layers = map.getStyle().layers;
-                const labelLayerId = layers.find(
-                    (layer) => layer.type === 'symbol' && layer.layout['text-field']
-                )?.id;
-
-                map.addLayer(
-                    {
-                        'id': '3d-buildings',
-                        'source': 'composite',
-                        'source-layer': 'building',
-                        'filter': ['==', 'extrude', 'true'],
-                        'type': 'fill-extrusion',
-                        'minzoom': 15,
-                        'paint': {
-                            'fill-extrusion-color': isDark ? '#2D2D44' : '#aaa',
-                            'fill-extrusion-height': ['get', 'height'],
-                            'fill-extrusion-base': ['get', 'min_height'],
-                            'fill-extrusion-opacity': 0.6
-                        }
-                    },
-                    labelLayerId
-                );
 
                 // Add user marker
                 addUserMarker(center);
@@ -824,39 +809,18 @@
             });
         }
 
-        // Add user location marker
+        // Add user location marker (simplified for performance)
         function addUserMarker(coords) {
             const el = document.createElement('div');
             el.className = 'user-marker';
-            el.innerHTML = `
-                <div style="
-                    width: 24px;
-                    height: 24px;
-                    background: linear-gradient(135deg, #FF6B35, #E55A2B);
-                    border-radius: 50%;
-                    border: 3px solid white;
-                    box-shadow: 0 2px 10px rgba(255, 107, 53, 0.5);
-                    position: relative;
-                ">
-                    <div style="
-                        position: absolute;
-                        inset: -8px;
-                        border: 2px solid rgba(255, 107, 53, 0.3);
-                        border-radius: 50%;
-                        animation: pulse-ring 2s infinite;
-                    "></div>
-                </div>
+            el.style.cssText = `
+                width: 20px;
+                height: 20px;
+                background: #FF6B35;
+                border-radius: 50%;
+                border: 3px solid white;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.3);
             `;
-
-            // Add pulse animation
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes pulse-ring {
-                    0% { transform: scale(1); opacity: 1; }
-                    100% { transform: scale(1.5); opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
 
             userMarker = new mapboxgl.Marker(el)
                 .setLngLat(coords)
@@ -879,11 +843,10 @@
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
                         const coords = [position.coords.longitude, position.coords.latitude];
-                        map.flyTo({
+                        map.easeTo({
                             center: coords,
                             zoom: 16,
-                            pitch: 45,
-                            duration: 1500
+                            duration: 800
                         });
                         if (userMarker) {
                             userMarker.setLngLat(coords);
