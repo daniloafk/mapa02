@@ -40,6 +40,7 @@ let currentNavigation = null;
 let routeSteps = [];
 let currentStepIndex = 0;
 let isMapCentered = true;
+let routeCoordinates = []; // Store full route coordinates
 
 // ==================== MAP INITIALIZATION ====================
 const isDark = document.documentElement.classList.contains('dark');
@@ -331,6 +332,9 @@ function startNavigationMode(route, destination) {
 }
 
 function drawRoute(geometry) {
+    // Store route coordinates for progressive removal
+    routeCoordinates = [...geometry.coordinates];
+
     // Remove existing route
     if (map.getLayer('route-line')) map.removeLayer('route-line');
     if (map.getLayer('route-outline')) map.removeLayer('route-outline');
@@ -402,6 +406,45 @@ function drawRoute(geometry) {
             'line-width': 6
         }
     }, labelLayerId);
+}
+
+// Update route to remove passed segments
+function updateRouteProgress() {
+    if (!userLocation || routeCoordinates.length < 2) return;
+
+    // Find the closest point on the route to user location
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+
+    for (let i = 0; i < routeCoordinates.length; i++) {
+        const coord = routeCoordinates[i];
+        const distance = getDistance(userLocation, coord);
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = i;
+        }
+    }
+
+    // Only update if we've moved past the first point and are close to route (within 50m)
+    if (closestIndex > 0 && closestDistance < 50) {
+        // Create new coordinates starting from closest point
+        // Interpolate to user's exact position for smooth transition
+        const remainingCoords = [[...userLocation], ...routeCoordinates.slice(closestIndex + 1)];
+
+        if (remainingCoords.length >= 2) {
+            const routeSource = map.getSource('route');
+            if (routeSource) {
+                routeSource.setData({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: {
+                        type: 'LineString',
+                        coordinates: remainingCoords
+                    }
+                });
+            }
+        }
+    }
 }
 
 
@@ -484,6 +527,9 @@ function updateNavigationProgress() {
         return;
     }
 
+    // Update route visualization (remove passed segments)
+    updateRouteProgress();
+
     // Check if we passed current step
     if (currentStepIndex < routeSteps.length) {
         const step = routeSteps[currentStepIndex];
@@ -539,6 +585,7 @@ function cancelNavigation() {
     currentNavigation = null;
     routeSteps = [];
     currentStepIndex = 0;
+    routeCoordinates = [];
 
     // Stop location tracking
     if (watchId) {
