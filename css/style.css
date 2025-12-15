@@ -241,6 +241,62 @@ body {
 }
 
 /* ==================== FLOATING ACTION BUTTONS ==================== */
+
+/* Toggle Markers Button - positioned below geolocate control */
+.toggle-markers-btn {
+    position: fixed;
+    top: 180px;
+    right: 10px;
+    width: 30px;
+    height: 30px;
+    background: #fff;
+    border: none;
+    border-radius: 4px;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+    z-index: 100;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #333;
+    transition: all 0.2s;
+}
+
+.toggle-markers-btn.visible {
+    display: flex;
+}
+
+.toggle-markers-btn.show-markers {
+    color: #4CAF50;
+}
+
+.toggle-markers-btn.hide-markers {
+    color: #E53935;
+}
+
+.toggle-markers-btn:hover {
+    background: #f0f0f0;
+}
+
+.dark .toggle-markers-btn {
+    background: #1a1a2e;
+    color: #ccc;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.1);
+}
+
+.dark .toggle-markers-btn:hover {
+    background: #252542;
+}
+
+.dark .toggle-markers-btn.show-markers {
+    color: #81C784;
+}
+
+.dark .toggle-markers-btn.hide-markers {
+    color: #E57373;
+}
+
 .recenter-fab {
     position: fixed;
     bottom: 100px;
