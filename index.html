@@ -49,6 +49,7 @@
             box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
             z-index: 100;
             border: 1px solid rgba(255,255,255,0.8);
+            transition: all 0.3s ease;
         }
 
         .info-panel h2 {
@@ -217,15 +218,6 @@
             box-shadow: 0 4px 12px rgba(30, 136, 229, 0.4);
         }
 
-        .popup-btn.external {
-            background: #f0f0f0;
-            color: #666;
-        }
-
-        .popup-btn.external:hover {
-            background: #e0e0e0;
-        }
-
         .mapboxgl-popup-close-button {
             font-size: 20px;
             padding: 8px 12px;
@@ -259,11 +251,6 @@
         .dark .popup-tag.packages {
             background: rgba(46, 125, 50, 0.2);
             color: #81C784;
-        }
-
-        .dark .popup-btn.external {
-            background: #252542;
-            color: #999;
         }
 
         .dark .mapboxgl-popup-close-button {
@@ -349,6 +336,7 @@
             display: flex;
             gap: 16px;
             font-size: 12px;
+            transition: all 0.3s ease;
         }
 
         .legend-item {
@@ -369,7 +357,86 @@
             color: #ccc;
         }
 
-        /* Navigation Panel */
+        /* ==================== NAVIGATION UI ==================== */
+
+        /* Navigation Header - Shows during navigation */
+        .nav-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
+            z-index: 400;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .nav-header.active {
+            transform: translateY(0);
+        }
+
+        .nav-header-content {
+            padding: 16px 20px;
+            padding-top: max(16px, env(safe-area-inset-top));
+        }
+
+        .nav-current-step {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .nav-maneuver-icon {
+            width: 56px;
+            height: 56px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .nav-instruction {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .nav-distance-to-turn {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .nav-instruction-text {
+            font-size: 16px;
+            color: rgba(255,255,255,0.9);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .nav-next-step {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+        }
+
+        .nav-next-step i {
+            font-size: 16px;
+        }
+
+        /* Navigation Footer Panel */
         .nav-panel {
             position: fixed;
             bottom: 0;
@@ -378,11 +445,10 @@
             background: #fff;
             border-radius: 24px 24px 0 0;
             box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
-            z-index: 300;
+            z-index: 400;
             transform: translateY(100%);
             transition: transform 0.3s ease;
-            max-height: 50vh;
-            overflow: hidden;
+            padding-bottom: env(safe-area-inset-bottom);
         }
 
         .nav-panel.active {
@@ -393,94 +459,108 @@
             background: #1a1a2e;
         }
 
-        .nav-panel-header {
+        .nav-panel-content {
+            padding: 20px;
+        }
+
+        .nav-eta-bar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 20px 24px;
-            border-bottom: 1px solid #eee;
+            margin-bottom: 16px;
         }
 
-        .dark .nav-panel-header {
-            border-bottom-color: #333;
-        }
-
-        .nav-info {
+        .nav-eta {
             display: flex;
-            align-items: center;
-            gap: 16px;
+            align-items: baseline;
+            gap: 8px;
         }
 
-        .nav-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 20px;
-        }
-
-        .nav-details h3 {
-            font-size: 16px;
-            font-weight: 700;
+        .nav-eta-time {
+            font-size: 28px;
+            font-weight: 800;
             color: #1a1a2e;
-            margin-bottom: 4px;
         }
 
-        .dark .nav-details h3 {
+        .dark .nav-eta-time {
             color: #fff;
         }
 
-        .nav-stats {
-            display: flex;
-            gap: 16px;
-        }
-
-        .nav-stat {
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .nav-eta-label {
             font-size: 14px;
             color: #666;
         }
 
-        .nav-stat i {
+        .dark .nav-eta-label {
+            color: #999;
+        }
+
+        .nav-remaining {
+            text-align: right;
+        }
+
+        .nav-remaining-distance {
+            font-size: 18px;
+            font-weight: 700;
             color: #1E88E5;
         }
 
-        .dark .nav-stat {
-            color: #999;
+        .nav-remaining-label {
+            font-size: 12px;
+            color: #888;
         }
 
-        .nav-close {
+        .nav-destination {
+            background: #f5f5f5;
+            padding: 14px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dark .nav-destination {
+            background: #252542;
+        }
+
+        .nav-destination-icon {
             width: 40px;
             height: 40px;
-            border: none;
-            background: #f0f0f0;
-            border-radius: 50%;
-            cursor: pointer;
+            background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            color: #666;
-            transition: all 0.2s;
+            color: #fff;
+            font-weight: 800;
+            font-size: 14px;
         }
 
-        .nav-close:hover {
-            background: #e0e0e0;
+        .nav-destination-text {
+            flex: 1;
+            min-width: 0;
         }
 
-        .dark .nav-close {
-            background: #252542;
-            color: #999;
+        .nav-destination-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        .nav-panel-body {
-            padding: 16px 24px 24px;
+        .dark .nav-destination-title {
+            color: #fff;
+        }
+
+        .nav-destination-address {
+            font-size: 12px;
+            color: #888;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .nav-actions {
@@ -503,35 +583,158 @@
             transition: all 0.2s;
         }
 
-        .nav-action-btn.primary {
-            background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
-            color: #fff;
-        }
-
-        .nav-action-btn.primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 136, 229, 0.4);
-        }
-
-        .nav-action-btn.secondary {
+        .nav-action-btn.cancel {
             background: #f0f0f0;
             color: #666;
         }
 
-        .nav-action-btn.secondary:hover {
+        .nav-action-btn.cancel:hover {
             background: #e0e0e0;
         }
 
-        .dark .nav-action-btn.secondary {
+        .dark .nav-action-btn.cancel {
             background: #252542;
             color: #999;
+        }
+
+        .nav-action-btn.recenter {
+            background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
+            color: #fff;
+        }
+
+        .nav-action-btn.recenter:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(30, 136, 229, 0.4);
+        }
+
+        /* Re-center button when user moves map */
+        .recenter-fab {
+            position: fixed;
+            bottom: 200px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
+            background: #fff;
+            border: none;
+            border-radius: 50%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 350;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: #1E88E5;
+            transition: all 0.2s;
+        }
+
+        .recenter-fab.visible {
+            display: flex;
+        }
+
+        .recenter-fab:hover {
+            transform: scale(1.1);
+        }
+
+        .dark .recenter-fab {
+            background: #252542;
+        }
+
+        /* Arrival overlay */
+        .arrival-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .arrival-overlay.active {
+            display: flex;
+        }
+
+        .arrival-card {
+            background: #fff;
+            border-radius: 24px;
+            padding: 40px 32px;
+            text-align: center;
+            max-width: 340px;
+            width: 100%;
+            animation: arrivalBounce 0.5s ease;
+        }
+
+        .dark .arrival-card {
+            background: #1a1a2e;
+        }
+
+        @keyframes arrivalBounce {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .arrival-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 40px;
+            color: #fff;
+            box-shadow: 0 8px 32px rgba(76, 175, 80, 0.4);
+        }
+
+        .arrival-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .dark .arrival-title {
+            color: #fff;
+        }
+
+        .arrival-subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 32px;
+        }
+
+        .dark .arrival-subtitle {
+            color: #999;
+        }
+
+        .arrival-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            border: none;
+            border-radius: 14px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .arrival-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
 
         /* Toast notifications */
         .toast {
             position: fixed;
-            bottom: 180px;
+            bottom: 100px;
             left: 16px;
+            right: 16px;
             background: #1a1a2e;
             color: #fff;
             padding: 14px 20px;
@@ -544,7 +747,7 @@
             gap: 10px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.3);
             animation: slideIn 0.3s ease;
-            max-width: 300px;
+            max-width: 400px;
         }
 
         .toast.success {
@@ -562,11 +765,11 @@
         @keyframes slideIn {
             from {
                 opacity: 0;
-                transform: translateX(-20px);
+                transform: translateY(20px);
             }
             to {
                 opacity: 1;
-                transform: translateX(0);
+                transform: translateY(0);
             }
         }
 
@@ -741,9 +944,11 @@
         }
 
         /* Hide elements when navigating */
-        .navigating .info-panel,
-        .navigating .sidebar-btn,
-        .navigating .legend {
+        body.navigating .info-panel,
+        body.navigating .sidebar-btn,
+        body.navigating .legend,
+        body.navigating .mapboxgl-ctrl-top-right,
+        body.navigating .mapboxgl-ctrl-bottom-left {
             opacity: 0;
             pointer-events: none;
         }
@@ -788,42 +993,74 @@
         </div>
     </div>
 
+    <!-- Navigation Header -->
+    <div class="nav-header" id="navHeader">
+        <div class="nav-header-content">
+            <div class="nav-current-step">
+                <div class="nav-maneuver-icon" id="navManeuverIcon">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="nav-instruction">
+                    <div class="nav-distance-to-turn" id="navDistanceToTurn">--</div>
+                    <div class="nav-instruction-text" id="navInstructionText">Calculando rota...</div>
+                </div>
+            </div>
+            <div class="nav-next-step" id="navNextStep">
+                <i class="fas fa-arrow-right"></i>
+                <span id="navNextText">Depois: --</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Navigation Panel -->
     <div class="nav-panel" id="navPanel">
-        <div class="nav-panel-header">
-            <div class="nav-info">
-                <div class="nav-icon">
-                    <i class="fas fa-route"></i>
+        <div class="nav-panel-content">
+            <div class="nav-eta-bar">
+                <div class="nav-eta">
+                    <span class="nav-eta-time" id="navEtaTime">--</span>
+                    <span class="nav-eta-label">min</span>
                 </div>
-                <div class="nav-details">
-                    <h3 id="navTitle">Navegando para Parada 1</h3>
-                    <div class="nav-stats">
-                        <div class="nav-stat">
-                            <i class="fas fa-clock"></i>
-                            <span id="navTime">-- min</span>
-                        </div>
-                        <div class="nav-stat">
-                            <i class="fas fa-road"></i>
-                            <span id="navDistance">-- km</span>
-                        </div>
-                    </div>
+                <div class="nav-remaining">
+                    <div class="nav-remaining-distance" id="navRemainingDistance">-- km</div>
+                    <div class="nav-remaining-label">restantes</div>
                 </div>
             </div>
-            <button class="nav-close" onclick="cancelNavigation()">
-                <i class="fas fa-times"></i>
-            </button>
-        </div>
-        <div class="nav-panel-body">
+            <div class="nav-destination" id="navDestination">
+                <div class="nav-destination-icon" id="navDestIcon">1</div>
+                <div class="nav-destination-text">
+                    <div class="nav-destination-title" id="navDestTitle">Parada 1</div>
+                    <div class="nav-destination-address" id="navDestAddress">Endereço de destino</div>
+                </div>
+            </div>
             <div class="nav-actions">
-                <button class="nav-action-btn secondary" onclick="openInExternalApp()">
-                    <i class="fas fa-external-link-alt"></i>
-                    Abrir no Maps
+                <button class="nav-action-btn cancel" onclick="cancelNavigation()">
+                    <i class="fas fa-times"></i>
+                    Encerrar
                 </button>
-                <button class="nav-action-btn primary" onclick="startTurnByTurn()">
-                    <i class="fas fa-play"></i>
-                    Iniciar Navegação
+                <button class="nav-action-btn recenter" onclick="recenterMap()">
+                    <i class="fas fa-location-arrow"></i>
+                    Recentralizar
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Recenter FAB -->
+    <button class="recenter-fab" id="recenterFab" onclick="recenterMap()">
+        <i class="fas fa-location-arrow"></i>
+    </button>
+
+    <!-- Arrival Overlay -->
+    <div class="arrival-overlay" id="arrivalOverlay">
+        <div class="arrival-card">
+            <div class="arrival-icon">
+                <i class="fas fa-check"></i>
+            </div>
+            <h2 class="arrival-title">Você chegou!</h2>
+            <p class="arrival-subtitle" id="arrivalAddress">Parada 1</p>
+            <button class="arrival-btn" onclick="closeArrival()">
+                <i class="fas fa-check"></i> Confirmar Chegada
+            </button>
         </div>
     </div>
 
@@ -871,14 +1108,22 @@
         let map;
         let popup;
         let userLocation = null;
+        let userHeading = null;
+        let watchId = null;
+
+        // Navigation state
+        let isNavigating = false;
         let currentNavigation = null;
+        let routeSteps = [];
+        let currentStepIndex = 0;
+        let isMapCentered = true;
 
         // ==================== MAP INITIALIZATION ====================
         const isDark = document.documentElement.classList.contains('dark');
 
         map = new mapboxgl.Map({
             container: 'map',
-            style: isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
+            style: isDark ? 'mapbox://styles/mapbox/navigation-night-v1' : 'mapbox://styles/mapbox/navigation-day-v1',
             center: [-48.4650, -1.1500],
             zoom: 12
         });
@@ -896,6 +1141,14 @@
         // Track user location
         geolocateControl.on('geolocate', (e) => {
             userLocation = [e.coords.longitude, e.coords.latitude];
+            if (e.coords.heading) {
+                userHeading = e.coords.heading;
+            }
+
+            // Update navigation if active
+            if (isNavigating) {
+                updateNavigationProgress();
+            }
         });
 
         popup = new mapboxgl.Popup({
@@ -903,6 +1156,14 @@
             closeOnClick: false,
             offset: 25,
             maxWidth: '320px'
+        });
+
+        // Detect when user moves the map during navigation
+        map.on('dragstart', () => {
+            if (isNavigating) {
+                isMapCentered = false;
+                document.getElementById('recenterFab').classList.add('visible');
+            }
         });
 
         // ==================== MARKER ICON CREATION ====================
@@ -1026,6 +1287,52 @@
             }
         }
 
+        // ==================== MANEUVER ICONS ====================
+        function getManeuverIcon(type, modifier) {
+            const icons = {
+                'turn': {
+                    'left': 'fa-arrow-left',
+                    'right': 'fa-arrow-right',
+                    'slight left': 'fa-arrow-up rotate-left',
+                    'slight right': 'fa-arrow-up rotate-right',
+                    'sharp left': 'fa-arrow-left',
+                    'sharp right': 'fa-arrow-right',
+                    'uturn': 'fa-arrow-rotate-left'
+                },
+                'merge': 'fa-compress-arrows-alt',
+                'depart': 'fa-play',
+                'arrive': 'fa-flag-checkered',
+                'fork': modifier === 'left' ? 'fa-code-branch flip-h' : 'fa-code-branch',
+                'roundabout': 'fa-rotate-right',
+                'rotary': 'fa-rotate-right',
+                'exit roundabout': 'fa-arrow-up',
+                'end of road': modifier === 'left' ? 'fa-arrow-left' : 'fa-arrow-right',
+                'continue': 'fa-arrow-up',
+                'new name': 'fa-arrow-up',
+                'notification': 'fa-info-circle'
+            };
+
+            if (type === 'turn' && modifier) {
+                return icons.turn[modifier] || 'fa-arrow-up';
+            }
+
+            return icons[type] || 'fa-arrow-up';
+        }
+
+        function formatDistance(meters) {
+            if (meters < 1000) {
+                return Math.round(meters) + ' m';
+            }
+            return (meters / 1000).toFixed(1) + ' km';
+        }
+
+        function formatDuration(seconds) {
+            if (seconds < 60) {
+                return '< 1';
+            }
+            return Math.round(seconds / 60);
+        }
+
         // ==================== NAVIGATION FUNCTIONS ====================
         async function navigateToStop(stop, coordinates, address) {
             if (!userLocation) {
@@ -1055,8 +1362,9 @@
             showToast('Calculando rota...', 'info');
 
             try {
+                // Get detailed directions with steps
                 const response = await fetch(
-                    `https://api.mapbox.com/directions/v5/mapbox/driving/${userLocation[0]},${userLocation[1]};${coordinates[0]},${coordinates[1]}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`
+                    `https://api.mapbox.com/directions/v5/mapbox/driving/${userLocation[0]},${userLocation[1]};${coordinates[0]},${coordinates[1]}?geometries=geojson&overview=full&steps=true&voice_instructions=true&banner_instructions=true&language=pt&access_token=${mapboxgl.accessToken}`
                 );
                 const data = await response.json();
 
@@ -1066,26 +1374,11 @@
                 }
 
                 const route = data.routes[0];
-                const routeGeometry = route.geometry;
-                const duration = Math.round(route.duration / 60);
-                const distance = (route.distance / 1000).toFixed(1);
+                routeSteps = route.legs[0].steps;
+                currentStepIndex = 0;
 
-                // Draw route on map
-                drawRoute(routeGeometry);
-
-                // Update navigation panel
-                document.getElementById('navTitle').textContent = `Parada ${stop}`;
-                document.getElementById('navTime').textContent = `${duration} min`;
-                document.getElementById('navDistance').textContent = `${distance} km`;
-
-                // Show navigation panel
-                document.getElementById('navPanel').classList.add('active');
-                document.body.classList.add('navigating');
-
-                // Fit map to route
-                const bounds = new mapboxgl.LngLatBounds();
-                routeGeometry.coordinates.forEach(coord => bounds.extend(coord));
-                map.fitBounds(bounds, { padding: { top: 100, bottom: 250, left: 50, right: 50 } });
+                // Start navigation mode
+                startNavigationMode(route, coordinates);
 
             } catch (error) {
                 console.error('Navigation error:', error);
@@ -1093,10 +1386,41 @@
             }
         }
 
+        function startNavigationMode(route, destination) {
+            isNavigating = true;
+            isMapCentered = true;
+
+            // Draw route on map
+            drawRoute(route.geometry);
+
+            // Update UI
+            document.body.classList.add('navigating');
+            document.getElementById('navHeader').classList.add('active');
+            document.getElementById('navPanel').classList.add('active');
+
+            // Set destination info
+            document.getElementById('navDestIcon').textContent = currentNavigation.stop;
+            document.getElementById('navDestTitle').textContent = `Parada ${currentNavigation.stop}`;
+            document.getElementById('navDestAddress').textContent = currentNavigation.address;
+
+            // Update ETA
+            updateETA(route.duration, route.distance);
+
+            // Update current step
+            updateCurrentStep();
+
+            // Start location tracking
+            startLocationTracking();
+
+            // Set navigation camera view
+            setNavigationCamera();
+        }
+
         function drawRoute(geometry) {
             // Remove existing route
             if (map.getLayer('route-line')) map.removeLayer('route-line');
             if (map.getLayer('route-outline')) map.removeLayer('route-outline');
+            if (map.getLayer('route-casing')) map.removeLayer('route-casing');
             if (map.getSource('route')) map.removeSource('route');
 
             // Add route source
@@ -1109,7 +1433,23 @@
                 }
             });
 
-            // Add route outline (for better visibility)
+            // Add route casing (for 3D effect)
+            map.addLayer({
+                id: 'route-casing',
+                type: 'line',
+                source: 'route',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': '#0D47A1',
+                    'line-width': 14,
+                    'line-opacity': 0.4
+                }
+            }, 'delivery-shadows');
+
+            // Add route outline
             map.addLayer({
                 id: 'route-outline',
                 type: 'line',
@@ -1120,8 +1460,7 @@
                 },
                 paint: {
                     'line-color': '#1565C0',
-                    'line-width': 10,
-                    'line-opacity': 0.3
+                    'line-width': 10
                 }
             }, 'delivery-shadows');
 
@@ -1135,55 +1474,192 @@
                     'line-cap': 'round'
                 },
                 paint: {
-                    'line-color': '#1E88E5',
-                    'line-width': 5
+                    'line-color': '#42A5F5',
+                    'line-width': 6
                 }
             }, 'delivery-shadows');
         }
 
-        function cancelNavigation() {
-            // Remove route from map
-            if (map.getLayer('route-line')) map.removeLayer('route-line');
-            if (map.getLayer('route-outline')) map.removeLayer('route-outline');
-            if (map.getSource('route')) map.removeSource('route');
+        function updateETA(duration, distance) {
+            document.getElementById('navEtaTime').textContent = formatDuration(duration);
+            document.getElementById('navRemainingDistance').textContent = formatDistance(distance);
+        }
 
-            // Hide navigation panel
-            document.getElementById('navPanel').classList.remove('active');
-            document.body.classList.remove('navigating');
+        function updateCurrentStep() {
+            if (currentStepIndex >= routeSteps.length) return;
 
-            // Reset state
-            currentNavigation = null;
+            const step = routeSteps[currentStepIndex];
+            const iconClass = getManeuverIcon(step.maneuver.type, step.maneuver.modifier);
 
-            // Fit to all markers
-            if (deliveryData.features.length > 0) {
-                const bounds = new mapboxgl.LngLatBounds();
-                deliveryData.features.forEach(f => bounds.extend(f.geometry.coordinates));
-                map.fitBounds(bounds, { padding: 80 });
+            // Update maneuver icon
+            const iconEl = document.getElementById('navManeuverIcon');
+            iconEl.innerHTML = `<i class="fas ${iconClass}"></i>`;
+
+            // Update distance and instruction
+            document.getElementById('navDistanceToTurn').textContent = formatDistance(step.distance);
+            document.getElementById('navInstructionText').textContent = step.maneuver.instruction || 'Siga em frente';
+
+            // Update next step
+            if (currentStepIndex + 1 < routeSteps.length) {
+                const nextStep = routeSteps[currentStepIndex + 1];
+                document.getElementById('navNextStep').style.display = 'flex';
+                document.getElementById('navNextText').textContent = `Depois: ${nextStep.maneuver.instruction || 'Continue'}`;
+            } else {
+                document.getElementById('navNextStep').style.display = 'none';
             }
         }
 
-        function openInExternalApp() {
-            if (!currentNavigation) return;
+        function startLocationTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+            }
 
-            const { coordinates } = currentNavigation;
-            const lat = coordinates[1];
-            const lng = coordinates[0];
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    userLocation = [position.coords.longitude, position.coords.latitude];
+                    if (position.coords.heading) {
+                        userHeading = position.coords.heading;
+                    }
 
-            // Try Google Maps first, fallback to generic geo URI
-            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`;
-            window.open(googleMapsUrl, '_blank');
+                    if (isNavigating) {
+                        updateNavigationProgress();
+
+                        if (isMapCentered) {
+                            setNavigationCamera();
+                        }
+                    }
+                },
+                (error) => {
+                    console.error('Geolocation error:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    maximumAge: 1000,
+                    timeout: 5000
+                }
+            );
         }
 
-        function startTurnByTurn() {
-            if (!currentNavigation) return;
+        function setNavigationCamera() {
+            if (!userLocation) return;
 
-            const { coordinates } = currentNavigation;
-            const lat = coordinates[1];
-            const lng = coordinates[0];
+            map.easeTo({
+                center: userLocation,
+                zoom: 17,
+                pitch: 60,
+                bearing: userHeading || 0,
+                duration: 1000
+            });
+        }
 
-            // Open in Google Maps with navigation mode
-            const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving&dir_action=navigate`;
-            window.open(googleMapsUrl, '_blank');
+        function updateNavigationProgress() {
+            if (!currentNavigation || !userLocation) return;
+
+            const destination = currentNavigation.coordinates;
+            const distanceToDestination = getDistance(userLocation, destination);
+
+            // Check if arrived (within 30 meters)
+            if (distanceToDestination < 30) {
+                showArrival();
+                return;
+            }
+
+            // Update remaining distance
+            document.getElementById('navRemainingDistance').textContent = formatDistance(distanceToDestination);
+
+            // Estimate remaining time (assuming average speed of 30 km/h in city)
+            const remainingTime = (distanceToDestination / 1000) / 30 * 60 * 60; // in seconds
+            document.getElementById('navEtaTime').textContent = formatDuration(remainingTime);
+
+            // Check if we passed current step
+            if (currentStepIndex < routeSteps.length) {
+                const step = routeSteps[currentStepIndex];
+                const stepEnd = step.maneuver.location;
+                const distanceToStep = getDistance(userLocation, stepEnd);
+
+                // Update distance to turn
+                document.getElementById('navDistanceToTurn').textContent = formatDistance(distanceToStep);
+
+                // If within 20 meters of step end, move to next step
+                if (distanceToStep < 20 && currentStepIndex < routeSteps.length - 1) {
+                    currentStepIndex++;
+                    updateCurrentStep();
+                }
+            }
+        }
+
+        function getDistance(coord1, coord2) {
+            const R = 6371000; // Earth's radius in meters
+            const lat1 = coord1[1] * Math.PI / 180;
+            const lat2 = coord2[1] * Math.PI / 180;
+            const deltaLat = (coord2[1] - coord1[1]) * Math.PI / 180;
+            const deltaLon = (coord2[0] - coord1[0]) * Math.PI / 180;
+
+            const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+                      Math.cos(lat1) * Math.cos(lat2) *
+                      Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c;
+        }
+
+        function recenterMap() {
+            isMapCentered = true;
+            document.getElementById('recenterFab').classList.remove('visible');
+            setNavigationCamera();
+        }
+
+        function showArrival() {
+            isNavigating = false;
+
+            document.getElementById('arrivalAddress').textContent = `Parada ${currentNavigation.stop} - ${currentNavigation.address}`;
+            document.getElementById('arrivalOverlay').classList.add('active');
+        }
+
+        function closeArrival() {
+            document.getElementById('arrivalOverlay').classList.remove('active');
+            cancelNavigation();
+        }
+
+        function cancelNavigation() {
+            isNavigating = false;
+            currentNavigation = null;
+            routeSteps = [];
+            currentStepIndex = 0;
+
+            // Stop location tracking
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+
+            // Remove route from map
+            if (map.getLayer('route-line')) map.removeLayer('route-line');
+            if (map.getLayer('route-outline')) map.removeLayer('route-outline');
+            if (map.getLayer('route-casing')) map.removeLayer('route-casing');
+            if (map.getSource('route')) map.removeSource('route');
+
+            // Hide navigation UI
+            document.body.classList.remove('navigating');
+            document.getElementById('navHeader').classList.remove('active');
+            document.getElementById('navPanel').classList.remove('active');
+            document.getElementById('recenterFab').classList.remove('visible');
+
+            // Reset map view
+            map.easeTo({
+                pitch: 0,
+                bearing: 0,
+                duration: 500
+            });
+
+            // Fit to all markers
+            if (deliveryData.features.length > 0) {
+                setTimeout(() => {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    deliveryData.features.forEach(f => bounds.extend(f.geometry.coordinates));
+                    map.fitBounds(bounds, { padding: 80 });
+                }, 600);
+            }
         }
 
         // ==================== MAP EVENTS ====================
@@ -1199,6 +1675,8 @@
             });
 
             map.on('click', 'delivery-markers', (e) => {
+                if (isNavigating) return; // Don't show popup during navigation
+
                 const feature = e.features[0];
                 const props = feature.properties;
                 const coordinates = feature.geometry.coordinates.slice();
@@ -1220,7 +1698,7 @@
                         <div class="popup-actions">
                             <button class="popup-btn navigate" onclick="navigateToStop(${props.stop}, [${coordinates}], '${props.address.replace(/'/g, "\\'")}')">
                                 <i class="fas fa-directions"></i>
-                                Navegar
+                                Iniciar Navegação
                             </button>
                         </div>
                     </div>
