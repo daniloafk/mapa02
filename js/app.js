@@ -194,8 +194,6 @@ function updateUI() {
     hasData = deliveryData.features.length > 0;
     const totalPackages = deliveryData.features.reduce((sum, f) => sum + f.properties.packages, 0);
 
-    document.getElementById('stopsCount').textContent = deliveryData.features.length;
-    document.getElementById('packagesCount').textContent = totalPackages;
     document.getElementById('emptyState').classList.toggle('hidden', hasData);
 
     const btn = document.getElementById('actionBtn');
