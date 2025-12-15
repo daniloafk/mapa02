@@ -9,6 +9,15 @@
     <script src="https://unpkg.com/mapbox-gl@3.4.0/dist/mapbox-gl.js"></script>
     <link href="https://unpkg.com/mapbox-gl@3.4.0/dist/mapbox-gl.css" rel="stylesheet">
 
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <style>
         * {
             margin: 0;
@@ -154,6 +163,7 @@
         .popup-footer {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
 
         .popup-tag {
@@ -219,6 +229,68 @@
             color: #fff;
         }
 
+        /* Sidebar Action Button */
+        .sidebar-btn {
+            position: fixed;
+            left: 16px;
+            bottom: 100px;
+            z-index: 150;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: #fff;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .sidebar-btn.upload {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+        }
+
+        .sidebar-btn.upload:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 32px rgba(76, 175, 80, 0.4);
+        }
+
+        .sidebar-btn.clear {
+            background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
+        }
+
+        .sidebar-btn.clear:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 32px rgba(229, 57, 53, 0.4);
+        }
+
+        .sidebar-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .sidebar-btn .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Hidden file input */
+        #fileInput {
+            display: none;
+        }
+
         /* Legend */
         .legend {
             position: fixed;
@@ -244,13 +316,6 @@
             width: 12px;
             height: 12px;
             border-radius: 50%;
-        }
-
-        .legend-dot.single {
-            background: linear-gradient(135deg, #FF6B35, #FF8A5B);
-        }
-
-        .legend-dot.multiple {
             background: linear-gradient(135deg, #E53935, #FF5252);
         }
 
@@ -258,36 +323,287 @@
             background: #1a1a2e;
             color: #ccc;
         }
+
+        /* Toast notifications */
+        .toast {
+            position: fixed;
+            bottom: 180px;
+            left: 16px;
+            background: #1a1a2e;
+            color: #fff;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            animation: slideIn 0.3s ease;
+            max-width: 300px;
+        }
+
+        .toast.success {
+            border-left: 4px solid #4CAF50;
+        }
+
+        .toast.error {
+            border-left: 4px solid #E53935;
+        }
+
+        .toast.info {
+            border-left: 4px solid #2196F3;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .dark .toast {
+            background: #252542;
+        }
+
+        /* Empty state */
+        .empty-state {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 50;
+            pointer-events: none;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            color: #ccc;
+            margin-bottom: 16px;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .dark .empty-state i {
+            color: #444;
+        }
+
+        .dark .empty-state h3 {
+            color: #888;
+        }
+
+        .dark .empty-state p {
+            color: #666;
+        }
+
+        .empty-state.hidden {
+            display: none;
+        }
+
+        /* Confirm Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.hidden {
+            display: none;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 20px;
+            padding: 28px;
+            max-width: 380px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalIn 0.3s ease;
+        }
+
+        .dark .modal {
+            background: #1a1a2e;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #E53935, #C62828);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px;
+            color: #fff;
+        }
+
+        .modal h3 {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: #1a1a2e;
+        }
+
+        .dark .modal h3 {
+            color: #fff;
+        }
+
+        .modal p {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .dark .modal p {
+            color: #999;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .modal-btn {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-btn.cancel {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .dark .modal-btn.cancel {
+            background: #252542;
+            color: #999;
+        }
+
+        .modal-btn.cancel:hover {
+            background: #e0e0e0;
+        }
+
+        .dark .modal-btn.cancel:hover {
+            background: #2d2d4a;
+        }
+
+        .modal-btn.confirm {
+            background: linear-gradient(135deg, #E53935, #C62828);
+            color: #fff;
+        }
+
+        .modal-btn.confirm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4);
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+        <i class="fas fa-map-marked-alt"></i>
+        <h3>Nenhuma entrega carregada</h3>
+        <p>Clique no botão verde para carregar uma planilha</p>
+    </div>
 
     <!-- Info Panel -->
     <div class="info-panel">
         <h2>📦 Entregas do Dia</h2>
         <div class="info-stats">
             <div class="stat">
-                <div class="stat-value">47</div>
+                <div class="stat-value" id="stopsCount">0</div>
                 <div class="stat-label">Paradas</div>
             </div>
             <div class="stat">
-                <div class="stat-value">73</div>
+                <div class="stat-value" id="packagesCount">0</div>
                 <div class="stat-label">Pacotes</div>
             </div>
         </div>
     </div>
 
+    <!-- Sidebar Button -->
+    <button class="sidebar-btn upload" id="actionBtn" title="Carregar planilha">
+        <i class="fas fa-file-upload"></i>
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+
     <!-- Legend -->
     <div class="legend">
         <div class="legend-item">
-            <div class="legend-dot multiple"></div>
+            <div class="legend-dot"></div>
             <span>Ponto de entrega</span>
         </div>
     </div>
 
+    <!-- Confirm Modal -->
+    <div class="modal-overlay hidden" id="confirmModal">
+        <div class="modal">
+            <div class="modal-icon">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <h3>Limpar todas as entregas?</h3>
+            <p>Esta ação irá remover todos os pontos de entrega do mapa. Você precisará carregar uma nova planilha.</p>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" onclick="closeModal()">Cancelar</button>
+                <button class="modal-btn confirm" onclick="confirmClear()">Limpar Tudo</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Dark mode detection
+        // ==================== CONFIGURATION ====================
+        const SUPABASE_URL = 'https://xmaktksnrejxhppmesbh.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhtYWt0a3NucmVqeGhwcG1lc2JoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MzE5MzYsImV4cCI6MjA4MTQwNzkzNn0.xHSjuDR5XixKXwdRaRaM4XK6SiMtMD8NJvLJi1eUDuQ';
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Mapbox API Key
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajdra3l0aTA1MXUzZXB2bzByZjVjMXUifQ.RyPdNBII88Qk9xE3j8Rijw';
+
+        // ==================== DARK MODE ====================
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             document.documentElement.classList.add('dark');
         }
@@ -299,81 +615,22 @@
             }
         });
 
-        // Mapbox API Key
-        mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajdra3l0aTA1MXUzZXB2bzByZjVjMXUifQ.RyPdNBII88Qk9xE3j8Rijw';
+        // ==================== GLOBAL STATE ====================
+        let deliveryData = { type: 'FeatureCollection', features: [] };
+        let hasData = false;
+        let map;
+        let popup;
 
-        // Delivery stops data as GeoJSON
-        const deliveryData = {
-            type: 'FeatureCollection',
-            features: [
-                {"type": "Feature", "properties": {"stop": 1, "address": "Alameda Moraes, 246, Rua ao lado do Conselho tutela", "bairro": "Praia Grande (Mosqueiro)", "packages": 4}, "geometry": {"type": "Point", "coordinates": [-48.4652878, -1.1424655]}},
-                {"type": "Feature", "properties": {"stop": 2, "address": "Alameda Petrópolis, 42, Casa branca com muro baixinho", "bairro": "Praia Grande (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4659004, -1.1432]}},
-                {"type": "Feature", "properties": {"stop": 3, "address": "Alameda Ribamar Santos, 15, Ao lado da LR mat. De construç", "bairro": "Praia Grande", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4640884, -1.1438776]}},
-                {"type": "Feature", "properties": {"stop": 4, "address": "Avenida Beira-Mar, 1657, Condominio prive do farol", "bairro": "Mosqueiro", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4655266, -1.1451693]}},
-                {"type": "Feature", "properties": {"stop": 5, "address": "Passagem São Domingos, 33, Próximo à Rua das Mangueiras", "bairro": "Praia Grande (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4648368, -1.1456899]}},
-                {"type": "Feature", "properties": {"stop": 6, "address": "Rua Raimundo Cintra, 39, Entre São Domingos e Santa Ter", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.462101, -1.1466]}},
-                {"type": "Feature", "properties": {"stop": 7, "address": "Rua Raimundo Cintra, 12", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4626465, -1.1470315]}},
-                {"type": "Feature", "properties": {"stop": 8, "address": "Passg Santa Rita De Kace, 31", "bairro": "Ariramba (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4638905, -1.1463585]}},
-                {"type": "Feature", "properties": {"stop": 9, "address": "Passagem Mirim, 2, Av. Beira Mar", "bairro": "Praia grande mosqueiro", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4671, -1.15]}},
-                {"type": "Feature", "properties": {"stop": 10, "address": "Rua do Carmo, 83, Casa", "bairro": "Praia Grande (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4675026, -1.1504477]}},
-                {"type": "Feature", "properties": {"stop": 11, "address": "Rua Quinze de Novembro, 39, Praia grande casa verde", "bairro": "Vila (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4693985, -1.1509]}},
-                {"type": "Feature", "properties": {"stop": 12, "address": "Alameda França, 33", "bairro": "Praia Grande (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4677925, -1.151652]}},
-                {"type": "Feature", "properties": {"stop": 13, "address": "Avenida Beira-Mar, 1076, Proximo a barraca carioquinha", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4702988, -1.1522]}},
-                {"type": "Feature", "properties": {"stop": 14, "address": "Rua Coronel José do Ó, 137, Próximo a alameda Raimunda", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4707031, -1.1536975]}},
-                {"type": "Feature", "properties": {"stop": 15, "address": "Travessa Lauro Sodré, 198 a", "bairro": "Vila (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4708481, -1.154588]}},
-                {"type": "Feature", "properties": {"stop": 16, "address": "Travessa Lauro Sodré, 235, Ao lado do hospital geral", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4700012, -1.1545]}},
-                {"type": "Feature", "properties": {"stop": 17, "address": "Rua Quinze de Novembro, 728", "bairro": "Vila (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4695015, -1.1571]}},
-                {"type": "Feature", "properties": {"stop": 18, "address": "Rua Quinze de Novembro, 830", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4690933, -1.1584749]}},
-                {"type": "Feature", "properties": {"stop": 19, "address": "Travessa Coronel José Mota, 263, Proximidade da Av 16 de Novemb", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4683007, -1.1585106]}},
-                {"type": "Feature", "properties": {"stop": 20, "address": "Rua Quinze de Novembro, 18, Passagem sao sebastiao", "bairro": "Vila (Mosqueiro)", "packages": 5}, "geometry": {"type": "Point", "coordinates": [-48.469059, -1.1597145]}},
-                {"type": "Feature", "properties": {"stop": 21, "address": "Rua Quinze de Novembro, 121, Próximo as cinco bocas", "bairro": "Vila (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4688988, -1.1589]}},
-                {"type": "Feature", "properties": {"stop": 22, "address": "Avenida Dezesseis de Novembro, 2909, Em frente ao quiosque ki gosto", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.467701, -1.1566]}},
-                {"type": "Feature", "properties": {"stop": 23, "address": "Rua Padre Manoel Raiol, 220, Muro amarelo com telhas vermel", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.467514, -1.1570348]}},
-                {"type": "Feature", "properties": {"stop": 24, "address": "Avenida Dezesseis de Novembro, 72, Em frente depósito Xavier ao lado João motos", "bairro": "Vila (Mosqueiro)", "packages": 6}, "geometry": {"type": "Point", "coordinates": [-48.466176, -1.1532554]}},
-                {"type": "Feature", "properties": {"stop": 25, "address": "Avenida Dezesseis de Novembro, 2391, Ao lado da barbearia adryan", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4659386, -1.1524897]}},
-                {"type": "Feature", "properties": {"stop": 26, "address": "Passagem Atlântida, 03, Em frente ao Cantinho Azulino", "bairro": "Vila (Mosqueiro)", "packages": 3}, "geometry": {"type": "Point", "coordinates": [-48.4672508, -1.1530946]}},
-                {"type": "Feature", "properties": {"stop": 27, "address": "Alameda Bela Vista, 6, 16 de novembro/ Camilo salgado", "bairro": "Vila (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4674988, -1.1538]}},
-                {"type": "Feature", "properties": {"stop": 28, "address": "Travessa Bela Vista, 2, Próximo ao hospital geral", "bairro": "Praia Grande", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4650497, -1.1538016]}},
-                {"type": "Feature", "properties": {"stop": 29, "address": "Rua Sandro Carvalho, 68-A, Paquetá", "bairro": "Mangueiras (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4622993, -1.1528]}},
-                {"type": "Feature", "properties": {"stop": 30, "address": "Rua Bariloche, 30, Casa", "bairro": "Mangueiras (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4615555, -1.1523347]}},
-                {"type": "Feature", "properties": {"stop": 31, "address": "Alameda Paquetá, 4, próximo ao comercial Caroline", "bairro": "Mangueiras (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4613724, -1.1530893]}},
-                {"type": "Feature", "properties": {"stop": 32, "address": "Travessa Santa Helena, O1, Atrás da loja Dluna Beach", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4614143, -1.1548012]}},
-                {"type": "Feature", "properties": {"stop": 33, "address": "Praça do carmo, 27, Bar do seu bene", "bairro": "Cidade velha", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4569525, -1.1591978]}},
-                {"type": "Feature", "properties": {"stop": 34, "address": "Travessa Bela Vista, 87", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4594002, -1.1542]}},
-                {"type": "Feature", "properties": {"stop": 35, "address": "Alameda Paquetá, 900, Final do asfalto lado direito", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4588051, -1.1533793]}},
-                {"type": "Feature", "properties": {"stop": 36, "address": "Rua Bahamas, 26", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4601555, -1.1521145]}},
-                {"type": "Feature", "properties": {"stop": 37, "address": "Alameda do Carmo, 33, Próximo a igreja Reis dos Reis", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4594002, -1.1513]}},
-                {"type": "Feature", "properties": {"stop": 38, "address": "Rua Nova, 255", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.461853, -1.1500554]}},
-                {"type": "Feature", "properties": {"stop": 39, "address": "Avenida Camilo Salgado Filho, 612, Centro Educacional Lápis na Mã", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4624329, -1.1501131]}},
-                {"type": "Feature", "properties": {"stop": 40, "address": "Rua do Carmo, 26", "bairro": "Praia Grande (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4636841, -1.151163]}},
-                {"type": "Feature", "properties": {"stop": 41, "address": "Rua Raimundo Cintra, 33, Atraz da panificadora Martinez", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4638405, -1.1497903]}},
-                {"type": "Feature", "properties": {"stop": 42, "address": "Rua Bariloche, 17, Acesso pela sta terezinha", "bairro": "Mangueiras (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.4596596, -1.1482842]}},
-                {"type": "Feature", "properties": {"stop": 43, "address": "Ria nova, 195", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4600983, -1.1469001]}},
-                {"type": "Feature", "properties": {"stop": 44, "address": "Avenida Principal, 14, Rua ao lado do varejão do cime", "bairro": "Mangueiras (Mosqueiro)", "packages": 3}, "geometry": {"type": "Point", "coordinates": [-48.4607849, -1.1448848]}},
-                {"type": "Feature", "properties": {"stop": 45, "address": "Alameda Teresópolis, 182, Rua da creche", "bairro": "Mangueiras (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4600372, -1.143436]}},
-                {"type": "Feature", "properties": {"stop": 46, "address": "Alameda Petrópolis, 1000, Casa amarela con rosa", "bairro": "Praia Grande (Mosqueiro)", "packages": 1}, "geometry": {"type": "Point", "coordinates": [-48.4619141, -1.1434402]}},
-                {"type": "Feature", "properties": {"stop": 47, "address": "Avenida Dezesseis de Novembro, 1220, Mundo dos colchões ao lado do", "bairro": "Vila (Mosqueiro)", "packages": 2}, "geometry": {"type": "Point", "coordinates": [-48.461216, -1.1423743]}}
-            ]
-        };
-
-        // Map styles
+        // ==================== MAP INITIALIZATION ====================
         const isDark = document.documentElement.classList.contains('dark');
 
-        // Calculate bounds to fit all markers
-        const bounds = new mapboxgl.LngLatBounds();
-        deliveryData.features.forEach(feature => {
-            bounds.extend(feature.geometry.coordinates);
-        });
-
-        // Initialize map
-        const map = new mapboxgl.Map({
+        map = new mapboxgl.Map({
             container: 'map',
             style: isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
-            center: bounds.getCenter(),
-            zoom: 14
+            center: [-48.4650, -1.1500], // Default center (Mosqueiro)
+            zoom: 12
         });
 
-        // Add default Mapbox controls
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
         map.addControl(new mapboxgl.GeolocateControl({
             positionOptions: { enableHighAccuracy: true },
@@ -382,22 +639,21 @@
         }), 'top-right');
         map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
 
-        // Popup instance
-        const popup = new mapboxgl.Popup({
+        popup = new mapboxgl.Popup({
             closeButton: true,
             closeOnClick: false,
             offset: 25,
             maxWidth: '300px'
         });
 
-        // Create custom marker icons
-        function createMarkerIcon(color1, color2, number) {
+        // ==================== MARKER ICON CREATION ====================
+        function createMarkerIcon(number) {
             const svg = `
                 <svg width="40" height="50" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
                     <defs>
                         <linearGradient id="grad${number}" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:${color1};stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:${color2};stop-opacity:1" />
+                            <stop offset="0%" style="stop-color:#E53935;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#C62828;stop-opacity:1" />
                         </linearGradient>
                         <filter id="shadow${number}" x="-50%" y="-50%" width="200%" height="200%">
                             <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
@@ -407,22 +663,34 @@
                           fill="url(#grad${number})" filter="url(#shadow${number})"/>
                     <circle cx="20" cy="18" r="12" fill="white" opacity="0.95"/>
                     <text x="20" y="23" font-family="system-ui, -apple-system, sans-serif" font-size="12"
-                          font-weight="bold" fill="${color2}" text-anchor="middle">${number}</text>
+                          font-weight="bold" fill="#C62828" text-anchor="middle">${number}</text>
                 </svg>
             `;
             return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
         }
 
-        map.on('load', () => {
-            // Fit map to show all markers
-            map.fitBounds(bounds, { padding: 80 });
+        // ==================== RENDER MARKERS ====================
+        async function renderMarkers() {
+            // Remove existing layers and source
+            if (map.getLayer('delivery-markers')) map.removeLayer('delivery-markers');
+            if (map.getLayer('delivery-shadows')) map.removeLayer('delivery-shadows');
+            if (map.getSource('deliveries')) map.removeSource('deliveries');
 
-            // Load custom marker images for each stop
+            // Remove existing images
+            deliveryData.features.forEach(f => {
+                const iconId = `marker-${f.properties.stop}`;
+                if (map.hasImage(iconId)) map.removeImage(iconId);
+            });
+
+            if (deliveryData.features.length === 0) {
+                updateUI();
+                return;
+            }
+
+            // Load marker images
             const loadImages = deliveryData.features.map(feature => {
                 return new Promise((resolve) => {
                     const props = feature.properties;
-                    const color1 = '#E53935';
-                    const color2 = '#C62828';
                     const iconId = `marker-${props.stop}`;
 
                     const img = new Image();
@@ -432,79 +700,334 @@
                         }
                         resolve();
                     };
-                    img.src = createMarkerIcon(color1, color2, props.stop);
+                    img.src = createMarkerIcon(props.stop);
                 });
             });
 
-            Promise.all(loadImages).then(() => {
-                // Add source
-                map.addSource('deliveries', {
-                    type: 'geojson',
-                    data: deliveryData
-                });
+            await Promise.all(loadImages);
 
-                // Add shadow layer
-                map.addLayer({
-                    id: 'delivery-shadows',
-                    type: 'circle',
-                    source: 'deliveries',
-                    paint: {
-                        'circle-radius': 8,
-                        'circle-color': '#000',
-                        'circle-opacity': 0.15,
-                        'circle-blur': 1,
-                        'circle-translate': [0, 20]
-                    }
-                });
+            // Add source
+            map.addSource('deliveries', {
+                type: 'geojson',
+                data: deliveryData
+            });
 
-                // Add symbol layer with custom icons
-                map.addLayer({
-                    id: 'delivery-markers',
-                    type: 'symbol',
-                    source: 'deliveries',
-                    layout: {
-                        'icon-image': ['concat', 'marker-', ['to-string', ['get', 'stop']]],
-                        'icon-size': 1,
-                        'icon-anchor': 'bottom',
-                        'icon-allow-overlap': true
-                    }
-                });
+            // Add shadow layer
+            map.addLayer({
+                id: 'delivery-shadows',
+                type: 'circle',
+                source: 'deliveries',
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#000',
+                    'circle-opacity': 0.15,
+                    'circle-blur': 1,
+                    'circle-translate': [0, 20]
+                }
+            });
 
-                // Change cursor on hover
-                map.on('mouseenter', 'delivery-markers', () => {
-                    map.getCanvas().style.cursor = 'pointer';
-                });
+            // Add markers layer
+            map.addLayer({
+                id: 'delivery-markers',
+                type: 'symbol',
+                source: 'deliveries',
+                layout: {
+                    'icon-image': ['concat', 'marker-', ['to-string', ['get', 'stop']]],
+                    'icon-size': 1,
+                    'icon-anchor': 'bottom',
+                    'icon-allow-overlap': true
+                }
+            });
 
-                map.on('mouseleave', 'delivery-markers', () => {
-                    map.getCanvas().style.cursor = '';
-                });
+            // Fit bounds
+            const bounds = new mapboxgl.LngLatBounds();
+            deliveryData.features.forEach(f => bounds.extend(f.geometry.coordinates));
+            map.fitBounds(bounds, { padding: 80 });
 
-                // Show popup on click
-                map.on('click', 'delivery-markers', (e) => {
-                    const feature = e.features[0];
-                    const props = feature.properties;
-                    const coordinates = feature.geometry.coordinates.slice();
-                    const html = `
-                        <div class="popup-content">
-                            <div class="popup-header">
-                                <div class="popup-stop">${props.stop}</div>
-                                <div>
-                                    <div class="popup-title">Parada ${props.stop}</div>
-                                    <div class="popup-subtitle">Sequência de entrega</div>
-                                </div>
-                            </div>
-                            <div class="popup-address">${props.address}</div>
-                            <div class="popup-footer">
-                                <span class="popup-tag location">📍 ${props.bairro || 'Mosqueiro'}</span>
-                                <span class="popup-tag packages">📦 ${props.packages} pacote${props.packages > 1 ? 's' : ''}</span>
+            updateUI();
+        }
+
+        // ==================== UPDATE UI ====================
+        function updateUI() {
+            hasData = deliveryData.features.length > 0;
+            const totalPackages = deliveryData.features.reduce((sum, f) => sum + f.properties.packages, 0);
+
+            document.getElementById('stopsCount').textContent = deliveryData.features.length;
+            document.getElementById('packagesCount').textContent = totalPackages;
+            document.getElementById('emptyState').classList.toggle('hidden', hasData);
+
+            const btn = document.getElementById('actionBtn');
+            if (hasData) {
+                btn.className = 'sidebar-btn clear';
+                btn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                btn.title = 'Limpar entregas';
+            } else {
+                btn.className = 'sidebar-btn upload';
+                btn.innerHTML = '<i class="fas fa-file-upload"></i>';
+                btn.title = 'Carregar planilha';
+            }
+        }
+
+        // ==================== MAP EVENTS ====================
+        map.on('load', async () => {
+            // Load saved data from Supabase
+            await loadFromSupabase();
+
+            // Setup click events
+            map.on('mouseenter', 'delivery-markers', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', 'delivery-markers', () => {
+                map.getCanvas().style.cursor = '';
+            });
+
+            map.on('click', 'delivery-markers', (e) => {
+                const feature = e.features[0];
+                const props = feature.properties;
+                const coordinates = feature.geometry.coordinates.slice();
+
+                const html = `
+                    <div class="popup-content">
+                        <div class="popup-header">
+                            <div class="popup-stop">${props.stop}</div>
+                            <div>
+                                <div class="popup-title">Parada ${props.stop}</div>
+                                <div class="popup-subtitle">Sequência de entrega</div>
                             </div>
                         </div>
-                    `;
+                        <div class="popup-address">${props.address}</div>
+                        <div class="popup-footer">
+                            <span class="popup-tag location">📍 ${props.bairro || 'Sem bairro'}</span>
+                            <span class="popup-tag packages">📦 ${props.packages} pacote${props.packages > 1 ? 's' : ''}</span>
+                        </div>
+                    </div>
+                `;
 
-                    popup.setLngLat(coordinates).setHTML(html).addTo(map);
-                });
+                popup.setLngLat(coordinates).setHTML(html).addTo(map);
             });
         });
+
+        // ==================== SUPABASE FUNCTIONS ====================
+        async function loadFromSupabase() {
+            try {
+                showToast('Carregando dados...', 'info');
+
+                const { data, error } = await supabase
+                    .from('deliveries')
+                    .select('*')
+                    .order('stop', { ascending: true });
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    deliveryData.features = data.map(row => ({
+                        type: 'Feature',
+                        properties: {
+                            stop: row.stop,
+                            address: row.address,
+                            bairro: row.bairro,
+                            packages: row.packages
+                        },
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [row.lng, row.lat]
+                        }
+                    }));
+
+                    await renderMarkers();
+                    showToast(`${data.length} entregas carregadas!`, 'success');
+                } else {
+                    updateUI();
+                }
+            } catch (error) {
+                console.error('Error loading from Supabase:', error);
+                showToast('Erro ao carregar dados', 'error');
+                updateUI();
+            }
+        }
+
+        async function saveToSupabase(stops) {
+            try {
+                // First, clear existing data
+                await supabase.from('deliveries').delete().neq('id', 0);
+
+                // Insert new data
+                const { error } = await supabase.from('deliveries').insert(stops);
+
+                if (error) throw error;
+
+                return true;
+            } catch (error) {
+                console.error('Error saving to Supabase:', error);
+                throw error;
+            }
+        }
+
+        async function clearSupabase() {
+            try {
+                const { error } = await supabase.from('deliveries').delete().neq('id', 0);
+                if (error) throw error;
+                return true;
+            } catch (error) {
+                console.error('Error clearing Supabase:', error);
+                throw error;
+            }
+        }
+
+        // ==================== FILE PROCESSING ====================
+        async function processFile(file) {
+            const btn = document.getElementById('actionBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                showToast('Processando planilha...', 'info');
+
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                if (jsonData.length === 0) {
+                    throw new Error('Planilha vazia');
+                }
+
+                // Group by Stop
+                const stopsMap = new Map();
+                jsonData.forEach(row => {
+                    const stop = row['Stop'] || row['stop'];
+                    if (!stopsMap.has(stop)) {
+                        stopsMap.set(stop, {
+                            stop: stop,
+                            lat: row['Latitude'] || row['latitude'] || row['lat'],
+                            lng: row['Longitude'] || row['longitude'] || row['lng'],
+                            address: row['Destination Address'] || row['address'] || row['endereco'] || '',
+                            bairro: row['Bairro'] || row['bairro'] || row['neighborhood'] || '',
+                            packages: 1
+                        });
+                    } else {
+                        stopsMap.get(stop).packages++;
+                    }
+                });
+
+                const stops = Array.from(stopsMap.values());
+
+                // Validate data
+                const validStops = stops.filter(s => s.lat && s.lng && !isNaN(s.lat) && !isNaN(s.lng));
+
+                if (validStops.length === 0) {
+                    throw new Error('Nenhum endereço válido encontrado');
+                }
+
+                // Save to Supabase
+                showToast('Salvando no banco de dados...', 'info');
+                await saveToSupabase(validStops);
+
+                // Update local data
+                deliveryData.features = validStops.map(s => ({
+                    type: 'Feature',
+                    properties: {
+                        stop: s.stop,
+                        address: s.address,
+                        bairro: s.bairro,
+                        packages: s.packages
+                    },
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [parseFloat(s.lng), parseFloat(s.lat)]
+                    }
+                }));
+
+                await renderMarkers();
+                showToast(`${validStops.length} entregas carregadas!`, 'success');
+
+            } catch (error) {
+                console.error('Error processing file:', error);
+                showToast(error.message || 'Erro ao processar planilha', 'error');
+            } finally {
+                btn.disabled = false;
+                updateUI();
+            }
+        }
+
+        // ==================== EVENT HANDLERS ====================
+        document.getElementById('actionBtn').addEventListener('click', () => {
+            if (hasData) {
+                // Show confirm modal
+                document.getElementById('confirmModal').classList.remove('hidden');
+            } else {
+                // Trigger file input
+                document.getElementById('fileInput').click();
+            }
+        });
+
+        document.getElementById('fileInput').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+                e.target.value = ''; // Reset input
+            }
+        });
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+        }
+
+        async function confirmClear() {
+            closeModal();
+
+            const btn = document.getElementById('actionBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div>';
+
+            try {
+                showToast('Limpando dados...', 'info');
+                await clearSupabase();
+
+                // Clear local data
+                deliveryData.features = [];
+                popup.remove();
+
+                // Remove markers from map
+                if (map.getLayer('delivery-markers')) map.removeLayer('delivery-markers');
+                if (map.getLayer('delivery-shadows')) map.removeLayer('delivery-shadows');
+                if (map.getSource('deliveries')) map.removeSource('deliveries');
+
+                updateUI();
+                showToast('Dados limpos com sucesso!', 'success');
+
+            } catch (error) {
+                showToast('Erro ao limpar dados', 'error');
+            } finally {
+                btn.disabled = false;
+                updateUI();
+            }
+        }
+
+        // ==================== TOAST NOTIFICATION ====================
+        function showToast(message, type = 'info') {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                info: 'fa-info-circle'
+            };
+
+            toast.innerHTML = `<i class="fas ${icons[type]}"></i> ${message}`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideIn 0.3s ease reverse';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
     </script>
 </body>
 </html>
