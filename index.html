@@ -34,22 +34,26 @@
             position: fixed;
             top: 16px;
             left: 16px;
-            background: #fff;
-            padding: 16px 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            padding: 20px 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
             z-index: 100;
+            border: 1px solid rgba(255,255,255,0.8);
         }
 
         .info-panel h2 {
-            font-size: 16px;
-            margin-bottom: 8px;
-            color: #333;
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .info-stats {
             display: flex;
-            gap: 16px;
+            gap: 24px;
         }
 
         .stat {
@@ -57,91 +61,140 @@
         }
 
         .stat-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #FF6B35;
+            font-size: 28px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FF6B35 0%, #E53935 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .stat-label {
             font-size: 11px;
-            color: #888;
+            color: #666;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         /* Dark mode */
         .dark .info-panel {
-            background: #1a1a2e;
+            background: linear-gradient(135deg, #1a1a2e 0%, #252542 100%);
+            border-color: rgba(255,255,255,0.1);
         }
 
         .dark .info-panel h2 {
             color: #fff;
         }
 
+        .dark .stat-label {
+            color: #888;
+        }
+
         /* Popup styling */
+        .mapboxgl-popup {
+            z-index: 200;
+        }
+
         .mapboxgl-popup-content {
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            max-width: 280px;
+            padding: 0;
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            min-width: 260px;
+        }
+
+        .popup-content {
+            padding: 16px 20px;
         }
 
         .popup-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
+            gap: 12px;
+            margin-bottom: 12px;
         }
 
         .popup-stop {
-            width: 32px;
-            height: 32px;
-            background: #FF6B35;
-            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #FF6B35 0%, #E53935 100%);
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #fff;
-            font-weight: 700;
-            font-size: 14px;
+            font-weight: 800;
+            font-size: 16px;
+            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+        }
+
+        .popup-stop.multiple {
+            background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
+            box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4);
         }
 
         .popup-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .popup-subtitle {
+            font-size: 12px;
+            color: #888;
         }
 
         .popup-address {
-            font-size: 13px;
-            color: #555;
-            line-height: 1.4;
-            margin-bottom: 8px;
+            font-size: 14px;
+            color: #444;
+            line-height: 1.5;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 3px solid #FF6B35;
         }
 
-        .popup-bairro {
-            font-size: 12px;
-            color: #888;
-            margin-bottom: 8px;
+        .popup-footer {
+            display: flex;
+            gap: 8px;
         }
 
-        .popup-packages {
-            display: inline-block;
-            background: #E8F5E9;
-            color: #2E7D32;
-            padding: 4px 10px;
+        .popup-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
         }
 
-        .dark .mapboxgl-popup-content {
-            background: #1a1a2e;
+        .popup-tag.location {
+            background: #E3F2FD;
+            color: #1565C0;
         }
 
-        .dark .popup-header {
-            border-bottom-color: #333;
+        .popup-tag.packages {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .mapboxgl-popup-close-button {
+            font-size: 20px;
+            padding: 8px 12px;
+            color: #888;
+        }
+
+        .mapboxgl-popup-close-button:hover {
+            background: transparent;
+            color: #333;
+        }
+
+        /* Dark mode popup */
+        .dark .mapboxgl-popup-content {
+            background: #1a1a2e;
         }
 
         .dark .popup-title {
@@ -149,11 +202,66 @@
         }
 
         .dark .popup-address {
+            background: #252542;
             color: #ccc;
         }
 
-        .dark .popup-bairro {
-            color: #888;
+        .dark .popup-tag.location {
+            background: rgba(21, 101, 192, 0.2);
+            color: #64B5F6;
+        }
+
+        .dark .popup-tag.packages {
+            background: rgba(46, 125, 50, 0.2);
+            color: #81C784;
+        }
+
+        .dark .mapboxgl-popup-close-button {
+            color: #666;
+        }
+
+        .dark .mapboxgl-popup-close-button:hover {
+            color: #fff;
+        }
+
+        /* Legend */
+        .legend {
+            position: fixed;
+            bottom: 32px;
+            left: 16px;
+            background: #fff;
+            padding: 12px 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+            z-index: 100;
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.single {
+            background: linear-gradient(135deg, #FF6B35, #FF8A5B);
+        }
+
+        .legend-dot.multiple {
+            background: linear-gradient(135deg, #E53935, #FF5252);
+        }
+
+        .dark .legend {
+            background: #1a1a2e;
+            color: #ccc;
         }
     </style>
 </head>
@@ -172,6 +280,18 @@
                 <div class="stat-value">73</div>
                 <div class="stat-label">Pacotes</div>
             </div>
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-dot single"></div>
+            <span>1 pacote</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot multiple"></div>
+            <span>2+ pacotes</span>
         </div>
     </div>
 
@@ -275,79 +395,126 @@
         const popup = new mapboxgl.Popup({
             closeButton: true,
             closeOnClick: false,
-            offset: 15
+            offset: 25,
+            maxWidth: '300px'
         });
+
+        // Create custom marker icons
+        function createMarkerIcon(color1, color2, number) {
+            const svg = `
+                <svg width="40" height="50" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="grad${number}" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" style="stop-color:${color1};stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:${color2};stop-opacity:1" />
+                        </linearGradient>
+                        <filter id="shadow${number}" x="-50%" y="-50%" width="200%" height="200%">
+                            <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+                        </filter>
+                    </defs>
+                    <path d="M20 0C8.954 0 0 8.954 0 20c0 11.046 20 30 20 30s20-18.954 20-30C40 8.954 31.046 0 20 0z"
+                          fill="url(#grad${number})" filter="url(#shadow${number})"/>
+                    <circle cx="20" cy="18" r="12" fill="white" opacity="0.95"/>
+                    <text x="20" y="23" font-family="system-ui, -apple-system, sans-serif" font-size="12"
+                          font-weight="bold" fill="${color2}" text-anchor="middle">${number}</text>
+                </svg>
+            `;
+            return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+        }
 
         map.on('load', () => {
             // Fit map to show all markers
-            map.fitBounds(bounds, { padding: 60 });
+            map.fitBounds(bounds, { padding: 80 });
 
-            // Add source
-            map.addSource('deliveries', {
-                type: 'geojson',
-                data: deliveryData
+            // Load custom marker images for each stop
+            const loadImages = deliveryData.features.map(feature => {
+                return new Promise((resolve) => {
+                    const props = feature.properties;
+                    const isMultiple = props.packages > 1;
+                    const color1 = isMultiple ? '#E53935' : '#FF6B35';
+                    const color2 = isMultiple ? '#C62828' : '#E55A2B';
+                    const iconId = `marker-${props.stop}`;
+
+                    const img = new Image();
+                    img.onload = () => {
+                        if (!map.hasImage(iconId)) {
+                            map.addImage(iconId, img);
+                        }
+                        resolve();
+                    };
+                    img.src = createMarkerIcon(color1, color2, props.stop);
+                });
             });
 
-            // Add circle layer for markers
-            map.addLayer({
-                id: 'delivery-circles',
-                type: 'circle',
-                source: 'deliveries',
-                paint: {
-                    'circle-radius': 14,
-                    'circle-color': [
-                        'case',
-                        ['>', ['get', 'packages'], 1],
-                        '#E53935',
-                        '#FF6B35'
-                    ],
-                    'circle-stroke-width': 3,
-                    'circle-stroke-color': '#ffffff'
-                }
-            });
+            Promise.all(loadImages).then(() => {
+                // Add source
+                map.addSource('deliveries', {
+                    type: 'geojson',
+                    data: deliveryData
+                });
 
-            // Add text layer for stop numbers
-            map.addLayer({
-                id: 'delivery-labels',
-                type: 'symbol',
-                source: 'deliveries',
-                layout: {
-                    'text-field': ['to-string', ['get', 'stop']],
-                    'text-size': 12,
-                    'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-                    'text-allow-overlap': true
-                },
-                paint: {
-                    'text-color': '#ffffff'
-                }
-            });
+                // Add shadow layer
+                map.addLayer({
+                    id: 'delivery-shadows',
+                    type: 'circle',
+                    source: 'deliveries',
+                    paint: {
+                        'circle-radius': 8,
+                        'circle-color': '#000',
+                        'circle-opacity': 0.15,
+                        'circle-blur': 1,
+                        'circle-translate': [0, 20]
+                    }
+                });
 
-            // Change cursor on hover
-            map.on('mouseenter', 'delivery-circles', () => {
-                map.getCanvas().style.cursor = 'pointer';
-            });
+                // Add symbol layer with custom icons
+                map.addLayer({
+                    id: 'delivery-markers',
+                    type: 'symbol',
+                    source: 'deliveries',
+                    layout: {
+                        'icon-image': ['concat', 'marker-', ['to-string', ['get', 'stop']]],
+                        'icon-size': 1,
+                        'icon-anchor': 'bottom',
+                        'icon-allow-overlap': true
+                    }
+                });
 
-            map.on('mouseleave', 'delivery-circles', () => {
-                map.getCanvas().style.cursor = '';
-            });
+                // Change cursor on hover
+                map.on('mouseenter', 'delivery-markers', () => {
+                    map.getCanvas().style.cursor = 'pointer';
+                });
 
-            // Show popup on click
-            map.on('click', 'delivery-circles', (e) => {
-                const feature = e.features[0];
-                const props = feature.properties;
-                const coordinates = feature.geometry.coordinates.slice();
+                map.on('mouseleave', 'delivery-markers', () => {
+                    map.getCanvas().style.cursor = '';
+                });
 
-                const html = `
-                    <div class="popup-header">
-                        <div class="popup-stop">${props.stop}</div>
-                        <div class="popup-title">Parada ${props.stop}</div>
-                    </div>
-                    <div class="popup-address">${props.address}</div>
-                    <div class="popup-bairro">📍 ${props.bairro || 'Mosqueiro'}</div>
-                    <div class="popup-packages">📦 ${props.packages} pacote${props.packages > 1 ? 's' : ''}</div>
-                `;
+                // Show popup on click
+                map.on('click', 'delivery-markers', (e) => {
+                    const feature = e.features[0];
+                    const props = feature.properties;
+                    const coordinates = feature.geometry.coordinates.slice();
+                    const isMultiple = props.packages > 1;
 
-                popup.setLngLat(coordinates).setHTML(html).addTo(map);
+                    const html = `
+                        <div class="popup-content">
+                            <div class="popup-header">
+                                <div class="popup-stop ${isMultiple ? 'multiple' : ''}">${props.stop}</div>
+                                <div>
+                                    <div class="popup-title">Parada ${props.stop}</div>
+                                    <div class="popup-subtitle">Sequência de entrega</div>
+                                </div>
+                            </div>
+                            <div class="popup-address">${props.address}</div>
+                            <div class="popup-footer">
+                                <span class="popup-tag location">📍 ${props.bairro || 'Mosqueiro'}</span>
+                                <span class="popup-tag packages">📦 ${props.packages} pacote${props.packages > 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                    `;
+
+                    popup.setLngLat(coordinates).setHTML(html).addTo(map);
+                });
             });
         });
     </script>
