@@ -211,51 +211,6 @@ function updateUI() {
     }
 }
 
-// ==================== MANEUVER ICONS ====================
-function getManeuverIcon(type, modifier) {
-    const icons = {
-        'turn': {
-            'left': 'fa-arrow-left',
-            'right': 'fa-arrow-right',
-            'slight left': 'fa-arrow-up rotate-left',
-            'slight right': 'fa-arrow-up rotate-right',
-            'sharp left': 'fa-arrow-left',
-            'sharp right': 'fa-arrow-right',
-            'uturn': 'fa-arrow-rotate-left'
-        },
-        'merge': 'fa-compress-arrows-alt',
-        'depart': 'fa-play',
-        'arrive': 'fa-flag-checkered',
-        'fork': modifier === 'left' ? 'fa-code-branch flip-h' : 'fa-code-branch',
-        'roundabout': 'fa-rotate-right',
-        'rotary': 'fa-rotate-right',
-        'exit roundabout': 'fa-arrow-up',
-        'end of road': modifier === 'left' ? 'fa-arrow-left' : 'fa-arrow-right',
-        'continue': 'fa-arrow-up',
-        'new name': 'fa-arrow-up',
-        'notification': 'fa-info-circle'
-    };
-
-    if (type === 'turn' && modifier) {
-        return icons.turn[modifier] || 'fa-arrow-up';
-    }
-
-    return icons[type] || 'fa-arrow-up';
-}
-
-function formatDistance(meters) {
-    if (meters < 1000) {
-        return Math.round(meters) + ' m';
-    }
-    return (meters / 1000).toFixed(1) + ' km';
-}
-
-function formatDuration(seconds) {
-    if (seconds < 60) {
-        return '< 1';
-    }
-    return Math.round(seconds / 60);
-}
 
 // ==================== NAVIGATION FUNCTIONS ====================
 async function navigateToStop(stop, coordinates, address) {
@@ -319,12 +274,8 @@ function startNavigationMode(route, destination) {
 
     // Update UI
     document.body.classList.add('navigating');
-    document.getElementById('navHeader').classList.add('active');
     document.getElementById('cancelNavFab').classList.add('visible');
 
-
-    // Update current step
-    updateCurrentStep();
 
     // Start location tracking
     startLocationTracking();
@@ -495,8 +446,6 @@ async function recalculateRoute() {
                 });
             }
 
-            // Update current step display
-            updateCurrentStep();
         }
     } catch (error) {
         console.error('Error recalculating route:', error);
@@ -506,29 +455,6 @@ async function recalculateRoute() {
 }
 
 
-function updateCurrentStep() {
-    if (currentStepIndex >= routeSteps.length) return;
-
-    const step = routeSteps[currentStepIndex];
-    const iconClass = getManeuverIcon(step.maneuver.type, step.maneuver.modifier);
-
-    // Update maneuver icon
-    const iconEl = document.getElementById('navManeuverIcon');
-    iconEl.innerHTML = `<i class="fas ${iconClass}"></i>`;
-
-    // Update distance and instruction
-    document.getElementById('navDistanceToTurn').textContent = formatDistance(step.distance);
-    document.getElementById('navInstructionText').textContent = step.maneuver.instruction || 'Siga em frente';
-
-    // Update next step
-    if (currentStepIndex + 1 < routeSteps.length) {
-        const nextStep = routeSteps[currentStepIndex + 1];
-        document.getElementById('navNextStep').style.display = 'flex';
-        document.getElementById('navNextText').textContent = `Depois: ${nextStep.maneuver.instruction || 'Continue'}`;
-    } else {
-        document.getElementById('navNextStep').style.display = 'none';
-    }
-}
 
 function startLocationTracking() {
     if (watchId) {
@@ -587,22 +513,6 @@ function updateNavigationProgress() {
 
     // Update route visualization (remove passed segments)
     updateRouteProgress();
-
-    // Check if we passed current step
-    if (currentStepIndex < routeSteps.length) {
-        const step = routeSteps[currentStepIndex];
-        const stepEnd = step.maneuver.location;
-        const distanceToStep = getDistance(userLocation, stepEnd);
-
-        // Update distance to turn
-        document.getElementById('navDistanceToTurn').textContent = formatDistance(distanceToStep);
-
-        // If within 20 meters of step end, move to next step
-        if (distanceToStep < 20 && currentStepIndex < routeSteps.length - 1) {
-            currentStepIndex++;
-            updateCurrentStep();
-        }
-    }
 }
 
 function getDistance(coord1, coord2) {
@@ -661,7 +571,6 @@ function cancelNavigation() {
 
     // Hide navigation UI
     document.body.classList.remove('navigating');
-    document.getElementById('navHeader').classList.remove('active');
     document.getElementById('recenterFab').classList.remove('visible');
     document.getElementById('cancelNavFab').classList.remove('visible');
 
