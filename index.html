@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>DeliveryTrack - Mapa</title>
+    <title>DeliveryTrack - Mapa de Entregas</title>
 
     <!-- Mapbox GL JS -->
     <script src="https://unpkg.com/mapbox-gl@3.4.0/dist/mapbox-gl.js"></script>
@@ -28,10 +28,174 @@
             width: 100%;
             height: 100%;
         }
+
+        /* Custom marker */
+        .marker {
+            width: 30px;
+            height: 30px;
+            background: #FF6B35;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .marker:hover {
+            transform: scale(1.2);
+        }
+
+        .marker.multiple {
+            background: #E53935;
+        }
+
+        /* Popup styling */
+        .mapboxgl-popup-content {
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 280px;
+        }
+
+        .popup-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .popup-stop {
+            width: 32px;
+            height: 32px;
+            background: #FF6B35;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .popup-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .popup-address {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .popup-bairro {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .popup-packages {
+            display: inline-block;
+            background: #E8F5E9;
+            color: #2E7D32;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Info panel */
+        .info-panel {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            background: #fff;
+            padding: 16px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 100;
+        }
+
+        .info-panel h2 {
+            font-size: 16px;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .info-stats {
+            display: flex;
+            gap: 16px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #FF6B35;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        /* Dark mode */
+        .dark .info-panel {
+            background: #1a1a2e;
+        }
+
+        .dark .info-panel h2 {
+            color: #fff;
+        }
+
+        .dark .mapboxgl-popup-content {
+            background: #1a1a2e;
+        }
+
+        .dark .popup-title {
+            color: #fff;
+        }
+
+        .dark .popup-address {
+            color: #ccc;
+        }
+
+        .dark .popup-bairro {
+            color: #888;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
+    <!-- Info Panel -->
+    <div class="info-panel">
+        <h2>📦 Entregas do Dia</h2>
+        <div class="info-stats">
+            <div class="stat">
+                <div class="stat-value">47</div>
+                <div class="stat-label">Paradas</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">73</div>
+                <div class="stat-label">Pacotes</div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Dark mode detection
@@ -49,15 +213,72 @@
         // Mapbox API Key
         mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajdra3l0aTA1MXUzZXB2bzByZjVjMXUifQ.RyPdNBII88Qk9xE3j8Rijw';
 
+        // Delivery stops data
+        const deliveryStops = [
+            {"stop": 1, "lat": -1.1424655, "lng": -48.4652878, "address": "Alameda Moraes, 246, Rua ao lado do Conselho tutela", "bairro": "Praia Grande (Mosqueiro)", "packages": 4},
+            {"stop": 2, "lat": -1.1432, "lng": -48.4659004, "address": "Alameda Petrópolis, 42, Casa branca com muro baixinho", "bairro": "Praia Grande (Mosqueiro)", "packages": 1},
+            {"stop": 3, "lat": -1.1438776, "lng": -48.4640884, "address": "Alameda Ribamar Santos, 15, Ao lado da LR mat. De construç", "bairro": "Praia Grande", "packages": 1},
+            {"stop": 4, "lat": -1.1451693, "lng": -48.4655266, "address": "Avenida Beira-Mar, 1657, Condominio prive do farol", "bairro": "Mosqueiro", "packages": 1},
+            {"stop": 5, "lat": -1.1456899, "lng": -48.4648368, "address": "Passagem São Domingos, 33, Próximo à Rua das Mangueiras", "bairro": "Praia Grande (Mosqueiro)", "packages": 1},
+            {"stop": 6, "lat": -1.1466, "lng": -48.462101, "address": "Rua Raimundo Cintra, 39, Entre São Domingos e Santa Ter", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 7, "lat": -1.1470315, "lng": -48.4626465, "address": "Rua Raimundo Cintra, 12", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 8, "lat": -1.1463585, "lng": -48.4638905, "address": "Passg Santa Rita De Kace, 31", "bairro": "Ariramba (Mosqueiro)", "packages": 2},
+            {"stop": 9, "lat": -1.15, "lng": -48.4671, "address": "Passagem Mirim, 2, Av. Beira Mar", "bairro": "Praia grande mosqueiro", "packages": 1},
+            {"stop": 10, "lat": -1.1504477, "lng": -48.4675026, "address": "Rua do Carmo, 83, Casa", "bairro": "Praia Grande (Mosqueiro)", "packages": 1},
+            {"stop": 11, "lat": -1.1509, "lng": -48.4693985, "address": "Rua Quinze de Novembro, 39, Praia grande casa verde", "bairro": "Vila (Mosqueiro)", "packages": 2},
+            {"stop": 12, "lat": -1.151652, "lng": -48.4677925, "address": "Alameda França, 33", "bairro": "Praia Grande (Mosqueiro)", "packages": 1},
+            {"stop": 13, "lat": -1.1522, "lng": -48.4702988, "address": "Avenida Beira-Mar, 1076, Proximo a barraca carioquinha", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 14, "lat": -1.1536975, "lng": -48.4707031, "address": "Rua Coronel José do Ó, 137, Próximo a alameda Raimunda", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 15, "lat": -1.154588, "lng": -48.4708481, "address": "Travessa Lauro Sodré, 198 a", "bairro": "Vila (Mosqueiro)", "packages": 2},
+            {"stop": 16, "lat": -1.1545, "lng": -48.4700012, "address": "Travessa Lauro Sodré, 235, Ao lado do hospital geral", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 17, "lat": -1.1571, "lng": -48.4695015, "address": "Rua Quinze de Novembro, 728", "bairro": "Vila (Mosqueiro)", "packages": 2},
+            {"stop": 18, "lat": -1.1584749, "lng": -48.4690933, "address": "Rua Quinze de Novembro, 830", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 19, "lat": -1.1585106, "lng": -48.4683007, "address": "Travessa Coronel José Mota, 263, Proximidade da Av 16 de Novemb", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 20, "lat": -1.1597145, "lng": -48.469059, "address": "Rua Quinze de Novembro, 18, Passagem sao sebastiao", "bairro": "Vila (Mosqueiro)", "packages": 5},
+            {"stop": 21, "lat": -1.1589, "lng": -48.4688988, "address": "Rua Quinze de Novembro, 121, Próximo as cinco bocas", "bairro": "Vila (Mosqueiro)", "packages": 2},
+            {"stop": 22, "lat": -1.1566, "lng": -48.467701, "address": "Avenida Dezesseis de Novembro, 2909, Em frente ao quiosque ki gosto", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 23, "lat": -1.1570348, "lng": -48.467514, "address": "Rua Padre Manoel Raiol, 220, Muro amarelo com telhas vermel", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 24, "lat": -1.1532554, "lng": -48.466176, "address": "Avenida Dezesseis de Novembro, 72, Em frente depósito Xavier ao lado João motos", "bairro": "Vila (Mosqueiro)", "packages": 6},
+            {"stop": 25, "lat": -1.1524897, "lng": -48.4659386, "address": "Avenida Dezesseis de Novembro, 2391, Ao lado da barbearia adryan", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 26, "lat": -1.1530946, "lng": -48.4672508, "address": "Passagem Atlântida, 03, Em frente ao Cantinho Azulino", "bairro": "Vila (Mosqueiro)", "packages": 3},
+            {"stop": 27, "lat": -1.1538, "lng": -48.4674988, "address": "Alameda Bela Vista, 6, 16 de novembro/ Camilo salgado", "bairro": "Vila (Mosqueiro)", "packages": 1},
+            {"stop": 28, "lat": -1.1538016, "lng": -48.4650497, "address": "Travessa Bela Vista, 2, Próximo ao hospital geral", "bairro": "Praia Grande", "packages": 1},
+            {"stop": 29, "lat": -1.1528, "lng": -48.4622993, "address": "Rua Sandro Carvalho, 68-A, Paquetá", "bairro": "Mangueiras (Mosqueiro)", "packages": 2},
+            {"stop": 30, "lat": -1.1523347, "lng": -48.4615555, "address": "Rua Bariloche, 30, Casa", "bairro": "Mangueiras (Mosqueiro)", "packages": 2},
+            {"stop": 31, "lat": -1.1530893, "lng": -48.4613724, "address": "Alameda Paquetá, 4, próximo ao comercial Caroline", "bairro": "Mangueiras (Mosqueiro)", "packages": 2},
+            {"stop": 32, "lat": -1.1548012, "lng": -48.4614143, "address": "Travessa Santa Helena, O1, Atrás da loja Dluna Beach", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 33, "lat": -1.1591978, "lng": -48.4569525, "address": "Praça do carmo, 27, Bar do seu bene", "bairro": "Cidade velha", "packages": 1},
+            {"stop": 34, "lat": -1.1542, "lng": -48.4594002, "address": "Travessa Bela Vista, 87", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 35, "lat": -1.1533793, "lng": -48.4588051, "address": "Alameda Paquetá, 900, Final do asfalto lado direito", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 36, "lat": -1.1521145, "lng": -48.4601555, "address": "Rua Bahamas, 26", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 37, "lat": -1.1513, "lng": -48.4594002, "address": "Alameda do Carmo, 33, Próximo a igreja Reis dos Reis", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 38, "lat": -1.1500554, "lng": -48.461853, "address": "Rua Nova, 255", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 39, "lat": -1.1501131, "lng": -48.4624329, "address": "Avenida Camilo Salgado Filho, 612, Centro Educacional Lápis na Mã", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 40, "lat": -1.151163, "lng": -48.4636841, "address": "Rua do Carmo, 26", "bairro": "Praia Grande (Mosqueiro)", "packages": 1},
+            {"stop": 41, "lat": -1.1497903, "lng": -48.4638405, "address": "Rua Raimundo Cintra, 33, Atraz da panificadora Martinez", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 42, "lat": -1.1482842, "lng": -48.4596596, "address": "Rua Bariloche, 17, Acesso pela sta terezinha", "bairro": "Mangueiras (Mosqueiro)", "packages": 2},
+            {"stop": 43, "lat": -1.1469001, "lng": -48.4600983, "address": "Ria nova, 195", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 44, "lat": -1.1448848, "lng": -48.4607849, "address": "Avenida Principal, 14, Rua ao lado do varejão do cime", "bairro": "Mangueiras (Mosqueiro)", "packages": 3},
+            {"stop": 45, "lat": -1.143436, "lng": -48.4600372, "address": "Alameda Teresópolis, 182, Rua da creche", "bairro": "Mangueiras (Mosqueiro)", "packages": 1},
+            {"stop": 46, "lat": -1.1434402, "lng": -48.4619141, "address": "Alameda Petrópolis, 1000, Casa amarela con rosa", "bairro": "Praia Grande (Mosqueiro)", "packages": 1},
+            {"stop": 47, "lat": -1.1423743, "lng": -48.461216, "address": "Avenida Dezesseis de Novembro, 1220, Mundo dos colchões ao lado do", "bairro": "Vila (Mosqueiro)", "packages": 2}
+        ];
+
         // Map styles
         const isDark = document.documentElement.classList.contains('dark');
+
+        // Calculate bounds to fit all markers
+        const bounds = new mapboxgl.LngLatBounds();
+        deliveryStops.forEach(stop => {
+            bounds.extend([stop.lng, stop.lat]);
+        });
 
         // Initialize map
         const map = new mapboxgl.Map({
             container: 'map',
             style: isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/streets-v12',
-            center: [-46.6333, -23.5505], // São Paulo default
-            zoom: 12
+            center: bounds.getCenter(),
+            zoom: 14
         });
 
         // Add default Mapbox controls
@@ -69,18 +290,35 @@
         }), 'top-right');
         map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
 
-        // Try to get user location
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    map.setCenter([position.coords.longitude, position.coords.latitude]);
-                },
-                () => {
-                    console.log('Geolocation not available, using default location');
-                },
-                { timeout: 5000 }
-            );
-        }
+        // Fit map to show all markers
+        map.on('load', () => {
+            map.fitBounds(bounds, { padding: 60 });
+
+            // Add markers for each delivery stop
+            deliveryStops.forEach(stop => {
+                // Create marker element
+                const el = document.createElement('div');
+                el.className = stop.packages > 1 ? 'marker multiple' : 'marker';
+                el.textContent = stop.stop;
+
+                // Create popup
+                const popup = new mapboxgl.Popup({ offset: 25 }).setHTML(`
+                    <div class="popup-header">
+                        <div class="popup-stop">${stop.stop}</div>
+                        <div class="popup-title">Parada ${stop.stop}</div>
+                    </div>
+                    <div class="popup-address">${stop.address}</div>
+                    <div class="popup-bairro">📍 ${stop.bairro || 'Mosqueiro'}</div>
+                    <div class="popup-packages">📦 ${stop.packages} pacote${stop.packages > 1 ? 's' : ''}</div>
+                `);
+
+                // Add marker to map
+                new mapboxgl.Marker(el)
+                    .setLngLat([stop.lng, stop.lat])
+                    .setPopup(popup)
+                    .addTo(map);
+            });
+        });
     </script>
 </body>
 </html>
