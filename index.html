@@ -783,13 +783,17 @@
                 maxZoom: 18,
                 minZoom: 3,
                 trackResize: true,
-                fadeDuration: 0,
-                preserveDrawingBuffer: false
+                renderWorldCopies: false
             });
 
-            // Disable unnecessary features for better performance
-            map.dragRotate.disable();
-            map.touchZoomRotate.disableRotation();
+            // Enable all interactions for vector map
+            map.scrollZoom.enable();
+            map.boxZoom.enable();
+            map.dragPan.enable();
+            map.dragRotate.enable();
+            map.keyboard.enable();
+            map.doubleClickZoom.enable();
+            map.touchZoomRotate.enable();
 
             map.on('load', () => {
                 // Hide loading
