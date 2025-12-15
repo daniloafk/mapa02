@@ -63,7 +63,7 @@
         .stat-value {
             font-size: 28px;
             font-weight: 800;
-            background: linear-gradient(135deg, #FF6B35 0%, #E53935 100%);
+            background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -118,7 +118,7 @@
         .popup-stop {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, #FF6B35 0%, #E53935 100%);
+            background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -126,11 +126,6 @@
             color: #fff;
             font-weight: 800;
             font-size: 16px;
-            box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
-        }
-
-        .popup-stop.multiple {
-            background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
             box-shadow: 0 4px 12px rgba(229, 57, 53, 0.4);
         }
 
@@ -153,7 +148,7 @@
             padding: 12px;
             background: #f8f9fa;
             border-radius: 10px;
-            border-left: 3px solid #FF6B35;
+            border-left: 3px solid #E53935;
         }
 
         .popup-footer {
@@ -286,12 +281,8 @@
     <!-- Legend -->
     <div class="legend">
         <div class="legend-item">
-            <div class="legend-dot single"></div>
-            <span>1 pacote</span>
-        </div>
-        <div class="legend-item">
             <div class="legend-dot multiple"></div>
-            <span>2+ pacotes</span>
+            <span>Ponto de entrega</span>
         </div>
     </div>
 
@@ -430,9 +421,8 @@
             const loadImages = deliveryData.features.map(feature => {
                 return new Promise((resolve) => {
                     const props = feature.properties;
-                    const isMultiple = props.packages > 1;
-                    const color1 = isMultiple ? '#E53935' : '#FF6B35';
-                    const color2 = isMultiple ? '#C62828' : '#E55A2B';
+                    const color1 = '#E53935';
+                    const color2 = '#C62828';
                     const iconId = `marker-${props.stop}`;
 
                     const img = new Image();
@@ -494,12 +484,10 @@
                     const feature = e.features[0];
                     const props = feature.properties;
                     const coordinates = feature.geometry.coordinates.slice();
-                    const isMultiple = props.packages > 1;
-
                     const html = `
                         <div class="popup-content">
                             <div class="popup-header">
-                                <div class="popup-stop ${isMultiple ? 'multiple' : ''}">${props.stop}</div>
+                                <div class="popup-stop">${props.stop}</div>
                                 <div>
                                     <div class="popup-title">Parada ${props.stop}</div>
                                     <div class="popup-subtitle">Sequência de entrega</div>
