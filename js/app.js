@@ -41,6 +41,8 @@ let routeSteps = [];
 let currentStepIndex = 0;
 let isMapCentered = true;
 let routeCoordinates = []; // Store full route coordinates
+let isRecalculating = false; // Prevent multiple recalculations
+let lastRecalculationTime = 0; // Throttle recalculations
 
 // ==================== MAP INITIALIZATION ====================
 const isDark = document.documentElement.classList.contains('dark');
@@ -425,8 +427,14 @@ function updateRouteProgress() {
         }
     }
 
-    // Only update if we've moved past the first point and are close to route (within 50m)
-    if (closestIndex > 0 && closestDistance < 50) {
+    // If user is too far from route (more than 50m), recalculate
+    if (closestDistance > 50) {
+        recalculateRoute();
+        return;
+    }
+
+    // Only update if we've moved past the first point and are close to route
+    if (closestIndex > 0) {
         // Create new coordinates starting from closest point
         // Interpolate to user's exact position for smooth transition
         const remainingCoords = [[...userLocation], ...routeCoordinates.slice(closestIndex + 1)];
@@ -444,6 +452,56 @@ function updateRouteProgress() {
                 });
             }
         }
+    }
+}
+
+// Recalculate route when user goes off-route
+async function recalculateRoute() {
+    // Prevent multiple simultaneous recalculations
+    if (isRecalculating) return;
+
+    // Throttle: minimum 5 seconds between recalculations
+    const now = Date.now();
+    if (now - lastRecalculationTime < 5000) return;
+
+    isRecalculating = true;
+    lastRecalculationTime = now;
+
+    try {
+        const destination = currentNavigation.coordinates;
+
+        const response = await fetch(
+            `https://api.mapbox.com/directions/v5/mapbox/driving/${userLocation[0]},${userLocation[1]};${destination[0]},${destination[1]}?geometries=geojson&overview=full&steps=true&voice_instructions=true&banner_instructions=true&language=pt&access_token=${mapboxgl.accessToken}`
+        );
+        const data = await response.json();
+
+        if (data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+
+            // Update route steps
+            routeSteps = route.legs[0].steps;
+            currentStepIndex = 0;
+
+            // Update route coordinates
+            routeCoordinates = [...route.geometry.coordinates];
+
+            // Update the route on map
+            const routeSource = map.getSource('route');
+            if (routeSource) {
+                routeSource.setData({
+                    type: 'Feature',
+                    properties: {},
+                    geometry: route.geometry
+                });
+            }
+
+            // Update current step display
+            updateCurrentStep();
+        }
+    } catch (error) {
+        console.error('Error recalculating route:', error);
+    } finally {
+        isRecalculating = false;
     }
 }
 
@@ -586,6 +644,8 @@ function cancelNavigation() {
     routeSteps = [];
     currentStepIndex = 0;
     routeCoordinates = [];
+    isRecalculating = false;
+    lastRecalculationTime = 0;
 
     // Stop location tracking
     if (watchId) {
