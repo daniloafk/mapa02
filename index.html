@@ -627,27 +627,7 @@
         <div class="loading-text">Carregando mapa...</div>
     </div>
 
-    <!-- API Key Modal -->
-    <div class="modal-overlay" id="apiKeyModal">
-        <div class="modal">
-            <div class="modal-icon">
-                <i class="fas fa-map-location-dot"></i>
-            </div>
-            <h2>Bem-vindo ao DeliveryTrack</h2>
-            <p>Para começar, insira sua chave de API do Mapbox. Isso é necessário para carregar o mapa de entregas.</p>
-            <div class="input-group">
-                <label>Chave de API do Mapbox</label>
-                <input type="text" id="apiKeyInput" placeholder="pk.eyJ1Ijoi..." autocomplete="off">
-            </div>
-            <button class="modal-btn" onclick="initializeMap()">
-                <i class="fas fa-rocket"></i> Iniciar Aplicação
-            </button>
-            <p class="modal-hint">
-                Não tem uma chave? <a href="https://account.mapbox.com/auth/signup/" target="_blank">Crie uma conta grátis no Mapbox</a>
-            </p>
-        </div>
-    </div>
-
+    
     <!-- Map Container -->
     <div id="map"></div>
 
@@ -747,6 +727,9 @@
             light: 'mapbox://styles/mapbox/light-v11'
         };
 
+        // Set Mapbox API Key
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajdra3l0aTA1MXUzZXB2bzByZjVjMXUifQ.RyPdNBII88Qk9xE3j8Rijw';
+
         // Update time
         function updateTime() {
             const now = new Date();
@@ -756,26 +739,9 @@
         updateTime();
         setInterval(updateTime, 1000);
 
-        // Initialize map with API key
+        // Initialize map automatically
         function initializeMap() {
-            const apiKey = document.getElementById('apiKeyInput').value.trim();
-
-            if (!apiKey) {
-                showToast('Por favor, insira sua chave de API do Mapbox', 'error');
-                return;
-            }
-
-            if (!apiKey.startsWith('pk.')) {
-                showToast('Chave de API inválida. Deve começar com "pk."', 'error');
-                return;
-            }
-
-            // Hide modal, show loading
-            document.getElementById('apiKeyModal').classList.add('hidden');
             document.getElementById('loadingOverlay').classList.remove('hidden');
-
-            // Set Mapbox access token
-            mapboxgl.accessToken = apiKey;
 
             try {
                 // Get user's location or use default
@@ -795,10 +761,12 @@
                 }
             } catch (error) {
                 document.getElementById('loadingOverlay').classList.add('hidden');
-                document.getElementById('apiKeyModal').classList.remove('hidden');
-                showToast('Erro ao inicializar o mapa. Verifique sua chave de API.', 'error');
+                showToast('Erro ao inicializar o mapa.', 'error');
             }
         }
+
+        // Auto-initialize on page load
+        document.addEventListener('DOMContentLoaded', initializeMap);
 
         // Create map instance
         function createMap(center) {
@@ -852,8 +820,7 @@
             map.on('error', (e) => {
                 console.error('Map error:', e);
                 document.getElementById('loadingOverlay').classList.add('hidden');
-                document.getElementById('apiKeyModal').classList.remove('hidden');
-                showToast('Erro ao carregar o mapa. Verifique sua chave de API.', 'error');
+                showToast('Erro ao carregar o mapa.', 'error');
             });
         }
 
