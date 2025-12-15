@@ -436,181 +436,10 @@
             font-size: 16px;
         }
 
-        /* Navigation Footer Panel */
-        .nav-panel {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #fff;
-            border-radius: 24px 24px 0 0;
-            box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
-            z-index: 400;
-            transform: translateY(100%);
-            transition: transform 0.3s ease;
-            padding-bottom: env(safe-area-inset-bottom);
-        }
-
-        .nav-panel.active {
-            transform: translateY(0);
-        }
-
-        .dark .nav-panel {
-            background: #1a1a2e;
-        }
-
-        .nav-panel-content {
-            padding: 20px;
-        }
-
-        .nav-eta-bar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 16px;
-        }
-
-        .nav-eta {
-            display: flex;
-            align-items: baseline;
-            gap: 8px;
-        }
-
-        .nav-eta-time {
-            font-size: 28px;
-            font-weight: 800;
-            color: #1a1a2e;
-        }
-
-        .dark .nav-eta-time {
-            color: #fff;
-        }
-
-        .nav-eta-label {
-            font-size: 14px;
-            color: #666;
-        }
-
-        .dark .nav-eta-label {
-            color: #999;
-        }
-
-        .nav-remaining {
-            text-align: right;
-        }
-
-        .nav-remaining-distance {
-            font-size: 18px;
-            font-weight: 700;
-            color: #1E88E5;
-        }
-
-        .nav-remaining-label {
-            font-size: 12px;
-            color: #888;
-        }
-
-        .nav-destination {
-            background: #f5f5f5;
-            padding: 14px 16px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .dark .nav-destination {
-            background: #252542;
-        }
-
-        .nav-destination-icon {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, #E53935 0%, #C62828 100%);
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-weight: 800;
-            font-size: 14px;
-        }
-
-        .nav-destination-text {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .nav-destination-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #1a1a2e;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .dark .nav-destination-title {
-            color: #fff;
-        }
-
-        .nav-destination-address {
-            font-size: 12px;
-            color: #888;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .nav-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .nav-action-btn {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 16px;
-            border: none;
-            border-radius: 14px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .nav-action-btn.cancel {
-            background: #f0f0f0;
-            color: #666;
-        }
-
-        .nav-action-btn.cancel:hover {
-            background: #e0e0e0;
-        }
-
-        .dark .nav-action-btn.cancel {
-            background: #252542;
-            color: #999;
-        }
-
-        .nav-action-btn.recenter {
-            background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
-            color: #fff;
-        }
-
-        .nav-action-btn.recenter:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(30, 136, 229, 0.4);
-        }
-
         /* Re-center button when user moves map */
         .recenter-fab {
             position: fixed;
-            bottom: 200px;
+            bottom: 100px;
             right: 16px;
             width: 56px;
             height: 56px;
@@ -1012,38 +841,6 @@
         </div>
     </div>
 
-    <!-- Navigation Panel -->
-    <div class="nav-panel" id="navPanel">
-        <div class="nav-panel-content">
-            <div class="nav-eta-bar">
-                <div class="nav-eta">
-                    <span class="nav-eta-time" id="navEtaTime">--</span>
-                    <span class="nav-eta-label">min</span>
-                </div>
-                <div class="nav-remaining">
-                    <div class="nav-remaining-distance" id="navRemainingDistance">-- km</div>
-                    <div class="nav-remaining-label">restantes</div>
-                </div>
-            </div>
-            <div class="nav-destination" id="navDestination">
-                <div class="nav-destination-icon" id="navDestIcon">1</div>
-                <div class="nav-destination-text">
-                    <div class="nav-destination-title" id="navDestTitle">Parada 1</div>
-                    <div class="nav-destination-address" id="navDestAddress">Endereço de destino</div>
-                </div>
-            </div>
-            <div class="nav-actions">
-                <button class="nav-action-btn cancel" onclick="cancelNavigation()">
-                    <i class="fas fa-times"></i>
-                    Encerrar
-                </button>
-                <button class="nav-action-btn recenter" onclick="recenterMap()">
-                    <i class="fas fa-location-arrow"></i>
-                    Recentralizar
-                </button>
-            </div>
-        </div>
-    </div>
 
     <!-- Recenter FAB -->
     <button class="recenter-fab" id="recenterFab" onclick="recenterMap()">
@@ -1396,15 +1193,7 @@
             // Update UI
             document.body.classList.add('navigating');
             document.getElementById('navHeader').classList.add('active');
-            document.getElementById('navPanel').classList.add('active');
 
-            // Set destination info
-            document.getElementById('navDestIcon').textContent = currentNavigation.stop;
-            document.getElementById('navDestTitle').textContent = `Parada ${currentNavigation.stop}`;
-            document.getElementById('navDestAddress').textContent = currentNavigation.address;
-
-            // Update ETA
-            updateETA(route.duration, route.distance);
 
             // Update current step
             updateCurrentStep();
@@ -1490,10 +1279,6 @@
             }, labelLayerId);
         }
 
-        function updateETA(duration, distance) {
-            document.getElementById('navEtaTime').textContent = formatDuration(duration);
-            document.getElementById('navRemainingDistance').textContent = formatDistance(distance);
-        }
 
         function updateCurrentStep() {
             if (currentStepIndex >= routeSteps.length) return;
@@ -1652,7 +1437,6 @@
             // Hide navigation UI
             document.body.classList.remove('navigating');
             document.getElementById('navHeader').classList.remove('active');
-            document.getElementById('navPanel').classList.remove('active');
             document.getElementById('recenterFab').classList.remove('visible');
 
             // Reset map view
@@ -1685,14 +1469,36 @@
             });
 
             map.on('click', 'delivery-markers', (e) => {
-                if (isNavigating) return; // Don't start new navigation while navigating
+                if (isNavigating) return; // Don't show popup during navigation
 
                 const feature = e.features[0];
                 const props = feature.properties;
                 const coordinates = feature.geometry.coordinates.slice();
 
-                // Start navigation directly
-                navigateToStop(props.stop, coordinates, props.address);
+                const html = `
+                    <div class="popup-content">
+                        <div class="popup-header">
+                            <div class="popup-stop">${props.stop}</div>
+                            <div>
+                                <div class="popup-title">Parada ${props.stop}</div>
+                                <div class="popup-subtitle">Sequência de entrega</div>
+                            </div>
+                        </div>
+                        <div class="popup-address">${props.address}</div>
+                        <div class="popup-footer">
+                            <span class="popup-tag location">📍 ${props.bairro || 'Sem bairro'}</span>
+                            <span class="popup-tag packages">📦 ${props.packages} pacote${props.packages > 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="popup-actions">
+                            <button class="popup-btn navigate" onclick="navigateToStop(${props.stop}, [${coordinates}], '${props.address.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-directions"></i>
+                                Iniciar Navegação
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                popup.setLngLat(coordinates).setHTML(html).addTo(map);
             });
 
             // Trigger geolocation on load
