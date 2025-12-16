@@ -470,6 +470,268 @@ body {
     font-size: 14px;
 }
 
+/* Register Button in Side Menu */
+.register-btn {
+    width: 100%;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+.register-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.register-btn:active {
+    transform: translateY(0);
+}
+
+/* QR Scanner Modal */
+.qr-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 600;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.qr-modal-overlay.active {
+    display: flex;
+}
+
+.qr-modal {
+    background: #fff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 400px;
+    overflow: hidden;
+    animation: modalIn 0.3s ease;
+}
+
+.dark .qr-modal {
+    background: #1a1a2e;
+}
+
+.qr-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+}
+
+.dark .qr-modal-header {
+    border-bottom-color: #333;
+}
+
+.qr-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1a1a2e;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.qr-modal-title i {
+    color: #4CAF50;
+}
+
+.dark .qr-modal-title {
+    color: #fff;
+}
+
+.qr-modal-close {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: #f5f5f5;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.qr-modal-close:hover {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.dark .qr-modal-close {
+    background: #252542;
+    color: #999;
+}
+
+.dark .qr-modal-close:hover {
+    background: #333;
+    color: #fff;
+}
+
+.qr-modal-body {
+    padding: 20px;
+}
+
+#qr-reader {
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#qr-reader video {
+    border-radius: 12px;
+}
+
+.qr-status {
+    text-align: center;
+    padding: 16px;
+    font-size: 14px;
+    color: #666;
+}
+
+.dark .qr-status {
+    color: #999;
+}
+
+.qr-status.success {
+    color: #4CAF50;
+}
+
+.qr-status.error {
+    color: #E53935;
+}
+
+.qr-result {
+    background: #f5f5f5;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.dark .qr-result {
+    background: #252542;
+}
+
+.qr-result-label {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 4px;
+}
+
+.qr-result-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #1a1a2e;
+    word-break: break-all;
+}
+
+.dark .qr-result-value {
+    color: #fff;
+}
+
+.qr-result-address {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #ddd;
+}
+
+.dark .qr-result-address {
+    border-top-color: #444;
+}
+
+.qr-confirm-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: all 0.2s;
+}
+
+.qr-confirm-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.qr-confirm-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Registered addresses list */
+.address-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.address-item {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 14px;
+    border-left: 4px solid #4CAF50;
+}
+
+.dark .address-item {
+    background: #252542;
+}
+
+.address-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.address-item-code {
+    font-size: 12px;
+    font-weight: 600;
+    color: #4CAF50;
+    background: rgba(76, 175, 80, 0.1);
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.address-item-time {
+    font-size: 11px;
+    color: #999;
+}
+
+.address-item-text {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.4;
+}
+
+.dark .address-item-text {
+    color: #ccc;
+}
+
 .recenter-fab {
     position: fixed;
     bottom: 100px;
