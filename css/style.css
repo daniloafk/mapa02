@@ -470,33 +470,42 @@ body {
     font-size: 14px;
 }
 
-/* Register Button in Side Menu */
-.register-btn {
-    width: 100%;
-    padding: 16px 20px;
+/* Register Address Button - Bottom Center */
+.register-address-btn {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 150;
+    padding: 14px 28px;
     background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
     border: none;
-    border-radius: 12px;
+    border-radius: 50px;
     color: #fff;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    transition: all 0.2s;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-.register-btn:hover {
-    transform: translateY(-2px);
+    transition: all 0.3s ease;
     box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
 }
 
-.register-btn:active {
-    transform: translateY(0);
+.register-address-btn:hover {
+    transform: translateX(-50%) translateY(-3px);
+    box-shadow: 0 10px 30px rgba(76, 175, 80, 0.5);
+}
+
+.register-address-btn:active {
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Hide during navigation */
+body.navigating .register-address-btn {
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* QR Scanner Modal */
