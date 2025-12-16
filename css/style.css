@@ -1414,3 +1414,253 @@ body.navigating .mapboxgl-ctrl-bottom-left {
     opacity: 0;
     pointer-events: none;
 }
+
+/* ==================== EDIT ADDRESS MODAL ==================== */
+.edit-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 550;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+}
+
+.edit-modal-overlay.active {
+    display: flex;
+}
+
+.edit-modal {
+    background: #fff;
+    border-radius: 20px;
+    width: 100%;
+    max-width: 400px;
+    overflow: hidden;
+    animation: modalIn 0.3s ease;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+.dark .edit-modal {
+    background: #1a1a2e;
+}
+
+.edit-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid #eee;
+    background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
+}
+
+.dark .edit-modal-header {
+    border-bottom-color: #333;
+}
+
+.edit-modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.edit-modal-title i {
+    color: #fff;
+}
+
+.edit-modal-close {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(255,255,255,0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #fff;
+    transition: all 0.2s;
+}
+
+.edit-modal-close:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+.edit-modal-body {
+    padding: 24px;
+}
+
+.edit-address-display {
+    background: #f5f5f5;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    border-left: 4px solid #1E88E5;
+}
+
+.dark .edit-address-display {
+    background: #252542;
+}
+
+.edit-address-display p {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.dark .edit-address-display p {
+    color: #ccc;
+}
+
+.edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.edit-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.edit-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+}
+
+.dark .edit-field label {
+    color: #999;
+}
+
+.edit-field input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 16px;
+    color: #333;
+    background: #fff;
+    transition: all 0.2s;
+}
+
+.edit-field input:focus {
+    outline: none;
+    border-color: #1E88E5;
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1);
+}
+
+.dark .edit-field input {
+    background: #252542;
+    border-color: #333;
+    color: #fff;
+}
+
+.dark .edit-field input:focus {
+    border-color: #1E88E5;
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.2);
+}
+
+.edit-save-btn {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.edit-save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.edit-save-btn:active {
+    transform: translateY(0);
+}
+
+/* Editable Address Item in Side Menu */
+.address-item.editable {
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.address-item.editable:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.address-item.editable::after {
+    content: '\f044';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.address-item.editable:hover::after {
+    opacity: 1;
+}
+
+.address-item-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed #ddd;
+}
+
+.dark .address-item-details {
+    border-top-color: #444;
+}
+
+.address-item-detail {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #666;
+}
+
+.dark .address-item-detail {
+    color: #999;
+}
+
+.address-item-detail i {
+    width: 16px;
+    text-align: center;
+    color: #1E88E5;
+}
+
+.address-item-detail.empty {
+    color: #aaa;
+    font-style: italic;
+}
+
+.dark .address-item-detail.empty {
+    color: #666;
+}
