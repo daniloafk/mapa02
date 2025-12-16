@@ -1235,13 +1235,37 @@ function updateAddressList() {
 }
 
 // ==================== MANUAL ADDRESS SELECTION ====================
+let manualSelectionActive = false;
+
 function toggleManualSelection() {
     const listContainer = document.getElementById('manualAddressList');
+    const videoContainer = document.getElementById('qrVideoContainer');
+    const statusElement = document.getElementById('qrStatus');
+    const manualBtn = document.getElementById('manualSelectBtn');
     const isVisible = listContainer.style.display !== 'none';
 
     if (isVisible) {
+        // Fechar seleção manual - voltar para QR scanner
         listContainer.style.display = 'none';
+        manualBtn.innerHTML = '<i class="fas fa-list-ol"></i> Selecionar Manualmente';
+        manualSelectionActive = false;
+
+        // Só mostrar QR scanner se não houver endereço selecionado
+        if (!scannedData) {
+            videoContainer.style.display = 'block';
+            statusElement.textContent = 'Posicione o QR Code no centro';
+            statusElement.className = 'qr-status';
+            startQrScanner();
+        }
     } else {
+        // Abrir seleção manual - esconder QR scanner
+        stopQrScanner();
+        videoContainer.style.display = 'none';
+        statusElement.textContent = 'Selecione um endereço da lista';
+        statusElement.className = 'qr-status';
+        manualBtn.innerHTML = '<i class="fas fa-qrcode"></i> Voltar para QR Code';
+        manualSelectionActive = true;
+
         populateManualAddressList();
         listContainer.style.display = 'block';
     }
@@ -1346,8 +1370,13 @@ function selectManualAddress(index, spxTn) {
     document.getElementById('qrStatus').className = 'qr-status success';
     document.getElementById('qrConfirmBtn').disabled = false;
 
-    // Hide manual list
+    // Hide manual list and keep QR video hidden
     document.getElementById('manualAddressList').style.display = 'none';
+    document.getElementById('qrVideoContainer').style.display = 'none';
+
+    // Reset manual selection button
+    document.getElementById('manualSelectBtn').innerHTML = '<i class="fas fa-list-ol"></i> Selecionar Manualmente';
+    manualSelectionActive = false;
 
     // Vibrate for feedback
     if (navigator.vibrate) {
