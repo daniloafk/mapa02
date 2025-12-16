@@ -1478,6 +1478,20 @@ let isSelectingMapPin = false;
 let draggableMarker = null;
 let selectedPinCoordinates = null;
 
+// Handler for clicking anywhere on map to move marker
+function onMapClickForPin(e) {
+    if (!isSelectingMapPin || !draggableMarker) return;
+
+    const lngLat = e.lngLat;
+    draggableMarker.setLngLat(lngLat);
+    selectedPinCoordinates = [lngLat.lng, lngLat.lat];
+
+    // Vibrate for feedback
+    if (navigator.vibrate) {
+        navigator.vibrate(30);
+    }
+}
+
 function startMapPinSelection() {
     // Close the QR modal
     closeQrScanner();
@@ -1529,6 +1543,9 @@ function startMapPinSelection() {
         }
     });
 
+    // Add click listener to move marker to clicked position
+    map.on('click', onMapClickForPin);
+
     // Show controls
     document.getElementById('mapPinControls').classList.add('active');
 
@@ -1539,10 +1556,13 @@ function startMapPinSelection() {
         duration: 500
     });
 
-    showToast('Arraste o marcador para o local desejado', 'info');
+    showToast('Toque no mapa ou arraste o marcador', 'info');
 }
 
 function cancelMapPinSelection() {
+    // Remove click listener
+    map.off('click', onMapClickForPin);
+
     // Remove marker
     if (draggableMarker) {
         draggableMarker.remove();
@@ -1572,6 +1592,9 @@ function confirmMapPinSelection() {
         cancelMapPinSelection();
         return;
     }
+
+    // Remove click listener
+    map.off('click', onMapClickForPin);
 
     // Vibrate for feedback
     if (navigator.vibrate) {
