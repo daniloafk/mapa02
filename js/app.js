@@ -1473,8 +1473,10 @@ function selectManualAddress(index, spxTn) {
     selectManualAddressByIndex(index);
 }
 
-// ==================== MAP PIN SELECTION (CROSSHAIR MODE) ====================
+// ==================== MAP PIN SELECTION (DRAGGABLE MARKER) ====================
 let isSelectingMapPin = false;
+let draggableMarker = null;
+let selectedPinCoordinates = null;
 
 function startMapPinSelection() {
     // Close the QR modal
@@ -1487,27 +1489,72 @@ function startMapPinSelection() {
     // Get current map center or user location
     const center = userLocation || map.getCenter().toArray();
 
-    // Show crosshair and controls
-    document.getElementById('mapCrosshair').classList.add('active');
+    // Create draggable marker element (simple pin without shadow)
+    const markerEl = document.createElement('div');
+    markerEl.className = 'draggable-pin-marker';
+    markerEl.innerHTML = `
+        <svg width="40" height="50" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="pinGradDrag" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#FF9800;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#F57C00;stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            <path d="M20 0C8.954 0 0 8.954 0 20c0 11.046 20 30 20 30s20-18.954 20-30C40 8.954 31.046 0 20 0z"
+                  fill="url(#pinGradDrag)"/>
+            <circle cx="20" cy="18" r="8" fill="white"/>
+        </svg>
+    `;
+
+    // Create the draggable marker
+    draggableMarker = new mapboxgl.Marker({
+        element: markerEl,
+        draggable: true,
+        anchor: 'bottom'
+    })
+    .setLngLat(center)
+    .addTo(map);
+
+    // Store initial coordinates
+    selectedPinCoordinates = center;
+
+    // Update coordinates when marker is dragged
+    draggableMarker.on('dragend', () => {
+        const lngLat = draggableMarker.getLngLat();
+        selectedPinCoordinates = [lngLat.lng, lngLat.lat];
+
+        // Vibrate for feedback
+        if (navigator.vibrate) {
+            navigator.vibrate(30);
+        }
+    });
+
+    // Show controls
     document.getElementById('mapPinControls').classList.add('active');
 
-    // Center map on user location or current center
+    // Center map on marker
     map.flyTo({
         center: center,
         zoom: 17,
         duration: 500
     });
 
-    showToast('Mova o mapa para posicionar a mira no local', 'info');
+    showToast('Arraste o marcador para o local desejado', 'info');
 }
 
 function cancelMapPinSelection() {
+    // Remove marker
+    if (draggableMarker) {
+        draggableMarker.remove();
+        draggableMarker = null;
+    }
+
     // Reset state
     isSelectingMapPin = false;
+    selectedPinCoordinates = null;
     document.body.classList.remove('pin-selecting');
 
-    // Hide crosshair and controls
-    document.getElementById('mapCrosshair').classList.remove('active');
+    // Hide controls
     document.getElementById('mapPinControls').classList.remove('active');
 
     // Reopen QR scanner
@@ -1515,9 +1562,10 @@ function cancelMapPinSelection() {
 }
 
 function confirmMapPinSelection() {
-    // Get coordinates from map center (where crosshair is positioned)
-    const center = map.getCenter();
-    const selectedCoordinates = [center.lng, center.lat];
+    if (!selectedPinCoordinates) {
+        showToast('Posicione o marcador no mapa', 'error');
+        return;
+    }
 
     if (!scannedData) {
         showToast('Selecione primeiro um endereço da planilha', 'error');
@@ -1540,21 +1588,27 @@ function confirmMapPinSelection() {
         phone: '',
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         customCoordinates: {
-            lng: selectedCoordinates[0],
-            lat: selectedCoordinates[1]
+            lng: selectedPinCoordinates[0],
+            lat: selectedPinCoordinates[1]
         }
     });
 
     // Update the address list UI
     updateAddressList();
 
+    // Remove marker
+    if (draggableMarker) {
+        draggableMarker.remove();
+        draggableMarker = null;
+    }
+
     // Reset state
     isSelectingMapPin = false;
+    selectedPinCoordinates = null;
     scannedData = null;
     document.body.classList.remove('pin-selecting');
 
-    // Hide crosshair and controls
-    document.getElementById('mapCrosshair').classList.remove('active');
+    // Hide controls
     document.getElementById('mapPinControls').classList.remove('active');
 
     // Show success message
