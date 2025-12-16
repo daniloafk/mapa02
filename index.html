@@ -794,6 +794,226 @@
             transform: none;
         }
 
+        /* Divider */
+        .qr-divider {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            gap: 12px;
+        }
+
+        .qr-divider::before,
+        .qr-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #ddd;
+        }
+
+        .dark .qr-divider::before,
+        .dark .qr-divider::after {
+            background: #444;
+        }
+
+        .qr-divider span {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            font-weight: 500;
+        }
+
+        /* Manual Selection Button */
+        .manual-select-btn {
+            width: 100%;
+            padding: 14px;
+            background: #f5f5f5;
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+        }
+
+        .manual-select-btn:hover {
+            background: #eee;
+            border-color: #999;
+            color: #333;
+        }
+
+        .dark .manual-select-btn {
+            background: #252542;
+            border-color: #444;
+            color: #999;
+        }
+
+        .dark .manual-select-btn:hover {
+            background: #2d2d4a;
+            border-color: #666;
+            color: #ccc;
+        }
+
+        /* Manual Address List */
+        .manual-address-list {
+            margin-top: 16px;
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .dark .manual-address-list {
+            border-color: #444;
+            background: #1a1a2e;
+        }
+
+        .manual-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            font-size: 13px;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .dark .manual-list-header {
+            background: #252542;
+            border-bottom-color: #333;
+            color: #999;
+        }
+
+        .manual-list-close {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .manual-list-close:hover {
+            background: #e0e0e0;
+        }
+
+        .dark .manual-list-close:hover {
+            background: #333;
+        }
+
+        .manual-list-content {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .manual-address-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .manual-address-item:last-child {
+            border-bottom: none;
+        }
+
+        .manual-address-item:hover {
+            background: #f0f7ff;
+        }
+
+        .dark .manual-address-item {
+            border-bottom-color: #333;
+        }
+
+        .dark .manual-address-item:hover {
+            background: #252542;
+        }
+
+        .manual-address-item:active {
+            background: #e3f2fd;
+        }
+
+        .dark .manual-address-item:active {
+            background: #2d2d4a;
+        }
+
+        .manual-item-sequence {
+            min-width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .manual-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .manual-item-spx {
+            font-size: 11px;
+            font-weight: 600;
+            color: #4CAF50;
+            margin-bottom: 4px;
+            font-family: monospace;
+        }
+
+        .manual-item-address {
+            font-size: 13px;
+            color: #333;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .dark .manual-item-address {
+            color: #ccc;
+        }
+
+        .manual-item-bairro {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .manual-list-empty {
+            padding: 30px 20px;
+            text-align: center;
+            color: #999;
+        }
+
+        .manual-list-empty i {
+            font-size: 32px;
+            margin-bottom: 8px;
+            color: #ccc;
+        }
+
+        .dark .manual-list-empty i {
+            color: #444;
+        }
+
         /* Registered addresses list */
         .address-list {
             display: flex;
@@ -1304,6 +1524,29 @@
                 <button class="qr-confirm-btn" id="qrConfirmBtn" onclick="confirmRegistration()" disabled>
                     <i class="fas fa-check"></i> Confirmar Cadastro
                 </button>
+
+                <!-- Divider -->
+                <div class="qr-divider">
+                    <span>ou</span>
+                </div>
+
+                <!-- Manual Selection Button -->
+                <button class="manual-select-btn" id="manualSelectBtn" onclick="toggleManualSelection()">
+                    <i class="fas fa-list-ol"></i> Selecionar Manualmente
+                </button>
+
+                <!-- Manual Address List -->
+                <div class="manual-address-list" id="manualAddressList" style="display: none;">
+                    <div class="manual-list-header">
+                        <span>Selecione um endereço:</span>
+                        <button class="manual-list-close" onclick="toggleManualSelection()">
+                            <i class="fas fa-chevron-up"></i>
+                        </button>
+                    </div>
+                    <div class="manual-list-content" id="manualListContent">
+                        <!-- Address items will be populated here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -2544,6 +2787,127 @@
                     <div class="address-item-text">${item.address}</div>
                 </div>
             `).join('');
+        }
+
+        // ==================== MANUAL ADDRESS SELECTION ====================
+        function toggleManualSelection() {
+            const listContainer = document.getElementById('manualAddressList');
+            const isVisible = listContainer.style.display !== 'none';
+
+            if (isVisible) {
+                listContainer.style.display = 'none';
+            } else {
+                populateManualAddressList();
+                listContainer.style.display = 'block';
+            }
+        }
+
+        function populateManualAddressList() {
+            const listContent = document.getElementById('manualListContent');
+
+            if (!window.rawSpreadsheetData || window.rawSpreadsheetData.length === 0) {
+                listContent.innerHTML = `
+                    <div class="manual-list-empty">
+                        <i class="fas fa-file-excel"></i>
+                        <p>Nenhuma planilha carregada</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by Sequence
+            const sortedData = [...window.rawSpreadsheetData].sort((a, b) => {
+                const seqA = a['Sequence'] || a['sequence'] || 0;
+                const seqB = b['Sequence'] || b['sequence'] || 0;
+                return seqA - seqB;
+            });
+
+            // Filter out already registered addresses
+            const registeredSpxCodes = registeredAddresses.map(a => a.spxCode.toUpperCase());
+            const availableData = sortedData.filter(row => {
+                const spx = row['SPX TN'] || row['TN'] || '';
+                return !registeredSpxCodes.includes(spx.toString().toUpperCase());
+            });
+
+            if (availableData.length === 0) {
+                listContent.innerHTML = `
+                    <div class="manual-list-empty">
+                        <i class="fas fa-check-circle"></i>
+                        <p>Todos os endereços já foram cadastrados</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listContent.innerHTML = availableData.map((row, index) => {
+                const sequence = row['Sequence'] || row['sequence'] || '-';
+                const spxTn = row['SPX TN'] || row['TN'] || '';
+                const address = row['Destination Address'] || row['address'] || row['endereco'] || '';
+                const bairro = row['Bairro'] || row['bairro'] || '';
+                const stop = row['Stop'] || row['stop'] || '';
+
+                return `
+                    <div class="manual-address-item" onclick="selectManualAddress(${index}, '${spxTn.replace(/'/g, "\\'")}')">
+                        <div class="manual-item-sequence">${sequence}</div>
+                        <div class="manual-item-info">
+                            <div class="manual-item-spx">${spxTn}</div>
+                            <div class="manual-item-address">${address}</div>
+                            ${bairro ? `<div class="manual-item-bairro">📍 ${bairro}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectManualAddress(index, spxTn) {
+            // Find the address data
+            const sortedData = [...window.rawSpreadsheetData].sort((a, b) => {
+                const seqA = a['Sequence'] || a['sequence'] || 0;
+                const seqB = b['Sequence'] || b['sequence'] || 0;
+                return seqA - seqB;
+            });
+
+            // Filter out already registered
+            const registeredSpxCodes = registeredAddresses.map(a => a.spxCode.toUpperCase());
+            const availableData = sortedData.filter(row => {
+                const spx = row['SPX TN'] || row['TN'] || '';
+                return !registeredSpxCodes.includes(spx.toString().toUpperCase());
+            });
+
+            const row = availableData[index];
+            if (!row) return;
+
+            const spxCode = row['SPX TN'] || row['TN'] || spxTn;
+            const address = row['Destination Address'] || row['address'] || row['endereco'] || '';
+            const stop = row['Stop'] || row['stop'] || '';
+            const bairro = row['Bairro'] || row['bairro'] || '';
+
+            // Stop QR scanner if running
+            stopQrScanner();
+
+            // Set scanned data
+            scannedData = {
+                spxCode: spxCode,
+                address: address,
+                stop: stop,
+                bairro: bairro
+            };
+
+            // Update UI
+            document.getElementById('qrCodeValue').textContent = spxCode;
+            document.getElementById('qrAddressValue').textContent = address;
+            document.getElementById('qrResult').style.display = 'block';
+            document.getElementById('qrStatus').textContent = 'Endereço selecionado!';
+            document.getElementById('qrStatus').className = 'qr-status success';
+            document.getElementById('qrConfirmBtn').disabled = false;
+
+            // Hide manual list
+            document.getElementById('manualAddressList').style.display = 'none';
+
+            // Vibrate for feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(50);
+            }
         }
     </script>
 </body>
