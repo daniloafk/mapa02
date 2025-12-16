@@ -1473,23 +1473,16 @@ function selectManualAddress(index, spxTn) {
     selectManualAddressByIndex(index);
 }
 
-// ==================== MAP PIN SELECTION (DRAGGABLE MARKER) ====================
+// ==================== MAP PIN SELECTION (CENTER PIN) ====================
 let isSelectingMapPin = false;
-let draggableMarker = null;
 let selectedPinCoordinates = null;
 
-// Handler for clicking anywhere on map to move marker
-function onMapClickForPin(e) {
-    if (!isSelectingMapPin || !draggableMarker) return;
+// Handler for when map stops moving - update coordinates
+function onMapMoveEnd() {
+    if (!isSelectingMapPin) return;
 
-    const lngLat = e.lngLat;
-    draggableMarker.setLngLat(lngLat);
-    selectedPinCoordinates = [lngLat.lng, lngLat.lat];
-
-    // Vibrate for feedback
-    if (navigator.vibrate) {
-        navigator.vibrate(30);
-    }
+    const center = map.getCenter();
+    selectedPinCoordinates = [center.lng, center.lat];
 }
 
 function startMapPinSelection() {
@@ -1503,71 +1496,34 @@ function startMapPinSelection() {
     // Get current map center or user location
     const center = userLocation || map.getCenter().toArray();
 
-    // Create draggable marker element (simple pin without shadow)
-    const markerEl = document.createElement('div');
-    markerEl.className = 'draggable-pin-marker';
-    markerEl.innerHTML = `
-        <svg width="40" height="50" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="pinGradDrag" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" style="stop-color:#FF9800;stop-opacity:1" />
-                    <stop offset="100%" style="stop-color:#F57C00;stop-opacity:1" />
-                </linearGradient>
-            </defs>
-            <path d="M20 0C8.954 0 0 8.954 0 20c0 11.046 20 30 20 30s20-18.954 20-30C40 8.954 31.046 0 20 0z"
-                  fill="url(#pinGradDrag)"/>
-            <circle cx="20" cy="18" r="8" fill="white"/>
-        </svg>
-    `;
-
-    // Create the draggable marker
-    draggableMarker = new mapboxgl.Marker({
-        element: markerEl,
-        draggable: true,
-        anchor: 'bottom'
-    })
-    .setLngLat(center)
-    .addTo(map);
-
     // Store initial coordinates
     selectedPinCoordinates = center;
 
-    // Update coordinates when marker is dragged
-    draggableMarker.on('dragend', () => {
-        const lngLat = draggableMarker.getLngLat();
-        selectedPinCoordinates = [lngLat.lng, lngLat.lat];
+    // Show center pin marker
+    document.getElementById('centerPinMarker').classList.add('active');
 
-        // Vibrate for feedback
-        if (navigator.vibrate) {
-            navigator.vibrate(30);
-        }
-    });
-
-    // Add click listener to move marker to clicked position
-    map.on('click', onMapClickForPin);
+    // Add move listener to update coordinates
+    map.on('moveend', onMapMoveEnd);
 
     // Show controls
     document.getElementById('mapPinControls').classList.add('active');
 
-    // Center map on marker
+    // Center map
     map.flyTo({
         center: center,
         zoom: 17,
         duration: 500
     });
 
-    showToast('Toque no mapa ou arraste o marcador', 'info');
+    showToast('Arraste o mapa para posicionar o marcador', 'info');
 }
 
 function cancelMapPinSelection() {
-    // Remove click listener
-    map.off('click', onMapClickForPin);
+    // Remove move listener
+    map.off('moveend', onMapMoveEnd);
 
-    // Remove marker
-    if (draggableMarker) {
-        draggableMarker.remove();
-        draggableMarker = null;
-    }
+    // Hide center pin marker
+    document.getElementById('centerPinMarker').classList.remove('active');
 
     // Reset state
     isSelectingMapPin = false;
@@ -1582,10 +1538,9 @@ function cancelMapPinSelection() {
 }
 
 function confirmMapPinSelection() {
-    if (!selectedPinCoordinates) {
-        showToast('Posicione o marcador no mapa', 'error');
-        return;
-    }
+    // Get final coordinates from map center
+    const center = map.getCenter();
+    selectedPinCoordinates = [center.lng, center.lat];
 
     if (!scannedData) {
         showToast('Selecione primeiro um endereço da planilha', 'error');
@@ -1593,8 +1548,8 @@ function confirmMapPinSelection() {
         return;
     }
 
-    // Remove click listener
-    map.off('click', onMapClickForPin);
+    // Remove move listener
+    map.off('moveend', onMapMoveEnd);
 
     // Vibrate for feedback
     if (navigator.vibrate) {
@@ -1619,11 +1574,8 @@ function confirmMapPinSelection() {
     // Update the address list UI
     updateAddressList();
 
-    // Remove marker
-    if (draggableMarker) {
-        draggableMarker.remove();
-        draggableMarker = null;
-    }
+    // Hide center pin marker
+    document.getElementById('centerPinMarker').classList.remove('active');
 
     // Reset state
     isSelectingMapPin = false;
