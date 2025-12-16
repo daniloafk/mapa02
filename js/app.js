@@ -931,10 +931,22 @@ function showToast(message, type = 'info') {
     }, 3000);
 }
 
-// ==================== QR CODE SCANNER ====================
-let html5QrCode = null;
+// ==================== QR CODE SCANNER (jsQR Optimized) ====================
+let qrVideo = null;
+let qrCanvas = null;
+let qrCanvasContext = null;
+let qrStream = null;
+let qrAnimationFrame = null;
+let isScanning = false;
 let scannedData = null;
 let registeredAddresses = [];
+
+// Otimização 1: Resolução reduzida para processamento (640x480)
+const PROCESS_WIDTH = 640;
+const PROCESS_HEIGHT = 480;
+
+// Otimização 2: Região de Interesse (ROI) - área central menor
+const SCAN_SIZE = 300; // Área de 300x300 pixels no centro
 
 function openQrScanner() {
     const modal = document.getElementById('qrModalOverlay');
@@ -944,7 +956,7 @@ function openQrScanner() {
     scannedData = null;
     document.getElementById('qrResult').style.display = 'none';
     document.getElementById('qrConfirmBtn').disabled = true;
-    document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
+    document.getElementById('qrStatus').textContent = 'Iniciando câmera...';
     document.getElementById('qrStatus').className = 'qr-status';
 
     // Initialize scanner
@@ -956,24 +968,40 @@ function closeQrScanner() {
     modal.classList.remove('active');
 
     // Stop scanner
-    if (html5QrCode) {
-        html5QrCode.stop().catch(err => console.log('Scanner already stopped'));
-    }
+    stopQrScanner();
 }
 
 async function startQrScanner() {
     try {
-        html5QrCode = new Html5Qrcode("qr-reader");
+        qrVideo = document.getElementById('qrVideo');
+        qrCanvas = document.getElementById('qrCanvas');
+        qrCanvasContext = qrCanvas.getContext('2d', { willReadFrequently: true });
 
-        await html5QrCode.start(
-            { facingMode: "environment" },
-            {
-                fps: 10,
-                qrbox: { width: 250, height: 250 }
-            },
-            onQrCodeSuccess,
-            onQrCodeError
-        );
+        // Solicitar acesso à câmera traseira
+        qrStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'environment',
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        });
+
+        qrVideo.srcObject = qrStream;
+        qrVideo.setAttribute('playsinline', true);
+
+        await qrVideo.play();
+
+        // Configurar canvas com resolução otimizada (Otimização 1)
+        qrCanvas.width = PROCESS_WIDTH;
+        qrCanvas.height = PROCESS_HEIGHT;
+
+        isScanning = true;
+        document.getElementById('qrStatus').textContent = 'Posicione o QR Code no centro';
+        document.getElementById('qrStatus').className = 'qr-status';
+
+        // Iniciar loop de processamento
+        tick();
+
     } catch (err) {
         console.error('Error starting QR scanner:', err);
         document.getElementById('qrStatus').textContent = 'Erro ao acessar câmera. Verifique as permissões.';
@@ -981,10 +1009,82 @@ async function startQrScanner() {
     }
 }
 
-function onQrCodeSuccess(decodedText, decodedResult) {
-    // Stop scanner after successful read
-    if (html5QrCode) {
-        html5QrCode.stop().catch(err => console.log('Error stopping scanner'));
+function stopQrScanner() {
+    isScanning = false;
+
+    // Cancelar animation frame
+    if (qrAnimationFrame) {
+        cancelAnimationFrame(qrAnimationFrame);
+        qrAnimationFrame = null;
+    }
+
+    // Parar stream de vídeo
+    if (qrStream) {
+        qrStream.getTracks().forEach(track => track.stop());
+        qrStream = null;
+    }
+
+    // Limpar vídeo
+    if (qrVideo) {
+        qrVideo.srcObject = null;
+    }
+}
+
+function tick() {
+    if (!isScanning || !qrVideo || qrVideo.readyState !== qrVideo.HAVE_ENOUGH_DATA) {
+        if (isScanning) {
+            qrAnimationFrame = requestAnimationFrame(tick);
+        }
+        return;
+    }
+
+    // Desenhar frame do vídeo no canvas com resolução reduzida (Otimização 1)
+    const processHeight = (qrVideo.videoHeight / qrVideo.videoWidth) * PROCESS_WIDTH;
+    qrCanvas.width = PROCESS_WIDTH;
+    qrCanvas.height = processHeight;
+
+    qrCanvasContext.drawImage(qrVideo, 0, 0, PROCESS_WIDTH, processHeight);
+
+    // Otimização 2: Capturar apenas a Região de Interesse (ROI) - centro da imagem
+    const centerX = PROCESS_WIDTH / 2;
+    const centerY = processHeight / 2;
+
+    // Calcular área de scan proporcional
+    const scanWidth = Math.min(SCAN_SIZE, PROCESS_WIDTH * 0.8);
+    const scanHeight = Math.min(SCAN_SIZE, processHeight * 0.8);
+
+    const roiX = Math.max(0, centerX - scanWidth / 2);
+    const roiY = Math.max(0, centerY - scanHeight / 2);
+
+    // Capturar apenas o centro da imagem (Otimização 2)
+    const imageData = qrCanvasContext.getImageData(
+        roiX,
+        roiY,
+        scanWidth,
+        scanHeight
+    );
+
+    // Processar com jsQR - Otimização 3: attemptBoth para códigos invertidos
+    const code = jsQR(imageData.data, scanWidth, scanHeight, {
+        inversionAttempts: 'attemptBoth'  // Permite leitura de QR codes invertidos
+    });
+
+    if (code) {
+        // QR Code encontrado!
+        onQrCodeDetected(code.data);
+    } else {
+        // Continuar escaneando
+        qrAnimationFrame = requestAnimationFrame(tick);
+    }
+}
+
+function onQrCodeDetected(decodedText) {
+    // Parar scanner
+    stopQrScanner();
+
+    // Vibrar para feedback (se disponível)
+    if (navigator.vibrate) {
+        navigator.vibrate(100);
     }
 
     // Extract SPX code from QR data
@@ -1012,28 +1112,28 @@ function onQrCodeSuccess(decodedText, decodedResult) {
             document.getElementById('qrStatus').textContent = 'Código SPX não encontrado na planilha';
             document.getElementById('qrStatus').className = 'qr-status error';
 
-            // Restart scanner after 2 seconds
+            // Reiniciar scanner após 2 segundos
             setTimeout(() => {
-                document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
-                document.getElementById('qrStatus').className = 'qr-status';
-                startQrScanner();
+                if (document.getElementById('qrModalOverlay').classList.contains('active')) {
+                    document.getElementById('qrStatus').textContent = 'Posicione o QR Code no centro';
+                    document.getElementById('qrStatus').className = 'qr-status';
+                    startQrScanner();
+                }
             }, 2000);
         }
     } else {
-        document.getElementById('qrStatus').textContent = 'QR Code inválido. Procurando código SPX...';
+        document.getElementById('qrStatus').textContent = 'QR Code inválido. Tente novamente.';
         document.getElementById('qrStatus').className = 'qr-status error';
 
-        // Restart scanner after 2 seconds
+        // Reiniciar scanner após 2 segundos
         setTimeout(() => {
-            document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
-            document.getElementById('qrStatus').className = 'qr-status';
-            startQrScanner();
+            if (document.getElementById('qrModalOverlay').classList.contains('active')) {
+                document.getElementById('qrStatus').textContent = 'Posicione o QR Code no centro';
+                document.getElementById('qrStatus').className = 'qr-status';
+                startQrScanner();
+            }
         }, 2000);
     }
-}
-
-function onQrCodeError(error) {
-    // Ignore errors during scanning (they happen frequently)
 }
 
 function extractSpxCode(text) {
