@@ -770,6 +770,226 @@ body.navigating .register-address-btn {
     transform: none;
 }
 
+/* Divider */
+.qr-divider {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    gap: 12px;
+}
+
+.qr-divider::before,
+.qr-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #ddd;
+}
+
+.dark .qr-divider::before,
+.dark .qr-divider::after {
+    background: #444;
+}
+
+.qr-divider span {
+    font-size: 12px;
+    color: #999;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+/* Manual Selection Button */
+.manual-select-btn {
+    width: 100%;
+    padding: 14px;
+    background: #f5f5f5;
+    border: 2px dashed #ccc;
+    border-radius: 10px;
+    color: #666;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+}
+
+.manual-select-btn:hover {
+    background: #eee;
+    border-color: #999;
+    color: #333;
+}
+
+.dark .manual-select-btn {
+    background: #252542;
+    border-color: #444;
+    color: #999;
+}
+
+.dark .manual-select-btn:hover {
+    background: #2d2d4a;
+    border-color: #666;
+    color: #ccc;
+}
+
+/* Manual Address List */
+.manual-address-list {
+    margin-top: 16px;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.dark .manual-address-list {
+    border-color: #444;
+    background: #1a1a2e;
+}
+
+.manual-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+}
+
+.dark .manual-list-header {
+    background: #252542;
+    border-bottom-color: #333;
+    color: #999;
+}
+
+.manual-list-close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    transition: all 0.2s;
+}
+
+.manual-list-close:hover {
+    background: #e0e0e0;
+}
+
+.dark .manual-list-close:hover {
+    background: #333;
+}
+
+.manual-list-content {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.manual-address-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.manual-address-item:last-child {
+    border-bottom: none;
+}
+
+.manual-address-item:hover {
+    background: #f0f7ff;
+}
+
+.dark .manual-address-item {
+    border-bottom-color: #333;
+}
+
+.dark .manual-address-item:hover {
+    background: #252542;
+}
+
+.manual-address-item:active {
+    background: #e3f2fd;
+}
+
+.dark .manual-address-item:active {
+    background: #2d2d4a;
+}
+
+.manual-item-sequence {
+    min-width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #1E88E5 0%, #1565C0 100%);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.manual-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.manual-item-spx {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4CAF50;
+    margin-bottom: 4px;
+    font-family: monospace;
+}
+
+.manual-item-address {
+    font-size: 13px;
+    color: #333;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.dark .manual-item-address {
+    color: #ccc;
+}
+
+.manual-item-bairro {
+    font-size: 11px;
+    color: #888;
+    margin-top: 4px;
+}
+
+.manual-list-empty {
+    padding: 30px 20px;
+    text-align: center;
+    color: #999;
+}
+
+.manual-list-empty i {
+    font-size: 32px;
+    margin-bottom: 8px;
+    color: #ccc;
+}
+
+.dark .manual-list-empty i {
+    color: #444;
+}
+
 /* Registered addresses list */
 .address-list {
     display: flex;
