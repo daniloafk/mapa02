@@ -18,6 +18,9 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+    <!-- HTML5 QR Code Scanner -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
     <style>
         /* ==================== BASE STYLES ==================== */
         * {
@@ -491,6 +494,268 @@
             font-size: 14px;
         }
 
+        /* Register Button in Side Menu */
+        .register-btn {
+            width: 100%;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .register-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        .register-btn:active {
+            transform: translateY(0);
+        }
+
+        /* QR Scanner Modal */
+        .qr-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 600;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .qr-modal-overlay.active {
+            display: flex;
+        }
+
+        .qr-modal {
+            background: #fff;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+            animation: modalIn 0.3s ease;
+        }
+
+        .dark .qr-modal {
+            background: #1a1a2e;
+        }
+
+        .qr-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .dark .qr-modal-header {
+            border-bottom-color: #333;
+        }
+
+        .qr-modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a1a2e;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .qr-modal-title i {
+            color: #4CAF50;
+        }
+
+        .dark .qr-modal-title {
+            color: #fff;
+        }
+
+        .qr-modal-close {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #f5f5f5;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .qr-modal-close:hover {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .dark .qr-modal-close {
+            background: #252542;
+            color: #999;
+        }
+
+        .dark .qr-modal-close:hover {
+            background: #333;
+            color: #fff;
+        }
+
+        .qr-modal-body {
+            padding: 20px;
+        }
+
+        #qr-reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        #qr-reader video {
+            border-radius: 12px;
+        }
+
+        .qr-status {
+            text-align: center;
+            padding: 16px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .dark .qr-status {
+            color: #999;
+        }
+
+        .qr-status.success {
+            color: #4CAF50;
+        }
+
+        .qr-status.error {
+            color: #E53935;
+        }
+
+        .qr-result {
+            background: #f5f5f5;
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .dark .qr-result {
+            background: #252542;
+        }
+
+        .qr-result-label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .qr-result-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a2e;
+            word-break: break-all;
+        }
+
+        .dark .qr-result-value {
+            color: #fff;
+        }
+
+        .qr-result-address {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #ddd;
+        }
+
+        .dark .qr-result-address {
+            border-top-color: #444;
+        }
+
+        .qr-confirm-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: all 0.2s;
+        }
+
+        .qr-confirm-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+
+        .qr-confirm-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Registered addresses list */
+        .address-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .address-item {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 14px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .dark .address-item {
+            background: #252542;
+        }
+
+        .address-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .address-item-code {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .address-item-time {
+            font-size: 11px;
+            color: #999;
+        }
+
+        .address-item-text {
+            font-size: 14px;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .dark .address-item-text {
+            color: #ccc;
+        }
+
         .recenter-fab {
             position: fixed;
             bottom: 100px;
@@ -905,9 +1170,51 @@
             </button>
         </div>
         <div class="side-menu-content" id="sideMenuContent">
-            <div class="side-menu-empty">
-                <i class="fas fa-inbox"></i>
-                <p>Nenhum endereço cadastrado</p>
+            <!-- Register Button -->
+            <button class="register-btn" onclick="openQrScanner()">
+                <i class="fas fa-qrcode"></i>
+                Cadastrar Cliente
+            </button>
+
+            <!-- Address List -->
+            <div id="addressListContainer">
+                <div class="side-menu-empty" id="addressEmptyState">
+                    <i class="fas fa-inbox"></i>
+                    <p>Nenhum endereço cadastrado</p>
+                </div>
+                <div class="address-list" id="addressList" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR Scanner Modal -->
+    <div class="qr-modal-overlay" id="qrModalOverlay">
+        <div class="qr-modal">
+            <div class="qr-modal-header">
+                <h2 class="qr-modal-title">
+                    <i class="fas fa-qrcode"></i>
+                    Escanear QR Code
+                </h2>
+                <button class="qr-modal-close" onclick="closeQrScanner()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="qr-modal-body">
+                <div id="qr-reader"></div>
+                <div class="qr-status" id="qrStatus">
+                    Posicione o QR Code na câmera
+                </div>
+                <div class="qr-result" id="qrResult" style="display: none;">
+                    <div class="qr-result-label">Código SPX</div>
+                    <div class="qr-result-value" id="qrCodeValue"></div>
+                    <div class="qr-result-address" id="qrAddressResult">
+                        <div class="qr-result-label">Endereço encontrado</div>
+                        <div class="qr-result-value" id="qrAddressValue"></div>
+                    </div>
+                </div>
+                <button class="qr-confirm-btn" id="qrConfirmBtn" onclick="confirmRegistration()" disabled>
+                    <i class="fas fa-check"></i> Confirmar Cadastro
+                </button>
             </div>
         </div>
     </div>
@@ -1710,6 +2017,9 @@
                     throw new Error('Planilha vazia');
                 }
 
+                // Store raw data for QR code lookup
+                window.rawSpreadsheetData = jsonData;
+
                 const stopsMap = new Map();
                 jsonData.forEach(row => {
                     const stop = row['Stop'] || row['stop'];
@@ -1836,6 +2146,209 @@
                 toast.style.animation = 'slideIn 0.3s ease reverse';
                 setTimeout(() => toast.remove(), 300);
             }, 3000);
+        }
+
+        // ==================== QR CODE SCANNER ====================
+        let html5QrCode = null;
+        let scannedData = null;
+        let registeredAddresses = [];
+
+        function openQrScanner() {
+            const modal = document.getElementById('qrModalOverlay');
+            modal.classList.add('active');
+
+            // Reset state
+            scannedData = null;
+            document.getElementById('qrResult').style.display = 'none';
+            document.getElementById('qrConfirmBtn').disabled = true;
+            document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
+            document.getElementById('qrStatus').className = 'qr-status';
+
+            // Initialize scanner
+            startQrScanner();
+        }
+
+        function closeQrScanner() {
+            const modal = document.getElementById('qrModalOverlay');
+            modal.classList.remove('active');
+
+            // Stop scanner
+            if (html5QrCode) {
+                html5QrCode.stop().catch(err => console.log('Scanner already stopped'));
+            }
+        }
+
+        async function startQrScanner() {
+            try {
+                html5QrCode = new Html5Qrcode("qr-reader");
+
+                await html5QrCode.start(
+                    { facingMode: "environment" },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    },
+                    onQrCodeSuccess,
+                    onQrCodeError
+                );
+            } catch (err) {
+                console.error('Error starting QR scanner:', err);
+                document.getElementById('qrStatus').textContent = 'Erro ao acessar câmera. Verifique as permissões.';
+                document.getElementById('qrStatus').className = 'qr-status error';
+            }
+        }
+
+        function onQrCodeSuccess(decodedText, decodedResult) {
+            // Stop scanner after successful read
+            if (html5QrCode) {
+                html5QrCode.stop().catch(err => console.log('Error stopping scanner'));
+            }
+
+            // Extract SPX code from QR data
+            const spxCode = extractSpxCode(decodedText);
+
+            if (spxCode) {
+                // Search for address in delivery data
+                const addressData = findAddressBySpxCode(spxCode);
+
+                if (addressData) {
+                    scannedData = {
+                        spxCode: spxCode,
+                        address: addressData.address,
+                        stop: addressData.stop,
+                        bairro: addressData.bairro
+                    };
+
+                    document.getElementById('qrCodeValue').textContent = spxCode;
+                    document.getElementById('qrAddressValue').textContent = addressData.address;
+                    document.getElementById('qrResult').style.display = 'block';
+                    document.getElementById('qrStatus').textContent = 'QR Code lido com sucesso!';
+                    document.getElementById('qrStatus').className = 'qr-status success';
+                    document.getElementById('qrConfirmBtn').disabled = false;
+                } else {
+                    document.getElementById('qrStatus').textContent = 'Código SPX não encontrado na planilha';
+                    document.getElementById('qrStatus').className = 'qr-status error';
+
+                    // Restart scanner after 2 seconds
+                    setTimeout(() => {
+                        document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
+                        document.getElementById('qrStatus').className = 'qr-status';
+                        startQrScanner();
+                    }, 2000);
+                }
+            } else {
+                document.getElementById('qrStatus').textContent = 'QR Code inválido. Procurando código SPX...';
+                document.getElementById('qrStatus').className = 'qr-status error';
+
+                // Restart scanner after 2 seconds
+                setTimeout(() => {
+                    document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
+                    document.getElementById('qrStatus').className = 'qr-status';
+                    startQrScanner();
+                }, 2000);
+            }
+        }
+
+        function onQrCodeError(error) {
+            // Ignore errors during scanning (they happen frequently)
+        }
+
+        function extractSpxCode(text) {
+            // Look for SPX TN pattern (e.g., "BR2548334621214")
+            // SPX TN codes start with BR followed by alphanumeric characters
+            const patterns = [
+                /BR[A-Z0-9]{10,}/i,     // BR + at least 10 alphanumeric chars
+                /SPX[A-Z0-9]+/i,         // SPX pattern
+                /SPXBR[A-Z0-9]+/i,       // SPXBR pattern
+            ];
+
+            for (const pattern of patterns) {
+                const match = text.match(pattern);
+                if (match) {
+                    return match[0].toUpperCase();
+                }
+            }
+
+            // If no pattern found, return the whole text if it looks like a code (15 chars typical for SPX TN)
+            const trimmedText = text.trim();
+            if (trimmedText.length >= 10 && trimmedText.length <= 30 && /^[A-Z0-9]+$/i.test(trimmedText)) {
+                return trimmedText.toUpperCase();
+            }
+
+            return null;
+        }
+
+        function findAddressBySpxCode(spxCode) {
+            // Search in the raw spreadsheet data
+            if (window.rawSpreadsheetData) {
+                for (const row of window.rawSpreadsheetData) {
+                    // Check SPX TN column (primary) and other common column names
+                    const trackingNumber = row['SPX TN'] || row['TN'] || row['Tracking Number'] ||
+                                          row['SPX'] || row['tracking_number'] || row['Código'] ||
+                                          row['codigo'] || row['Package ID'] || row['package_id'];
+
+                    if (trackingNumber) {
+                        const tnUpper = trackingNumber.toString().toUpperCase();
+                        const spxUpper = spxCode.toUpperCase();
+
+                        // Exact match or contains match
+                        if (tnUpper === spxUpper || tnUpper.includes(spxUpper) || spxUpper.includes(tnUpper)) {
+                            return {
+                                address: row['Destination Address'] || row['address'] || row['endereco'] || '',
+                                stop: row['Stop'] || row['stop'],
+                                bairro: row['Bairro'] || row['bairro'] || row['neighborhood'] || '',
+                                sequence: row['Sequence'] || row['sequence'],
+                                city: row['City'] || row['city'] || ''
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        function confirmRegistration() {
+            if (!scannedData) return;
+
+            // Add to registered addresses list
+            registeredAddresses.push({
+                ...scannedData,
+                timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            });
+
+            // Update the address list UI
+            updateAddressList();
+
+            // Close the scanner
+            closeQrScanner();
+
+            // Show success message
+            showToast('Endereço cadastrado com sucesso!', 'success');
+        }
+
+        function updateAddressList() {
+            const emptyState = document.getElementById('addressEmptyState');
+            const listContainer = document.getElementById('addressList');
+
+            if (registeredAddresses.length === 0) {
+                emptyState.style.display = 'flex';
+                listContainer.style.display = 'none';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            listContainer.style.display = 'flex';
+
+            listContainer.innerHTML = registeredAddresses.map((item, index) => `
+                <div class="address-item">
+                    <div class="address-item-header">
+                        <span class="address-item-code">${item.spxCode}</span>
+                        <span class="address-item-time">${item.timestamp}</span>
+                    </div>
+                    <div class="address-item-text">${item.address}</div>
+                </div>
+            `).join('');
         }
     </script>
 </body>
