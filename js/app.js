@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajdra3l0aTA1MXUzZXB2bzByZjVjMXUifQ.RyPdNBII88Qk9xE3j8Rijw';
 
 // Initialize Supabase client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Mapbox API Key
 mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -724,7 +724,7 @@ async function loadFromSupabase() {
     try {
         showToast('Carregando dados...', 'info');
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
             .from('deliveries')
             .select('*')
             .order('stop', { ascending: true });
@@ -760,8 +760,8 @@ async function loadFromSupabase() {
 
 async function saveToSupabase(stops) {
     try {
-        await supabase.from('deliveries').delete().neq('id', 0);
-        const { error } = await supabase.from('deliveries').insert(stops);
+        await supabaseClient.from('deliveries').delete().neq('id', 0);
+        const { error } = await supabaseClient.from('deliveries').insert(stops);
         if (error) throw error;
         return true;
     } catch (error) {
@@ -772,7 +772,7 @@ async function saveToSupabase(stops) {
 
 async function clearSupabase() {
     try {
-        const { error } = await supabase.from('deliveries').delete().neq('id', 0);
+        const { error } = await supabaseClient.from('deliveries').delete().neq('id', 0);
         if (error) throw error;
         return true;
     } catch (error) {
