@@ -219,12 +219,7 @@ function updateUI() {
 }
 
 function updateAddressMenuButton() {
-    const menuBtn = document.getElementById('addressMenuBtn');
-    if (hasData) {
-        menuBtn.classList.add('visible');
-    } else {
-        menuBtn.classList.remove('visible', 'active');
-    }
+    // Button is always visible - no action needed
 }
 
 function toggleAddressMenu() {
