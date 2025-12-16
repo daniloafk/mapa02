@@ -917,8 +917,6 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             overscroll-behavior: contain;
-            contain: strict;
-            will-change: scroll-position;
         }
 
         .manual-address-item {
@@ -929,9 +927,8 @@
             border-bottom: 1px solid #eee;
             cursor: pointer;
             transition: background-color 0.1s ease;
-            contain: content;
-            content-visibility: auto;
-            contain-intrinsic-size: 0 72px;
+            transform: translateZ(0);
+            backface-visibility: hidden;
         }
 
         .manual-address-item:last-child {
@@ -970,7 +967,6 @@
             font-size: 13px;
             font-weight: 700;
             flex-shrink: 0;
-            will-change: transform;
         }
 
         .manual-item-info {
