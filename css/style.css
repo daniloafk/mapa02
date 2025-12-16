@@ -600,14 +600,92 @@ body.navigating .register-address-btn {
     padding: 20px;
 }
 
-#qr-reader {
+/* QR Video Container */
+.qr-video-container {
+    position: relative;
     width: 100%;
+    aspect-ratio: 1 / 1;
     border-radius: 12px;
     overflow: hidden;
+    background: #000;
 }
 
-#qr-reader video {
+#qrVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
     border-radius: 12px;
+}
+
+/* Scanning overlay */
+.qr-scan-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+/* ROI (Region of Interest) indicator */
+.qr-scan-region {
+    width: 200px;
+    height: 200px;
+    border: 3px solid #4CAF50;
+    border-radius: 16px;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+    animation: scanPulse 1.5s ease-in-out infinite;
+}
+
+.qr-scan-region::before,
+.qr-scan-region::after {
+    content: '';
+    position: absolute;
+    background: #4CAF50;
+}
+
+/* Corner accents */
+.qr-scan-region::before {
+    top: -3px;
+    left: -3px;
+    width: 30px;
+    height: 30px;
+    border-top: 4px solid #4CAF50;
+    border-left: 4px solid #4CAF50;
+    border-radius: 16px 0 0 0;
+    background: transparent;
+}
+
+.qr-scan-region::after {
+    bottom: -3px;
+    right: -3px;
+    width: 30px;
+    height: 30px;
+    border-bottom: 4px solid #4CAF50;
+    border-right: 4px solid #4CAF50;
+    border-radius: 0 0 16px 0;
+    background: transparent;
+}
+
+@keyframes scanPulse {
+    0%, 100% { border-color: #4CAF50; }
+    50% { border-color: #81C784; }
+}
+
+/* Scanning line animation */
+.qr-scan-region .scan-line {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #4CAF50, transparent);
+    animation: scanLine 2s ease-in-out infinite;
+}
+
+@keyframes scanLine {
+    0% { top: 10px; }
+    50% { top: calc(100% - 12px); }
+    100% { top: 10px; }
 }
 
 .qr-status {
