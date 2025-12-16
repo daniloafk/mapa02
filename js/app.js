@@ -803,6 +803,9 @@ async function processFile(file) {
         // Store raw data for QR code lookup
         window.rawSpreadsheetData = jsonData;
 
+        // Pre-process data for faster list loading
+        preprocessSpreadsheetData();
+
         const stopsMap = new Map();
         jsonData.forEach(row => {
             const stop = row['Stop'] || row['stop'];
@@ -1273,54 +1276,61 @@ function toggleManualSelection() {
 
 // Cache for available addresses data
 let availableAddressesCache = [];
+let sortedSpreadsheetData = []; // Pre-sorted data cache
 
-function populateManualAddressList() {
-    const listContent = document.getElementById('manualListContent');
-
+// Pre-process spreadsheet data when loaded
+function preprocessSpreadsheetData() {
     if (!window.rawSpreadsheetData || window.rawSpreadsheetData.length === 0) {
-        listContent.innerHTML = '<div class="manual-list-empty"><i class="fas fa-file-excel"></i><p>Nenhuma planilha carregada</p></div>';
+        sortedSpreadsheetData = [];
         return;
     }
-
-    // Sort by Sequence
-    const sortedData = [...window.rawSpreadsheetData].sort((a, b) => {
+    // Sort once when data is loaded
+    sortedSpreadsheetData = [...window.rawSpreadsheetData].sort((a, b) => {
         const seqA = a['Sequence'] || a['sequence'] || 0;
         const seqB = b['Sequence'] || b['sequence'] || 0;
         return seqA - seqB;
     });
+}
 
-    // Filter out already registered addresses
-    const registeredSpxCodes = new Set(registeredAddresses.map(a => a.spxCode.toUpperCase()));
-    availableAddressesCache = sortedData.filter(row => {
-        const spx = row['SPX TN'] || row['TN'] || '';
-        return !registeredSpxCodes.has(spx.toString().toUpperCase());
-    });
+function populateManualAddressList() {
+    const listContent = document.getElementById('manualListContent');
 
-    if (availableAddressesCache.length === 0) {
-        listContent.innerHTML = '<div class="manual-list-empty"><i class="fas fa-check-circle"></i><p>Todos os endereços já foram cadastrados</p></div>';
+    if (sortedSpreadsheetData.length === 0) {
+        listContent.innerHTML = '<div class="manual-list-empty"><i class="fas fa-file-excel"></i><p>Nenhuma planilha carregada</p></div>';
         return;
     }
 
-    // Use DocumentFragment for faster DOM insertion
-    const fragment = document.createDocumentFragment();
+    // Show loading state immediately
+    listContent.innerHTML = '<div class="manual-list-empty"><i class="fas fa-spinner fa-spin"></i><p>Carregando...</p></div>';
 
-    availableAddressesCache.forEach((row, index) => {
-        const sequence = row['Sequence'] || row['sequence'] || '-';
-        const spxTn = row['SPX TN'] || row['TN'] || '';
-        const address = row['Destination Address'] || row['address'] || row['endereco'] || '';
-        const bairro = row['Bairro'] || row['bairro'] || '';
+    // Use requestAnimationFrame to not block the UI
+    requestAnimationFrame(() => {
+        // Filter out already registered addresses
+        const registeredSpxCodes = new Set(registeredAddresses.map(a => a.spxCode.toUpperCase()));
+        availableAddressesCache = sortedSpreadsheetData.filter(row => {
+            const spx = row['SPX TN'] || row['TN'] || '';
+            return !registeredSpxCodes.has(spx.toString().toUpperCase());
+        });
 
-        const item = document.createElement('div');
-        item.className = 'manual-address-item';
-        item.dataset.index = index;
+        if (availableAddressesCache.length === 0) {
+            listContent.innerHTML = '<div class="manual-list-empty"><i class="fas fa-check-circle"></i><p>Todos os endereços já foram cadastrados</p></div>';
+            return;
+        }
 
-        item.innerHTML = `<div class="manual-item-sequence">${sequence}</div><div class="manual-item-info"><div class="manual-item-spx">${spxTn}</div><div class="manual-item-address">${address}</div>${bairro ? `<div class="manual-item-bairro">📍 ${bairro}</div>` : ''}</div>`;
+        // Build HTML string (faster for large lists)
+        let html = '';
+        for (let i = 0; i < availableAddressesCache.length; i++) {
+            const row = availableAddressesCache[i];
+            const sequence = row['Sequence'] || row['sequence'] || '-';
+            const spxTn = row['SPX TN'] || row['TN'] || '';
+            const address = row['Destination Address'] || row['address'] || row['endereco'] || '';
+            const bairro = row['Bairro'] || row['bairro'] || '';
 
-        fragment.appendChild(item);
+            html += `<div class="manual-address-item" data-index="${i}"><div class="manual-item-sequence">${sequence}</div><div class="manual-item-info"><div class="manual-item-spx">${spxTn}</div><div class="manual-item-address">${address}</div>${bairro ? `<div class="manual-item-bairro">📍 ${bairro}</div>` : ''}</div></div>`;
+        }
+
+        listContent.innerHTML = html;
     });
-
-    listContent.innerHTML = '';
-    listContent.appendChild(fragment);
 }
 
 // Event delegation for manual address selection
