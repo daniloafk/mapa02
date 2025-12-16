@@ -915,6 +915,10 @@
         .manual-list-content {
             max-height: 250px;
             overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+            contain: strict;
+            will-change: scroll-position;
         }
 
         .manual-address-item {
@@ -924,7 +928,10 @@
             padding: 12px 16px;
             border-bottom: 1px solid #eee;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: background-color 0.1s ease;
+            contain: content;
+            content-visibility: auto;
+            contain-intrinsic-size: 0 72px;
         }
 
         .manual-address-item:last-child {
@@ -963,6 +970,7 @@
             font-size: 13px;
             font-weight: 700;
             flex-shrink: 0;
+            will-change: transform;
         }
 
         .manual-item-info {
