@@ -1788,15 +1788,88 @@ body.navigating .mapboxgl-ctrl-bottom-left {
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
 }
 
-/* Draggable marker style */
-.draggable-pin-marker {
-    width: 50px;
-    height: 50px;
-    cursor: grab;
+/* ==================== CROSSHAIR / MIRA ==================== */
+.map-crosshair {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 450;
+    pointer-events: none;
+    display: none;
 }
 
-.draggable-pin-marker:active {
-    cursor: grabbing;
+.map-crosshair.active {
+    display: block;
+}
+
+.crosshair-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80px;
+    height: 80px;
+    border: 3px solid rgba(255, 152, 0, 0.8);
+    border-radius: 50%;
+    animation: crosshairPulse 2s ease-in-out infinite;
+}
+
+@keyframes crosshairPulse {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.1);
+        opacity: 0.7;
+    }
+}
+
+.crosshair-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    background: #FF9800;
+    border-radius: 50%;
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.6);
+}
+
+.crosshair-line {
+    position: absolute;
+    background: rgba(255, 152, 0, 0.6);
+}
+
+.crosshair-line.horizontal {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 120px;
+    height: 2px;
+}
+
+.crosshair-line.vertical {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 2px;
+    height: 120px;
+}
+
+.crosshair-pin {
+    position: absolute;
+    bottom: 50%;
+    left: 50%;
+    transform: translateX(-50%);
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+}
+
+/* Offset controls when crosshair is active */
+body.pin-selecting .map-pin-controls {
+    margin-bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* Hide elements during pin selection */
