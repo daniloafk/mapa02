@@ -800,6 +800,9 @@ async function processFile(file) {
             throw new Error('Planilha vazia');
         }
 
+        // Store raw data for QR code lookup
+        window.rawSpreadsheetData = jsonData;
+
         const stopsMap = new Map();
         jsonData.forEach(row => {
             const stop = row['Stop'] || row['stop'];
@@ -926,4 +929,207 @@ function showToast(message, type = 'info') {
         toast.style.animation = 'slideIn 0.3s ease reverse';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// ==================== QR CODE SCANNER ====================
+let html5QrCode = null;
+let scannedData = null;
+let registeredAddresses = [];
+
+function openQrScanner() {
+    const modal = document.getElementById('qrModalOverlay');
+    modal.classList.add('active');
+
+    // Reset state
+    scannedData = null;
+    document.getElementById('qrResult').style.display = 'none';
+    document.getElementById('qrConfirmBtn').disabled = true;
+    document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
+    document.getElementById('qrStatus').className = 'qr-status';
+
+    // Initialize scanner
+    startQrScanner();
+}
+
+function closeQrScanner() {
+    const modal = document.getElementById('qrModalOverlay');
+    modal.classList.remove('active');
+
+    // Stop scanner
+    if (html5QrCode) {
+        html5QrCode.stop().catch(err => console.log('Scanner already stopped'));
+    }
+}
+
+async function startQrScanner() {
+    try {
+        html5QrCode = new Html5Qrcode("qr-reader");
+
+        await html5QrCode.start(
+            { facingMode: "environment" },
+            {
+                fps: 10,
+                qrbox: { width: 250, height: 250 }
+            },
+            onQrCodeSuccess,
+            onQrCodeError
+        );
+    } catch (err) {
+        console.error('Error starting QR scanner:', err);
+        document.getElementById('qrStatus').textContent = 'Erro ao acessar câmera. Verifique as permissões.';
+        document.getElementById('qrStatus').className = 'qr-status error';
+    }
+}
+
+function onQrCodeSuccess(decodedText, decodedResult) {
+    // Stop scanner after successful read
+    if (html5QrCode) {
+        html5QrCode.stop().catch(err => console.log('Error stopping scanner'));
+    }
+
+    // Extract SPX code from QR data
+    const spxCode = extractSpxCode(decodedText);
+
+    if (spxCode) {
+        // Search for address in delivery data
+        const addressData = findAddressBySpxCode(spxCode);
+
+        if (addressData) {
+            scannedData = {
+                spxCode: spxCode,
+                address: addressData.address,
+                stop: addressData.stop,
+                bairro: addressData.bairro
+            };
+
+            document.getElementById('qrCodeValue').textContent = spxCode;
+            document.getElementById('qrAddressValue').textContent = addressData.address;
+            document.getElementById('qrResult').style.display = 'block';
+            document.getElementById('qrStatus').textContent = 'QR Code lido com sucesso!';
+            document.getElementById('qrStatus').className = 'qr-status success';
+            document.getElementById('qrConfirmBtn').disabled = false;
+        } else {
+            document.getElementById('qrStatus').textContent = 'Código SPX não encontrado na planilha';
+            document.getElementById('qrStatus').className = 'qr-status error';
+
+            // Restart scanner after 2 seconds
+            setTimeout(() => {
+                document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
+                document.getElementById('qrStatus').className = 'qr-status';
+                startQrScanner();
+            }, 2000);
+        }
+    } else {
+        document.getElementById('qrStatus').textContent = 'QR Code inválido. Procurando código SPX...';
+        document.getElementById('qrStatus').className = 'qr-status error';
+
+        // Restart scanner after 2 seconds
+        setTimeout(() => {
+            document.getElementById('qrStatus').textContent = 'Posicione o QR Code na câmera';
+            document.getElementById('qrStatus').className = 'qr-status';
+            startQrScanner();
+        }, 2000);
+    }
+}
+
+function onQrCodeError(error) {
+    // Ignore errors during scanning (they happen frequently)
+}
+
+function extractSpxCode(text) {
+    // Look for SPX TN pattern (e.g., "BR2548334621214")
+    // SPX TN codes start with BR followed by alphanumeric characters
+    const patterns = [
+        /BR[A-Z0-9]{10,}/i,     // BR + at least 10 alphanumeric chars
+        /SPX[A-Z0-9]+/i,         // SPX pattern
+        /SPXBR[A-Z0-9]+/i,       // SPXBR pattern
+    ];
+
+    for (const pattern of patterns) {
+        const match = text.match(pattern);
+        if (match) {
+            return match[0].toUpperCase();
+        }
+    }
+
+    // If no pattern found, return the whole text if it looks like a code (15 chars typical for SPX TN)
+    const trimmedText = text.trim();
+    if (trimmedText.length >= 10 && trimmedText.length <= 30 && /^[A-Z0-9]+$/i.test(trimmedText)) {
+        return trimmedText.toUpperCase();
+    }
+
+    return null;
+}
+
+function findAddressBySpxCode(spxCode) {
+    // Search in the raw spreadsheet data
+    if (window.rawSpreadsheetData) {
+        for (const row of window.rawSpreadsheetData) {
+            // Check SPX TN column (primary) and other common column names
+            const trackingNumber = row['SPX TN'] || row['TN'] || row['Tracking Number'] ||
+                                  row['SPX'] || row['tracking_number'] || row['Código'] ||
+                                  row['codigo'] || row['Package ID'] || row['package_id'];
+
+            if (trackingNumber) {
+                const tnUpper = trackingNumber.toString().toUpperCase();
+                const spxUpper = spxCode.toUpperCase();
+
+                // Exact match or contains match
+                if (tnUpper === spxUpper || tnUpper.includes(spxUpper) || spxUpper.includes(tnUpper)) {
+                    return {
+                        address: row['Destination Address'] || row['address'] || row['endereco'] || '',
+                        stop: row['Stop'] || row['stop'],
+                        bairro: row['Bairro'] || row['bairro'] || row['neighborhood'] || '',
+                        sequence: row['Sequence'] || row['sequence'],
+                        city: row['City'] || row['city'] || ''
+                    };
+                }
+            }
+        }
+    }
+
+    return null;
+}
+
+function confirmRegistration() {
+    if (!scannedData) return;
+
+    // Add to registered addresses list
+    registeredAddresses.push({
+        ...scannedData,
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    });
+
+    // Update the address list UI
+    updateAddressList();
+
+    // Close the scanner
+    closeQrScanner();
+
+    // Show success message
+    showToast('Endereço cadastrado com sucesso!', 'success');
+}
+
+function updateAddressList() {
+    const emptyState = document.getElementById('addressEmptyState');
+    const listContainer = document.getElementById('addressList');
+
+    if (registeredAddresses.length === 0) {
+        emptyState.style.display = 'flex';
+        listContainer.style.display = 'none';
+        return;
+    }
+
+    emptyState.style.display = 'none';
+    listContainer.style.display = 'flex';
+
+    listContainer.innerHTML = registeredAddresses.map((item, index) => `
+        <div class="address-item">
+            <div class="address-item-header">
+                <span class="address-item-code">${item.spxCode}</span>
+                <span class="address-item-time">${item.timestamp}</span>
+            </div>
+            <div class="address-item-text">${item.address}</div>
+        </div>
+    `).join('');
 }
