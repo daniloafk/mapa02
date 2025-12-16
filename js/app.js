@@ -1197,9 +1197,14 @@ function findAddressBySpxCode(spxCode) {
 function confirmRegistration() {
     if (!scannedData) return;
 
-    // Add to registered addresses list
+    // Add to registered addresses list (only address, name and phone for later editing)
     registeredAddresses.push({
-        ...scannedData,
+        address: scannedData.address,
+        bairro: scannedData.bairro,
+        stop: scannedData.stop,
+        spxCode: scannedData.spxCode, // Keep internally for tracking but don't display
+        name: '', // Empty - to be edited later
+        phone: '', // Empty - to be edited later
         timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     });
 
@@ -1227,15 +1232,96 @@ function updateAddressList() {
     listContainer.style.display = 'flex';
 
     listContainer.innerHTML = registeredAddresses.map((item, index) => `
-        <div class="address-item">
+        <div class="address-item editable" onclick="openEditModal(${index})">
             <div class="address-item-header">
-                <span class="address-item-code">${item.spxCode}</span>
                 <span class="address-item-time">${item.timestamp}</span>
             </div>
             <div class="address-item-text">${item.address}</div>
+            <div class="address-item-details">
+                <div class="address-item-detail ${item.name ? '' : 'empty'}">
+                    <i class="fas fa-user"></i>
+                    <span>${item.name || 'Toque para adicionar nome'}</span>
+                </div>
+                <div class="address-item-detail ${item.phone ? '' : 'empty'}">
+                    <i class="fas fa-phone"></i>
+                    <span>${item.phone || 'Toque para adicionar telefone'}</span>
+                </div>
+            </div>
         </div>
     `).join('');
 }
+
+// ==================== EDIT ADDRESS FUNCTIONS ====================
+let currentEditIndex = -1;
+
+function openEditModal(index) {
+    if (index < 0 || index >= registeredAddresses.length) return;
+
+    currentEditIndex = index;
+    const item = registeredAddresses[index];
+
+    // Populate modal with current data
+    document.getElementById('editAddressDisplay').innerHTML = `<p>${item.address}</p>`;
+    document.getElementById('editName').value = item.name || '';
+    document.getElementById('editPhone').value = item.phone || '';
+
+    // Show modal
+    document.getElementById('editModalOverlay').classList.add('active');
+
+    // Focus on name field
+    setTimeout(() => {
+        document.getElementById('editName').focus();
+    }, 300);
+}
+
+function closeEditModal() {
+    document.getElementById('editModalOverlay').classList.remove('active');
+    currentEditIndex = -1;
+}
+
+function saveEditedAddress() {
+    if (currentEditIndex < 0 || currentEditIndex >= registeredAddresses.length) return;
+
+    const name = document.getElementById('editName').value.trim();
+    const phone = document.getElementById('editPhone').value.trim();
+
+    // Update the address data
+    registeredAddresses[currentEditIndex].name = name;
+    registeredAddresses[currentEditIndex].phone = phone;
+
+    // Update the UI
+    updateAddressList();
+
+    // Close modal
+    closeEditModal();
+
+    // Show success message
+    showToast('Dados atualizados com sucesso!', 'success');
+}
+
+// Phone input formatting
+document.getElementById('editPhone').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
+
+    if (value.length > 0) {
+        if (value.length <= 2) {
+            value = `(${value}`;
+        } else if (value.length <= 7) {
+            value = `(${value.slice(0,2)}) ${value.slice(2)}`;
+        } else {
+            value = `(${value.slice(0,2)}) ${value.slice(2,7)}-${value.slice(7)}`;
+        }
+    }
+    e.target.value = value;
+});
+
+// Close modal when clicking overlay
+document.getElementById('editModalOverlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeEditModal();
+    }
+});
 
 // ==================== MANUAL ADDRESS SELECTION ====================
 let manualSelectionActive = false;
