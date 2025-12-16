@@ -1233,3 +1233,124 @@ function updateAddressList() {
         </div>
     `).join('');
 }
+
+// ==================== MANUAL ADDRESS SELECTION ====================
+function toggleManualSelection() {
+    const listContainer = document.getElementById('manualAddressList');
+    const isVisible = listContainer.style.display !== 'none';
+
+    if (isVisible) {
+        listContainer.style.display = 'none';
+    } else {
+        populateManualAddressList();
+        listContainer.style.display = 'block';
+    }
+}
+
+function populateManualAddressList() {
+    const listContent = document.getElementById('manualListContent');
+
+    if (!window.rawSpreadsheetData || window.rawSpreadsheetData.length === 0) {
+        listContent.innerHTML = `
+            <div class="manual-list-empty">
+                <i class="fas fa-file-excel"></i>
+                <p>Nenhuma planilha carregada</p>
+            </div>
+        `;
+        return;
+    }
+
+    // Sort by Sequence
+    const sortedData = [...window.rawSpreadsheetData].sort((a, b) => {
+        const seqA = a['Sequence'] || a['sequence'] || 0;
+        const seqB = b['Sequence'] || b['sequence'] || 0;
+        return seqA - seqB;
+    });
+
+    // Filter out already registered addresses
+    const registeredSpxCodes = registeredAddresses.map(a => a.spxCode.toUpperCase());
+    const availableData = sortedData.filter(row => {
+        const spx = row['SPX TN'] || row['TN'] || '';
+        return !registeredSpxCodes.includes(spx.toString().toUpperCase());
+    });
+
+    if (availableData.length === 0) {
+        listContent.innerHTML = `
+            <div class="manual-list-empty">
+                <i class="fas fa-check-circle"></i>
+                <p>Todos os endereços já foram cadastrados</p>
+            </div>
+        `;
+        return;
+    }
+
+    listContent.innerHTML = availableData.map((row, index) => {
+        const sequence = row['Sequence'] || row['sequence'] || '-';
+        const spxTn = row['SPX TN'] || row['TN'] || '';
+        const address = row['Destination Address'] || row['address'] || row['endereco'] || '';
+        const bairro = row['Bairro'] || row['bairro'] || '';
+        const stop = row['Stop'] || row['stop'] || '';
+
+        return `
+            <div class="manual-address-item" onclick="selectManualAddress(${index}, '${spxTn.replace(/'/g, "\\'")}')">
+                <div class="manual-item-sequence">${sequence}</div>
+                <div class="manual-item-info">
+                    <div class="manual-item-spx">${spxTn}</div>
+                    <div class="manual-item-address">${address}</div>
+                    ${bairro ? `<div class="manual-item-bairro">📍 ${bairro}</div>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function selectManualAddress(index, spxTn) {
+    // Find the address data
+    const sortedData = [...window.rawSpreadsheetData].sort((a, b) => {
+        const seqA = a['Sequence'] || a['sequence'] || 0;
+        const seqB = b['Sequence'] || b['sequence'] || 0;
+        return seqA - seqB;
+    });
+
+    // Filter out already registered
+    const registeredSpxCodes = registeredAddresses.map(a => a.spxCode.toUpperCase());
+    const availableData = sortedData.filter(row => {
+        const spx = row['SPX TN'] || row['TN'] || '';
+        return !registeredSpxCodes.includes(spx.toString().toUpperCase());
+    });
+
+    const row = availableData[index];
+    if (!row) return;
+
+    const spxCode = row['SPX TN'] || row['TN'] || spxTn;
+    const address = row['Destination Address'] || row['address'] || row['endereco'] || '';
+    const stop = row['Stop'] || row['stop'] || '';
+    const bairro = row['Bairro'] || row['bairro'] || '';
+
+    // Stop QR scanner if running
+    stopQrScanner();
+
+    // Set scanned data
+    scannedData = {
+        spxCode: spxCode,
+        address: address,
+        stop: stop,
+        bairro: bairro
+    };
+
+    // Update UI
+    document.getElementById('qrCodeValue').textContent = spxCode;
+    document.getElementById('qrAddressValue').textContent = address;
+    document.getElementById('qrResult').style.display = 'block';
+    document.getElementById('qrStatus').textContent = 'Endereço selecionado!';
+    document.getElementById('qrStatus').className = 'qr-status success';
+    document.getElementById('qrConfirmBtn').disabled = false;
+
+    // Hide manual list
+    document.getElementById('manualAddressList').style.display = 'none';
+
+    // Vibrate for feedback
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
+}
