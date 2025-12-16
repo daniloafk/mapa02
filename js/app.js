@@ -1271,16 +1271,14 @@ function toggleManualSelection() {
     }
 }
 
+// Cache for available addresses data
+let availableAddressesCache = [];
+
 function populateManualAddressList() {
     const listContent = document.getElementById('manualListContent');
 
     if (!window.rawSpreadsheetData || window.rawSpreadsheetData.length === 0) {
-        listContent.innerHTML = `
-            <div class="manual-list-empty">
-                <i class="fas fa-file-excel"></i>
-                <p>Nenhuma planilha carregada</p>
-            </div>
-        `;
+        listContent.innerHTML = '<div class="manual-list-empty"><i class="fas fa-file-excel"></i><p>Nenhuma planilha carregada</p></div>';
         return;
     }
 
@@ -1292,61 +1290,53 @@ function populateManualAddressList() {
     });
 
     // Filter out already registered addresses
-    const registeredSpxCodes = registeredAddresses.map(a => a.spxCode.toUpperCase());
-    const availableData = sortedData.filter(row => {
+    const registeredSpxCodes = new Set(registeredAddresses.map(a => a.spxCode.toUpperCase()));
+    availableAddressesCache = sortedData.filter(row => {
         const spx = row['SPX TN'] || row['TN'] || '';
-        return !registeredSpxCodes.includes(spx.toString().toUpperCase());
+        return !registeredSpxCodes.has(spx.toString().toUpperCase());
     });
 
-    if (availableData.length === 0) {
-        listContent.innerHTML = `
-            <div class="manual-list-empty">
-                <i class="fas fa-check-circle"></i>
-                <p>Todos os endereços já foram cadastrados</p>
-            </div>
-        `;
+    if (availableAddressesCache.length === 0) {
+        listContent.innerHTML = '<div class="manual-list-empty"><i class="fas fa-check-circle"></i><p>Todos os endereços já foram cadastrados</p></div>';
         return;
     }
 
-    listContent.innerHTML = availableData.map((row, index) => {
+    // Use DocumentFragment for faster DOM insertion
+    const fragment = document.createDocumentFragment();
+
+    availableAddressesCache.forEach((row, index) => {
         const sequence = row['Sequence'] || row['sequence'] || '-';
         const spxTn = row['SPX TN'] || row['TN'] || '';
         const address = row['Destination Address'] || row['address'] || row['endereco'] || '';
         const bairro = row['Bairro'] || row['bairro'] || '';
-        const stop = row['Stop'] || row['stop'] || '';
 
-        return `
-            <div class="manual-address-item" onclick="selectManualAddress(${index}, '${spxTn.replace(/'/g, "\\'")}')">
-                <div class="manual-item-sequence">${sequence}</div>
-                <div class="manual-item-info">
-                    <div class="manual-item-spx">${spxTn}</div>
-                    <div class="manual-item-address">${address}</div>
-                    ${bairro ? `<div class="manual-item-bairro">📍 ${bairro}</div>` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
+        const item = document.createElement('div');
+        item.className = 'manual-address-item';
+        item.dataset.index = index;
+
+        item.innerHTML = `<div class="manual-item-sequence">${sequence}</div><div class="manual-item-info"><div class="manual-item-spx">${spxTn}</div><div class="manual-item-address">${address}</div>${bairro ? `<div class="manual-item-bairro">📍 ${bairro}</div>` : ''}</div>`;
+
+        fragment.appendChild(item);
+    });
+
+    listContent.innerHTML = '';
+    listContent.appendChild(fragment);
 }
 
-function selectManualAddress(index, spxTn) {
-    // Find the address data
-    const sortedData = [...window.rawSpreadsheetData].sort((a, b) => {
-        const seqA = a['Sequence'] || a['sequence'] || 0;
-        const seqB = b['Sequence'] || b['sequence'] || 0;
-        return seqA - seqB;
-    });
+// Event delegation for manual address selection
+document.getElementById('manualListContent').addEventListener('click', function(e) {
+    const item = e.target.closest('.manual-address-item');
+    if (item && item.dataset.index !== undefined) {
+        selectManualAddressByIndex(parseInt(item.dataset.index));
+    }
+});
 
-    // Filter out already registered
-    const registeredSpxCodes = registeredAddresses.map(a => a.spxCode.toUpperCase());
-    const availableData = sortedData.filter(row => {
-        const spx = row['SPX TN'] || row['TN'] || '';
-        return !registeredSpxCodes.includes(spx.toString().toUpperCase());
-    });
-
-    const row = availableData[index];
+// Optimized function using cached data
+function selectManualAddressByIndex(index) {
+    const row = availableAddressesCache[index];
     if (!row) return;
 
-    const spxCode = row['SPX TN'] || row['TN'] || spxTn;
+    const spxCode = row['SPX TN'] || row['TN'] || '';
     const address = row['Destination Address'] || row['address'] || row['endereco'] || '';
     const stop = row['Stop'] || row['stop'] || '';
     const bairro = row['Bairro'] || row['bairro'] || '';
@@ -1362,7 +1352,8 @@ function selectManualAddress(index, spxTn) {
         bairro: bairro
     };
 
-    // Update UI
+    // Update UI - keep video hidden since selection was made manually
+    document.getElementById('qrVideoContainer').style.display = 'none';
     document.getElementById('qrCodeValue').textContent = spxCode;
     document.getElementById('qrAddressValue').textContent = address;
     document.getElementById('qrResult').style.display = 'block';
@@ -1370,11 +1361,8 @@ function selectManualAddress(index, spxTn) {
     document.getElementById('qrStatus').className = 'qr-status success';
     document.getElementById('qrConfirmBtn').disabled = false;
 
-    // Hide manual list and keep QR video hidden
+    // Hide manual list and reset button
     document.getElementById('manualAddressList').style.display = 'none';
-    document.getElementById('qrVideoContainer').style.display = 'none';
-
-    // Reset manual selection button
     document.getElementById('manualSelectBtn').innerHTML = '<i class="fas fa-list-ol"></i> Selecionar Manualmente';
     manualSelectionActive = false;
 
@@ -1382,4 +1370,9 @@ function selectManualAddress(index, spxTn) {
     if (navigator.vibrate) {
         navigator.vibrate(50);
     }
+}
+
+// Legacy function for backwards compatibility
+function selectManualAddress(index, spxTn) {
+    selectManualAddressByIndex(index);
 }
