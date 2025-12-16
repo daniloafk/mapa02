@@ -1664,3 +1664,146 @@ body.navigating .mapboxgl-ctrl-bottom-left {
 .dark .address-item-detail.empty {
     color: #666;
 }
+
+/* ==================== MAP PIN SELECTION ==================== */
+.map-pin-select-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+    transition: all 0.2s;
+}
+
+.map-pin-select-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+}
+
+.map-pin-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    padding: 20px;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    z-index: 500;
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+    border-radius: 20px 20px 0 0;
+}
+
+.map-pin-controls.active {
+    display: flex;
+}
+
+.dark .map-pin-controls {
+    background: #1a1a2e;
+}
+
+.map-pin-instructions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px;
+    background: #FFF3E0;
+    border-radius: 12px;
+    color: #E65100;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dark .map-pin-instructions {
+    background: rgba(255, 152, 0, 0.15);
+    color: #FFB74D;
+}
+
+.map-pin-instructions i {
+    font-size: 18px;
+    animation: pointPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pointPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+}
+
+.map-pin-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.map-pin-btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+}
+
+.map-pin-btn.cancel {
+    background: #f0f0f0;
+    color: #666;
+}
+
+.dark .map-pin-btn.cancel {
+    background: #252542;
+    color: #999;
+}
+
+.map-pin-btn.cancel:hover {
+    background: #e0e0e0;
+}
+
+.dark .map-pin-btn.cancel:hover {
+    background: #2d2d4a;
+}
+
+.map-pin-btn.confirm {
+    background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+    color: #fff;
+}
+
+.map-pin-btn.confirm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+/* Draggable marker style */
+.draggable-pin-marker {
+    width: 50px;
+    height: 50px;
+    cursor: grab;
+}
+
+.draggable-pin-marker:active {
+    cursor: grabbing;
+}
+
+/* Hide elements during pin selection */
+body.pin-selecting .register-address-btn,
+body.pin-selecting .sidebar-btn,
+body.pin-selecting .address-menu-btn,
+body.pin-selecting .toggle-markers-btn {
+    opacity: 0;
+    pointer-events: none;
+}
