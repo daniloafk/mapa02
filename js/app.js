@@ -215,6 +215,40 @@ function updateUI() {
 
     // Update toggle markers button
     updateToggleMarkersButton();
+    updateAddressMenuButton();
+}
+
+function updateAddressMenuButton() {
+    const menuBtn = document.getElementById('addressMenuBtn');
+    if (hasData) {
+        menuBtn.classList.add('visible');
+    } else {
+        menuBtn.classList.remove('visible', 'active');
+    }
+}
+
+function toggleAddressMenu() {
+    const menu = document.getElementById('sideMenu');
+    const overlay = document.getElementById('sideMenuOverlay');
+    const btn = document.getElementById('addressMenuBtn');
+
+    if (menu.classList.contains('active')) {
+        closeAddressMenu();
+    } else {
+        menu.classList.add('active');
+        overlay.classList.add('active');
+        btn.classList.add('active');
+    }
+}
+
+function closeAddressMenu() {
+    const menu = document.getElementById('sideMenu');
+    const overlay = document.getElementById('sideMenuOverlay');
+    const btn = document.getElementById('addressMenuBtn');
+
+    menu.classList.remove('active');
+    overlay.classList.remove('active');
+    btn.classList.remove('active');
 }
 
 function updateToggleMarkersButton() {
