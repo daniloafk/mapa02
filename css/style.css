@@ -1788,17 +1788,22 @@ body.navigating .mapboxgl-ctrl-bottom-left {
     box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
 }
 
-/* ==================== DRAGGABLE PIN MARKER ==================== */
-.draggable-pin-marker {
-    cursor: grab;
-    touch-action: none;
+/* ==================== CENTER PIN MARKER ==================== */
+.center-pin-marker {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -100%);
+    z-index: 450;
+    pointer-events: none;
+    display: none;
 }
 
-.draggable-pin-marker:active {
-    cursor: grabbing;
+.center-pin-marker.active {
+    display: block;
 }
 
-.draggable-pin-marker svg {
+.center-pin-marker svg {
     display: block;
 }
 
