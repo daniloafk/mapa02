@@ -746,6 +746,20 @@ async function loadFromSupabase() {
                 }
             }));
 
+            // Populate rawSpreadsheetData for manual address selection
+            window.rawSpreadsheetData = data.map(row => ({
+                'Stop': row.stop,
+                'Destination Address': row.address,
+                'Bairro': row.bairro,
+                'Latitude': row.lat,
+                'Longitude': row.lng,
+                'SPX TN': row.spx_tn || '',
+                'Sequence': row.sequence || row.stop
+            }));
+
+            // Pre-process for faster list loading
+            preprocessSpreadsheetData();
+
             updateUI();
             showToast(`${data.length} entregas carregadas!`, 'success');
         } else {
