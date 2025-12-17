@@ -1,7 +1,7 @@
 // ==================== CONFIGURATION ====================
 const SUPABASE_URL = 'https://xmaktksnrejxhppmesbh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhtYWt0a3NucmVqeGhwcG1lc2JoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MzE5MzYsImV4cCI6MjA4MTQwNzkzNn0.xHSjuDR5XixKXwdRaRaM4XK6SiMtMD8NJvLJi1eUDuQ';
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajk4eXhwbjAwZWozZG9oc3N6OHl3ZXMifQ.6Q8XR1M4pZOxwp8PpWNd_g';
+const MAPBOX_TOKEN = 'sk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajk5ZGV6cjA4eTgzZXB4cG54Z3R3YXcifQ.v0sx_IKjDF2ruVawSjzsVg';
 
 // Initialize Supabase client
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
