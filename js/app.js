@@ -351,16 +351,99 @@ function startNavigationMode(route, destination) {
     // Draw route on map
     drawRoute(route.geometry);
 
+    // Enable 3D buildings for immersive navigation
+    enable3DBuildings();
+
     // Update UI
     document.body.classList.add('navigating');
     document.getElementById('cancelNavFab').classList.add('visible');
 
-
     // Start location tracking
     startLocationTracking();
 
-    // Set navigation camera view
-    setNavigationCamera();
+    // Set navigation camera view with route bearing
+    const initialBearing = calculateRouteBearing(route.geometry.coordinates);
+    setNavigationCamera(initialBearing);
+}
+
+// Enable 3D buildings layer
+function enable3DBuildings() {
+    const layers = map.getStyle().layers;
+    const labelLayerId = layers.find(
+        (layer) => layer.type === 'symbol' && layer.layout['text-field']
+    )?.id;
+
+    // Check if dark mode is active
+    const isDarkMode = document.documentElement.classList.contains('dark');
+
+    if (!map.getLayer('3d-buildings')) {
+        map.addLayer(
+            {
+                'id': '3d-buildings',
+                'source': 'composite',
+                'source-layer': 'building',
+                'filter': ['==', 'extrude', 'true'],
+                'type': 'fill-extrusion',
+                'minzoom': 15,
+                'paint': {
+                    'fill-extrusion-color': isDarkMode ? [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'height'],
+                        0, '#2a2a2a',
+                        50, '#3a3a3a',
+                        100, '#4a4a4a'
+                    ] : [
+                        'interpolate',
+                        ['linear'],
+                        ['get', 'height'],
+                        0, '#e8e8e8',
+                        50, '#d0d0d0',
+                        100, '#b8b8b8'
+                    ],
+                    'fill-extrusion-height': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15, 0,
+                        16, ['get', 'height']
+                    ],
+                    'fill-extrusion-base': [
+                        'interpolate',
+                        ['linear'],
+                        ['zoom'],
+                        15, 0,
+                        16, ['get', 'min_height']
+                    ],
+                    'fill-extrusion-opacity': 0.85
+                }
+            },
+            labelLayerId
+        );
+    }
+}
+
+// Calculate bearing from route coordinates
+function calculateRouteBearing(coordinates) {
+    if (!coordinates || coordinates.length < 2) return 0;
+
+    // Get first two points of the route for initial bearing
+    const start = coordinates[0];
+    const end = coordinates[Math.min(5, coordinates.length - 1)]; // Look ahead a bit
+
+    const startLat = start[1] * Math.PI / 180;
+    const startLng = start[0] * Math.PI / 180;
+    const endLat = end[1] * Math.PI / 180;
+    const endLng = end[0] * Math.PI / 180;
+
+    const dLng = endLng - startLng;
+
+    const x = Math.sin(dLng) * Math.cos(endLat);
+    const y = Math.cos(startLat) * Math.sin(endLat) -
+              Math.sin(startLat) * Math.cos(endLat) * Math.cos(dLng);
+
+    let bearing = Math.atan2(x, y) * 180 / Math.PI;
+    return (bearing + 360) % 360;
 }
 
 function drawRoute(geometry) {
@@ -393,7 +476,7 @@ function drawRoute(geometry) {
         }
     }
 
-    // Add route casing (for 3D effect)
+    // Add route casing (shadow/glow effect)
     map.addLayer({
         id: 'route-casing',
         type: 'line',
@@ -404,12 +487,13 @@ function drawRoute(geometry) {
         },
         paint: {
             'line-color': '#0D47A1',
-            'line-width': 14,
-            'line-opacity': 0.4
+            'line-width': 16,
+            'line-opacity': 0.3,
+            'line-blur': 3
         }
     }, labelLayerId);
 
-    // Add route outline
+    // Add route outline (border)
     map.addLayer({
         id: 'route-outline',
         type: 'line',
@@ -420,11 +504,11 @@ function drawRoute(geometry) {
         },
         paint: {
             'line-color': '#1565C0',
-            'line-width': 10
+            'line-width': 12
         }
     }, labelLayerId);
 
-    // Add route line
+    // Add route line (main)
     map.addLayer({
         id: 'route-line',
         type: 'line',
@@ -434,10 +518,37 @@ function drawRoute(geometry) {
             'line-cap': 'round'
         },
         paint: {
-            'line-color': '#42A5F5',
-            'line-width': 6
+            'line-color': '#4FC3F7',
+            'line-width': 8
         }
     }, labelLayerId);
+
+    // Add animated arrow pattern on route
+    map.addLayer({
+        id: 'route-arrows',
+        type: 'symbol',
+        source: 'route',
+        layout: {
+            'symbol-placement': 'line',
+            'symbol-spacing': 100,
+            'icon-image': 'arrow',
+            'icon-size': 0.5,
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true
+        }
+    }, labelLayerId);
+
+    // Create arrow icon if not exists
+    if (!map.hasImage('arrow')) {
+        const arrowSvg = `
+            <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" fill="white"/>
+            </svg>
+        `;
+        const img = new Image(24, 24);
+        img.onload = () => map.addImage('arrow', img);
+        img.src = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(arrowSvg);
+    }
 }
 
 // Update route to remove passed segments
@@ -566,15 +677,24 @@ function startLocationTracking() {
     );
 }
 
-function setNavigationCamera() {
+function setNavigationCamera(overrideBearing) {
     if (!userLocation) return;
 
+    // Calculate bearing from route if heading not available
+    let bearing = userHeading || overrideBearing || 0;
+
+    // If we have route coordinates, calculate bearing to next point
+    if (!userHeading && routeCoordinates.length >= 2) {
+        bearing = calculateRouteBearing(routeCoordinates);
+    }
+
     map.easeTo({
-        center: userLocation,
-        zoom: 17,
-        pitch: 60,
-        bearing: userHeading || 0,
-        duration: 1000
+        center: [userLocation[0], userLocation[1] - 0.0008], // Offset slightly to show more road ahead
+        zoom: 18, // Closer zoom for better detail
+        pitch: 70, // Higher pitch for more 3D immersion
+        bearing: bearing,
+        duration: 800,
+        easing: (t) => t * (2 - t) // Smooth easing
     });
 }
 
@@ -642,11 +762,15 @@ function cancelNavigation() {
         watchId = null;
     }
 
-    // Remove route from map
+    // Remove route layers from map
+    if (map.getLayer('route-arrows')) map.removeLayer('route-arrows');
     if (map.getLayer('route-line')) map.removeLayer('route-line');
     if (map.getLayer('route-outline')) map.removeLayer('route-outline');
     if (map.getLayer('route-casing')) map.removeLayer('route-casing');
     if (map.getSource('route')) map.removeSource('route');
+
+    // Remove 3D buildings layer
+    if (map.getLayer('3d-buildings')) map.removeLayer('3d-buildings');
 
     // Hide navigation UI
     document.body.classList.remove('navigating');
