@@ -26,57 +26,10 @@
             width: 100%;
             height: 100%;
         }
-
-        .btn-location {
-            position: absolute;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 14px 28px;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            font-size: 16px;
-            font-weight: 600;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            background: #0ea5e9;
-            color: white;
-            box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4);
-            transition: all 0.2s ease;
-        }
-
-        .btn-location:hover {
-            background: #0284c7;
-            transform: translateX(-50%) translateY(-2px);
-        }
-
-        .btn-location:active {
-            transform: translateX(-50%) translateY(0);
-        }
-
-        .user-marker {
-            width: 48px;
-            height: 48px;
-            cursor: pointer;
-        }
-
-        .user-marker svg {
-            width: 100%;
-            height: 100%;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-        }
     </style>
 </head>
 <body>
     <div id="map"></div>
-
-    <button class="btn-location" id="geolocateBtn" onclick="getLocation()">
-        📍 Minha Localização
-    </button>
 
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajk5bmZtZjAydXAzZXEyN3dib3I3OWoifQ.c33dA1QhHMYZcLULo3btmA';
@@ -90,104 +43,19 @@
 
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-        let userMarker = null;
-        let arrowElement = null;
-        let hasCompass = false;
+        const geolocate = new mapboxgl.GeolocateControl({
+            positionOptions: {
+                enableHighAccuracy: true
+            },
+            trackUserLocation: true,
+            showUserHeading: true
+        });
 
-        function createMarkerElement() {
-            const container = document.createElement('div');
-            container.className = 'user-marker';
-            container.innerHTML = `
-                <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
-                    <!-- Seta de direção -->
-                    <polygon id="arrow" points="24,4 30,18 24,14 18,18" fill="#0ea5e9" opacity="0"/>
-                    <!-- Círculo externo (borda branca) -->
-                    <circle cx="24" cy="24" r="10" fill="white"/>
-                    <!-- Círculo interno (azul) -->
-                    <circle cx="24" cy="24" r="7" fill="#0ea5e9"/>
-                </svg>
-            `;
-            return container;
-        }
+        map.addControl(geolocate, 'top-right');
 
-        function updateArrowRotation(heading) {
-            if (arrowElement) {
-                arrowElement.setAttribute('opacity', '1');
-                arrowElement.setAttribute('transform', `rotate(${heading}, 24, 24)`);
-            }
-        }
-
-        function handleOrientation(event) {
-            let heading = null;
-
-            if (event.webkitCompassHeading !== undefined) {
-                heading = event.webkitCompassHeading;
-            } else if (event.alpha !== null) {
-                heading = 360 - event.alpha;
-            }
-
-            if (heading !== null) {
-                hasCompass = true;
-                updateArrowRotation(heading);
-            }
-        }
-
-        function startCompass() {
-            if (typeof DeviceOrientationEvent !== 'undefined' &&
-                typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(permission => {
-                        if (permission === 'granted') {
-                            window.addEventListener('deviceorientation', handleOrientation, true);
-                        }
-                    })
-                    .catch(() => {});
-            } else if ('DeviceOrientationEvent' in window) {
-                window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-                window.addEventListener('deviceorientation', handleOrientation, true);
-            }
-        }
-
-        function getLocation() {
-            const btn = document.getElementById('geolocateBtn');
-            btn.textContent = '⏳ Localizando...';
-
-            if (!navigator.geolocation) {
-                btn.textContent = '📍 Minha Localização';
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-
-                    if (userMarker) userMarker.remove();
-
-                    const markerEl = createMarkerElement();
-                    arrowElement = markerEl.querySelector('#arrow');
-
-                    userMarker = new mapboxgl.Marker({
-                        element: markerEl,
-                        anchor: 'center'
-                    })
-                        .setLngLat([longitude, latitude])
-                        .addTo(map);
-
-                    map.flyTo({
-                        center: [longitude, latitude],
-                        zoom: 15
-                    });
-
-                    startCompass();
-
-                    btn.textContent = '📍 Minha Localização';
-                },
-                () => {
-                    btn.textContent = '📍 Minha Localização';
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        }
+        map.on('load', () => {
+            geolocate.trigger();
+        });
     </script>
 </body>
 </html>
