@@ -59,12 +59,42 @@
         }
 
         .user-marker {
-            width: 20px;
-            height: 20px;
+            position: relative;
+            width: 44px;
+            height: 44px;
+        }
+
+        .marker-dot {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 18px;
+            height: 18px;
             background: #0ea5e9;
             border: 3px solid white;
             border-radius: 50%;
             box-shadow: 0 2px 10px rgba(14, 165, 233, 0.5);
+            z-index: 2;
+        }
+
+        .marker-arrow {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 16px solid #0ea5e9;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
+            z-index: 1;
+            transition: opacity 0.3s ease;
+        }
+
+        .marker-arrow.hidden {
+            opacity: 0;
         }
     </style>
 </head>
@@ -88,6 +118,63 @@
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
         let userMarker = null;
+        let markerElement = null;
+        let currentHeading = 0;
+
+        function createMarkerElement() {
+            const container = document.createElement('div');
+            container.className = 'user-marker';
+            container.innerHTML = `
+                <div class="marker-arrow hidden"></div>
+                <div class="marker-dot"></div>
+            `;
+            return container;
+        }
+
+        function updateMarkerRotation(heading) {
+            if (markerElement) {
+                const arrow = markerElement.querySelector('.marker-arrow');
+                if (arrow) {
+                    arrow.classList.remove('hidden');
+                    markerElement.style.transform = `rotate(${heading}deg)`;
+                }
+            }
+        }
+
+        function handleOrientation(event) {
+            let heading = null;
+
+            if (event.webkitCompassHeading !== undefined) {
+                // iOS
+                heading = event.webkitCompassHeading;
+            } else if (event.alpha !== null) {
+                // Android
+                heading = 360 - event.alpha;
+            }
+
+            if (heading !== null) {
+                currentHeading = heading;
+                updateMarkerRotation(heading);
+            }
+        }
+
+        function startCompass() {
+            if (typeof DeviceOrientationEvent !== 'undefined' &&
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS 13+
+                DeviceOrientationEvent.requestPermission()
+                    .then(permission => {
+                        if (permission === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation, true);
+                        }
+                    })
+                    .catch(console.error);
+            } else if ('DeviceOrientationEvent' in window) {
+                // Android and other browsers
+                window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+                window.addEventListener('deviceorientation', handleOrientation, true);
+            }
+        }
 
         function getLocation() {
             const btn = document.getElementById('geolocateBtn');
@@ -104,10 +191,9 @@
 
                     if (userMarker) userMarker.remove();
 
-                    const markerEl = document.createElement('div');
-                    markerEl.className = 'user-marker';
+                    markerElement = createMarkerElement();
 
-                    userMarker = new mapboxgl.Marker(markerEl)
+                    userMarker = new mapboxgl.Marker(markerElement)
                         .setLngLat([longitude, latitude])
                         .addTo(map);
 
@@ -115,6 +201,8 @@
                         center: [longitude, latitude],
                         zoom: 15
                     });
+
+                    startCompass();
 
                     btn.textContent = '📍 Minha Localização';
                 },
