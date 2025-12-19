@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Interativo</title>
+    <script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.css" rel="stylesheet" >
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --primary-dark: #0284c7;
+            --accent: #f43f5e;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            --border: rgba(0, 0, 0, 0.06);
+        }
+
+        .dark {
+            --primary: #38bdf8;
+            --primary-dark: #0ea5e9;
+            --accent: #fb7185;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+            --border: rgba(255, 255, 255, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            padding: 16px 20px;
+            background: linear-gradient(to bottom, var(--bg) 0%, transparent 100%);
+            pointer-events: none;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: auto;
+            width: fit-content;
+            padding: 8px 16px;
+            background: var(--card-bg);
+            border-radius: 50px;
+            box-shadow: var(--shadow);
+            animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .header h1 span {
+            font-size: 1.4rem;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            gap: 12px;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 24px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            font-weight: 500;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 14px 40px rgba(14, 165, 233, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px) scale(1.02);
+        }
+
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .btn.loading .icon {
+            animation: spin 1s linear infinite;
+        }
+
+        .coords-panel {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            z-index: 10;
+            background: var(--card-bg);
+            padding: 16px 20px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            min-width: 220px;
+            animation: slideLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .coords-panel h3 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .coords-panel .coords {
+            font-size: 1.1rem;
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .coords-panel .coord-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .coords-panel .coord-label {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .coords-panel .coord-value {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .user-marker {
+            width: 24px;
+            height: 24px;
+            background: var(--primary);
+            border: 4px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .user-marker-ring {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: rgba(14, 165, 233, 0.15);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation: ring 2s ease-out infinite;
+        }
+
+        .marker-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toast {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--card-bg);
+            color: var(--text);
+            padding: 14px 24px;
+            border-radius: 50px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+            font-weight: 500;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .toast.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+        }
+
+        .toast.success {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            border: none;
+        }
+
+        .zoom-display {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            z-index: 10;
+            background: var(--card-bg);
+            padding: 10px 16px;
+            border-radius: 50px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            animation: slideLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+        }
+
+        .zoom-display span {
+            color: var(--primary);
+        }
+
+        /* Mapbox overrides */
+        .mapboxgl-ctrl-group {
+            background: var(--card-bg) !important;
+            border-radius: 12px !important;
+            box-shadow: var(--shadow) !important;
+            border: 1px solid var(--border) !important;
+            overflow: hidden;
+        }
+
+        .mapboxgl-ctrl-group button {
+            background: var(--card-bg) !important;
+            border: none !important;
+        }
+
+        .mapboxgl-ctrl-group button:hover {
+            background: var(--bg) !important;
+        }
+
+        .mapboxgl-ctrl-group button + button {
+            border-top: 1px solid var(--border) !important;
+        }
+
+        .mapboxgl-ctrl-attrib {
+            background: var(--card-bg) !important;
+            border-radius: 8px !important;
+            padding: 4px 8px !important;
+            font-family: 'Outfit', sans-serif !important;
+        }
+
+        .mapboxgl-ctrl-attrib a {
+            color: var(--text-muted) !important;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideLeft {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes ring {
+            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 1.2rem;
+                padding: 6px 14px;
+            }
+
+            .coords-panel {
+                top: auto;
+                bottom: 160px;
+                right: 10px;
+                left: 10px;
+                min-width: auto;
+            }
+
+            .controls {
+                bottom: 20px;
+                flex-direction: column;
+                width: calc(100% - 40px);
+            }
+
+            .btn {
+                justify-content: center;
+                padding: 16px 24px;
+            }
+
+            .zoom-display {
+                bottom: auto;
+                top: 80px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="header">
+        <h1><span>🗺️</span> Mapa Interativo</h1>
+    </div>
+
+    <div class="coords-panel" id="coordsPanel">
+        <h3>📍 Coordenadas</h3>
+        <div class="coords">
+            <div class="coord-row">
+                <span class="coord-label">Lat:</span>
+                <span class="coord-value" id="lat">—</span>
+            </div>
+            <div class="coord-row">
+                <span class="coord-label">Lng:</span>
+                <span class="coord-value" id="lng">—</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="zoom-display">
+        Zoom: <span id="zoomLevel">10</span>x
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-primary" id="geolocateBtn" onclick="getLocation()">
+            <span class="icon">📍</span>
+            Minha Localização
+        </button>
+        <button class="btn btn-secondary" onclick="toggleStyle()">
+            <span class="icon">🎨</span>
+            Mudar Estilo
+        </button>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Dark mode detection
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+
+        // Mapbox setup
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajk5bmZtZjAydXAzZXEyN3dib3I3OWoifQ.c33dA1QhHMYZcLULo3btmA';
+
+        const styles = [
+            'mapbox://styles/mapbox/streets-v12',
+            'mapbox://styles/mapbox/outdoors-v12',
+            'mapbox://styles/mapbox/light-v11',
+            'mapbox://styles/mapbox/dark-v11',
+            'mapbox://styles/mapbox/satellite-streets-v12'
+        ];
+        let currentStyleIndex = 0;
+
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: document.documentElement.classList.contains('dark') ? styles[3] : styles[0],
+            center: [-46.6333, -23.5505], // São Paulo
+            zoom: 10,
+            pitch: 0,
+            bearing: 0
+        });
+
+        // Add navigation controls
+        map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+        map.addControl(new mapboxgl.ScaleControl(), 'bottom-left');
+
+        let userMarker = null;
+
+        // Update coordinates display
+        map.on('mousemove', (e) => {
+            document.getElementById('lat').textContent = e.lngLat.lat.toFixed(5);
+            document.getElementById('lng').textContent = e.lngLat.lng.toFixed(5);
+        });
+
+        // Update zoom display
+        map.on('zoom', () => {
+            document.getElementById('zoomLevel').textContent = map.getZoom().toFixed(1);
+        });
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = 'toast ' + type;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function getLocation() {
+            const btn = document.getElementById('geolocateBtn');
+            btn.classList.add('loading');
+            btn.innerHTML = '<span class="icon">⏳</span> Localizando...';
+
+            if (!navigator.geolocation) {
+                showToast('Geolocalização não suportada pelo navegador', 'error');
+                resetButton();
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude, accuracy } = position.coords;
+
+                    // Remove existing marker
+                    if (userMarker) {
+                        userMarker.remove();
+                    }
+
+                    // Create custom marker element
+                    const markerEl = document.createElement('div');
+                    markerEl.className = 'marker-container';
+                    markerEl.innerHTML = `
+                        <div class="user-marker-ring"></div>
+                        <div class="user-marker"></div>
+                    `;
+
+                    // Add marker to map
+                    userMarker = new mapboxgl.Marker(markerEl)
+                        .setLngLat([longitude, latitude])
+                        .setPopup(
+                            new mapboxgl.Popup({ offset: 25 })
+                                .setHTML(`
+                                    <div style="font-family: 'Outfit', sans-serif; padding: 8px;">
+                                        <strong style="font-size: 1rem;">📍 Você está aqui!</strong>
+                                        <p style="margin: 8px 0 0; color: #64748b; font-size: 0.85rem;">
+                                            Precisão: ~${Math.round(accuracy)}m
+                                        </p>
+                                    </div>
+                                `)
+                        )
+                        .addTo(map);
+
+                    // Fly to location
+                    map.flyTo({
+                        center: [longitude, latitude],
+                        zoom: 15,
+                        duration: 2000,
+                        essential: true
+                    });
+
+                    showToast('Localização encontrada!', 'success');
+                    resetButton();
+                },
+                (error) => {
+                    let message = 'Erro ao obter localização';
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            message = 'Permissão de localização negada';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            message = 'Localização indisponível';
+                            break;
+                        case error.TIMEOUT:
+                            message = 'Tempo esgotado ao obter localização';
+                            break;
+                    }
+                    showToast(message, 'error');
+                    resetButton();
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        function resetButton() {
+            const btn = document.getElementById('geolocateBtn');
+            btn.classList.remove('loading');
+            btn.innerHTML = '<span class="icon">📍</span> Minha Localização';
+        }
+
+        function toggleStyle() {
+            currentStyleIndex = (currentStyleIndex + 1) % styles.length;
+            map.setStyle(styles[currentStyleIndex]);
+
+            const styleNames = ['Ruas', 'Outdoor', 'Claro', 'Escuro', 'Satélite'];
+            showToast(`Estilo: ${styleNames[currentStyleIndex]}`, 'success');
+        }
+    </script>
+</body>
+</html>
