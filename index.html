@@ -976,7 +976,7 @@
         // Supabase initialization
         const SUPABASE_URL = 'https://dctlgztkqtktxnmiuqgr.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdGxnenRrcXRrdHhubWl1cWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ2MzMwNDIsImV4cCI6MjA4MDIwOTA0Mn0.Ctlx8A4QBFxa7Iu6fObw_OthHfA2XrzY47UiMMIhbIU';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // Dark mode detection
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -1212,7 +1212,7 @@
             try {
                 if (editingClienteId) {
                     // Update
-                    const { error } = await supabase
+                    const { error } = await db
                         .from('clients')
                         .update(clienteData)
                         .eq('id', editingClienteId);
@@ -1220,7 +1220,7 @@
                     if (error) throw error;
                 } else {
                     // Insert
-                    const { error } = await supabase
+                    const { error } = await db
                         .from('clients')
                         .insert([clienteData]);
 
@@ -1245,7 +1245,7 @@
             clienteList.style.display = 'none';
 
             try {
-                const { data, error } = await supabase
+                const { data, error } = await db
                     .from('clients')
                     .select('*')
                     .order('id', { ascending: false });
@@ -1362,7 +1362,7 @@
         // Delete cliente
         async function deleteCliente(id) {
             try {
-                const { error } = await supabase
+                const { error } = await db
                     .from('clients')
                     .delete()
                     .eq('id', id);
