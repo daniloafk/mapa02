@@ -1262,17 +1262,22 @@
 
         // Render clientes list
         function renderClientes(clientes) {
+            console.log('renderClientes chamado com:', clientes);
             loadingState.style.display = 'none';
 
             if (!clientes || clientes.length === 0) {
                 emptyState.style.display = 'flex';
                 clienteList.style.display = 'none';
                 clienteCount.textContent = 'Nenhum cliente';
+                console.log('Nenhum cliente para exibir');
                 return;
             }
 
             const total = clientes.length;
-            clienteCount.textContent = `${total} cliente${total > 1 ? 's' : ''}`;
+            const textoContador = `${total} cliente${total > 1 ? 's' : ''}`;
+            clienteCount.textContent = textoContador;
+            console.log('Contador atualizado:', textoContador);
+
             emptyState.style.display = 'none';
             clienteList.style.display = 'flex';
             clienteList.innerHTML = '';
@@ -1402,6 +1407,11 @@
 
         // Add markers to map
         function addMarkersToMap(clientes) {
+            if (!map || !map.loaded()) {
+                console.log('Mapa não está pronto ainda, pulando marcadores');
+                return;
+            }
+
             // Clear existing markers
             markers.forEach(marker => marker.remove());
             markers.length = 0;
@@ -1435,14 +1445,20 @@
 
         // Load clients immediately on page load
         (async function initLoadClientes() {
+            console.log('Carregando clientes do Supabase...');
             try {
                 const { data, error } = await db
                     .from('clients')
                     .select('*')
                     .order('id', { ascending: false });
 
-                if (error) throw error;
-                renderClientes(data);
+                if (error) {
+                    console.error('Erro do Supabase:', error);
+                    throw error;
+                }
+
+                console.log(`${data ? data.length : 0} clientes carregados do Supabase`);
+                renderClientes(data || []);
             } catch (err) {
                 console.error('Erro ao carregar clientes:', err);
                 clienteCount.textContent = 'Erro ao carregar';
