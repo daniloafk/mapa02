@@ -170,6 +170,60 @@
             background: white;
         }
 
+        /* Toggle Markers Button */
+        .toggle-markers-btn {
+            position: fixed;
+            top: 76px;
+            left: 16px;
+            z-index: 1000;
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 12px;
+            background: var(--surface-light);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.dark .toggle-markers-btn {
+            background: var(--surface-dark);
+        }
+
+        .toggle-markers-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .toggle-markers-btn.active {
+            background: var(--primary);
+        }
+
+        .toggle-markers-btn.active svg {
+            color: white;
+        }
+
+        .toggle-markers-btn svg {
+            width: 24px;
+            height: 24px;
+            color: var(--text-light);
+            transition: color 0.3s ease;
+        }
+
+        body.dark .toggle-markers-btn svg {
+            color: var(--text-dark);
+        }
+
+        .toggle-markers-btn:hover svg {
+            color: var(--primary);
+        }
+
+        .toggle-markers-btn.active:hover svg {
+            color: white;
+        }
+
         .hamburger {
             width: 22px;
             height: 16px;
@@ -868,6 +922,14 @@
         </div>
     </button>
 
+    <!-- Toggle Markers Button -->
+    <button class="toggle-markers-btn" id="toggleMarkersBtn" aria-label="Exibir/ocultar marcadores" title="Exibir/ocultar marcadores">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    </button>
+
     <!-- Overlay -->
     <div class="overlay" id="overlay"></div>
 
@@ -997,6 +1059,8 @@
         const locationError = document.getElementById('locationError');
         const errorMessage = document.getElementById('errorMessage');
         const retryBtn = document.getElementById('retryBtn');
+        let markersVisible = false;
+        let clientesData = [];
 
         function getUserLocationAndInitMap() {
             if (navigator.geolocation) {
@@ -1081,6 +1145,7 @@
         const emptyState = document.getElementById('emptyState');
         const loadingState = document.getElementById('loadingState');
         const clienteCount = document.getElementById('clienteCount');
+        const toggleMarkersBtn = document.getElementById('toggleMarkersBtn');
 
         function toggleSidebar() {
             menuBtn.classList.toggle('active');
@@ -1101,6 +1166,18 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && sidebar.classList.contains('active')) {
                 closeSidebar();
+            }
+        });
+
+        // Toggle markers functionality
+        toggleMarkersBtn.addEventListener('click', () => {
+            markersVisible = !markersVisible;
+            toggleMarkersBtn.classList.toggle('active', markersVisible);
+
+            if (markersVisible) {
+                addMarkersToMap(clientesData);
+            } else {
+                removeMarkersFromMap();
             }
         });
 
@@ -1251,8 +1328,13 @@
 
                 if (error) throw error;
 
+                clientesData = data || [];
                 renderClientes(data);
-                addMarkersToMap(data);
+
+                // Only add markers if they are currently visible
+                if (markersVisible) {
+                    addMarkersToMap(data);
+                }
             } catch (error) {
                 console.error('Erro ao carregar clientes:', error);
                 clienteCount.textContent = 'Erro ao carregar';
@@ -1400,11 +1482,26 @@
             });
         }
 
+        // Remove markers from map
+        function removeMarkersFromMap() {
+            if (!map || !map.getSource('clientes')) {
+                return;
+            }
+
+            if (map.getLayer('clusters')) map.removeLayer('clusters');
+            if (map.getLayer('cluster-count')) map.removeLayer('cluster-count');
+            if (map.getLayer('unclustered-point')) map.removeLayer('unclustered-point');
+            if (map.getSource('clientes')) map.removeSource('clientes');
+        }
+
         // Add markers to map with clustering
         function addMarkersToMap(clientes) {
             if (!map || !map.loaded()) {
                 return;
             }
+
+            // Remove existing markers first
+            removeMarkersFromMap();
 
             // Filter out clientes without coordinates
             const validClientes = clientes.filter(c => c.latitude && c.longitude);
@@ -1426,14 +1523,6 @@
                     }
                 }))
             };
-
-            // Remove existing source if it exists
-            if (map.getSource('clientes')) {
-                map.removeLayer('clusters');
-                map.removeLayer('cluster-count');
-                map.removeLayer('unclustered-point');
-                map.removeSource('clientes');
-            }
 
             // Add source with clustering
             map.addSource('clientes', {
