@@ -1072,24 +1072,6 @@
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
         getUserLocationAndInitMap();
 
-        // Load clients immediately (independent of map)
-        loadClientesOnly();
-
-        async function loadClientesOnly() {
-            try {
-                const { data, error } = await db
-                    .from('clients')
-                    .select('*')
-                    .order('id', { ascending: false });
-
-                if (error) throw error;
-                renderClientes(data);
-            } catch (error) {
-                console.error('Erro ao carregar clientes:', error);
-                document.getElementById('clienteCount').textContent = 'Erro ao carregar';
-            }
-        }
-
         // Sidebar functionality
         const menuBtn = document.getElementById('menuBtn');
         const sidebar = document.getElementById('sidebar');
@@ -1450,6 +1432,23 @@
                 clearInterval(checkMapReady);
             }
         }, 100);
+
+        // Load clients immediately on page load
+        (async function initLoadClientes() {
+            try {
+                const { data, error } = await db
+                    .from('clients')
+                    .select('*')
+                    .order('id', { ascending: false });
+
+                if (error) throw error;
+                renderClientes(data);
+            } catch (err) {
+                console.error('Erro ao carregar clientes:', err);
+                clienteCount.textContent = 'Erro ao carregar';
+                loadingState.style.display = 'none';
+            }
+        })();
     </script>
 </body>
 </html>
