@@ -348,6 +348,71 @@
             color: var(--text-muted-dark);
         }
 
+        /* Search Bar */
+        .sidebar-search {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        body.dark .sidebar-search {
+            border-bottom-color: var(--border-dark);
+        }
+
+        .search-input-wrapper {
+            position: relative;
+        }
+
+        .search-input-wrapper svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            color: var(--text-muted-light);
+            pointer-events: none;
+        }
+
+        body.dark .search-input-wrapper svg {
+            color: var(--text-muted-dark);
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 14px 10px 42px;
+            border: 2px solid var(--border-light);
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 14px;
+            background: var(--bg-light);
+            color: var(--text-light);
+            transition: all 0.2s ease;
+        }
+
+        body.dark .search-input {
+            border-color: var(--border-dark);
+            background: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--surface-light);
+        }
+
+        body.dark .search-input:focus {
+            background: var(--surface-dark);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted-light);
+        }
+
+        body.dark .search-input::placeholder {
+            color: var(--text-muted-dark);
+        }
+
         /* Close Button */
         .close-btn {
             width: 36px;
@@ -953,6 +1018,15 @@
             </button>
         </div>
 
+        <div class="sidebar-search">
+            <div class="search-input-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input type="text" class="search-input" id="searchInput" placeholder="Buscar endereço...">
+            </div>
+        </div>
+
         <div class="sidebar-content" id="sidebarContent">
             <!-- Loading State -->
             <div class="loading" id="loadingState">
@@ -1146,6 +1220,7 @@
         const loadingState = document.getElementById('loadingState');
         const clienteCount = document.getElementById('clienteCount');
         const toggleMarkersBtn = document.getElementById('toggleMarkersBtn');
+        const searchInput = document.getElementById('searchInput');
 
         function toggleSidebar() {
             menuBtn.classList.toggle('active');
@@ -1329,6 +1404,7 @@
                 if (error) throw error;
 
                 clientesData = data || [];
+                allClientes = data || [];
                 renderClientes(data);
 
                 // Only add markers if they are currently visible
@@ -1341,6 +1417,22 @@
             }
         }
 
+        // Search functionality
+        let allClientes = [];
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase().trim();
+
+            if (searchTerm === '') {
+                renderClientes(allClientes);
+            } else {
+                const filtered = allClientes.filter(cliente =>
+                    cliente.address.toLowerCase().includes(searchTerm)
+                );
+                renderClientes(filtered);
+            }
+        });
+
         // Render clientes list
         function renderClientes(clientes) {
             loadingState.style.display = 'none';
@@ -1348,12 +1440,18 @@
             if (!clientes || clientes.length === 0) {
                 emptyState.style.display = 'flex';
                 clienteList.style.display = 'none';
-                clienteCount.textContent = 'Nenhum cliente';
+                clienteCount.textContent = searchInput.value ? 'Nenhum resultado' : 'Nenhum cliente';
                 return;
             }
 
             const total = clientes.length;
-            clienteCount.textContent = `${total} cliente${total > 1 ? 's' : ''}`;
+            const totalGeral = allClientes.length;
+
+            if (searchInput.value) {
+                clienteCount.textContent = `${total} de ${totalGeral} cliente${totalGeral > 1 ? 's' : ''}`;
+            } else {
+                clienteCount.textContent = `${total} cliente${total > 1 ? 's' : ''}`;
+            }
 
             emptyState.style.display = 'none';
             clienteList.style.display = 'flex';
@@ -1659,6 +1757,7 @@
 
                 if (error) throw error;
 
+                allClientes = data || [];
                 renderClientes(data || []);
             } catch (err) {
                 clienteCount.textContent = 'Erro ao carregar';
