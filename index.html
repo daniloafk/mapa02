@@ -1134,7 +1134,8 @@
         const errorMessage = document.getElementById('errorMessage');
         const retryBtn = document.getElementById('retryBtn');
         let markersVisible = false;
-        let clientesData = [];
+        let allClientes = [];
+        let mapClickHandlerAttached = false;
 
         function getUserLocationAndInitMap() {
             if (navigator.geolocation) {
@@ -1250,7 +1251,7 @@
             toggleMarkersBtn.classList.toggle('active', markersVisible);
 
             if (markersVisible) {
-                addMarkersToMap(clientesData);
+                addMarkersToMap(allClientes);
             } else {
                 removeMarkersFromMap();
             }
@@ -1403,7 +1404,6 @@
 
                 if (error) throw error;
 
-                clientesData = data || [];
                 allClientes = data || [];
                 renderClientes(data);
 
@@ -1418,8 +1418,6 @@
         }
 
         // Search functionality
-        let allClientes = [];
-
         searchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase().trim();
 
@@ -1689,6 +1687,14 @@
                 }
             });
 
+            // Remove old event listeners if they exist
+            map.off('click', 'clusters');
+            map.off('click', 'unclustered-point');
+            map.off('mouseenter', 'clusters');
+            map.off('mouseleave', 'clusters');
+            map.off('mouseenter', 'unclustered-point');
+            map.off('mouseleave', 'unclustered-point');
+
             // Click on cluster to zoom
             map.on('click', 'clusters', (e) => {
                 const features = map.queryRenderedFeatures(e.point, {
@@ -1738,7 +1744,6 @@
         }
 
         // Attach map click handler when map is ready
-        let mapClickHandlerAttached = false;
         const checkMapReady = setInterval(() => {
             if (map && map.loaded() && !mapClickHandlerAttached) {
                 map.on('click', handleMapClick);
