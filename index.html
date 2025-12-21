@@ -1303,7 +1303,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="cliente-item-coords">📍 ${cliente.latitude.toFixed(6)}, ${cliente.longitude.toFixed(6)}</div>
+                    <div class="cliente-item-coords">📍 ${cliente.latitude ? cliente.latitude.toFixed(6) : '0.000000'}, ${cliente.longitude ? cliente.longitude.toFixed(6) : '0.000000'}</div>
                 `;
 
                 // View button
@@ -1413,6 +1413,9 @@
 
             // Add new markers
             clientes.forEach(cliente => {
+                // Skip if no coordinates
+                if (!cliente.latitude || !cliente.longitude) return;
+
                 const el = document.createElement('div');
                 el.className = 'custom-marker';
 
