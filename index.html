@@ -209,6 +209,53 @@
             color: var(--text-muted-dark);
         }
 
+        /* Close Button */
+        .close-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 10px;
+            background: var(--bg-light);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            margin-left: auto;
+        }
+
+        body.dark .close-btn {
+            background: var(--bg-dark);
+        }
+
+        .close-btn:hover {
+            background: #fee2e2;
+            transform: scale(1.1);
+        }
+
+        body.dark .close-btn:hover {
+            background: #7f1d1d;
+        }
+
+        .close-btn svg {
+            width: 20px;
+            height: 20px;
+            color: var(--text-muted-light);
+            transition: color 0.2s ease;
+        }
+
+        body.dark .close-btn svg {
+            color: var(--text-muted-dark);
+        }
+
+        .close-btn:hover svg {
+            color: #dc2626;
+        }
+
+        body.dark .close-btn:hover svg {
+            color: #f87171;
+        }
+
         /* Sidebar Content */
         .sidebar-content {
             flex: 1;
@@ -416,6 +463,11 @@
                 <h2>Cadastros</h2>
                 <p id="cadastroCount">Nenhum cadastro</p>
             </div>
+            <button class="close-btn" id="closeBtn" aria-label="Fechar menu">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
 
         <div class="sidebar-content" id="sidebarContent">
@@ -507,8 +559,11 @@
             overlay.classList.remove('active');
         }
 
+        const closeBtn = document.getElementById('closeBtn');
+
         menuBtn.addEventListener('click', toggleSidebar);
         overlay.addEventListener('click', closeSidebar);
+        closeBtn.addEventListener('click', closeSidebar);
 
         // Close sidebar with Escape key
         document.addEventListener('keydown', (e) => {
