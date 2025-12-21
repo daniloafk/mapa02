@@ -1275,8 +1275,16 @@
 
             const total = clientes.length;
             const textoContador = `${total} cliente${total > 1 ? 's' : ''}`;
+
+            console.log('===== ATUALIZANDO CONTADOR =====');
+            console.log('Total de clientes:', total);
+            console.log('Texto do contador:', textoContador);
+            console.log('Elemento clienteCount:', clienteCount);
+
             clienteCount.textContent = textoContador;
-            console.log('Contador atualizado:', textoContador);
+
+            console.log('Texto após atualização:', clienteCount.textContent);
+            console.log('===============================');
 
             emptyState.style.display = 'none';
             clienteList.style.display = 'flex';
