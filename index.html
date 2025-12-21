@@ -997,7 +997,6 @@
         const locationError = document.getElementById('locationError');
         const errorMessage = document.getElementById('errorMessage');
         const retryBtn = document.getElementById('retryBtn');
-        const markers = [];
 
         function getUserLocationAndInitMap() {
             if (navigator.geolocation) {
@@ -1401,33 +1400,153 @@
             });
         }
 
-        // Add markers to map
+        // Add markers to map with clustering
         function addMarkersToMap(clientes) {
             if (!map || !map.loaded()) {
                 return;
             }
 
-            // Clear existing markers
-            markers.forEach(marker => marker.remove());
-            markers.length = 0;
+            // Filter out clientes without coordinates
+            const validClientes = clientes.filter(c => c.latitude && c.longitude);
 
-            // Add new markers
-            clientes.forEach(cliente => {
-                // Skip if no coordinates
-                if (!cliente.latitude || !cliente.longitude) return;
+            // Convert to GeoJSON
+            const geojson = {
+                type: 'FeatureCollection',
+                features: validClientes.map(cliente => ({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [cliente.longitude, cliente.latitude]
+                    },
+                    properties: {
+                        id: cliente.id,
+                        address: cliente.address,
+                        latitude: cliente.latitude,
+                        longitude: cliente.longitude
+                    }
+                }))
+            };
 
-                const el = document.createElement('div');
-                el.className = 'custom-marker';
+            // Remove existing source if it exists
+            if (map.getSource('clientes')) {
+                map.removeLayer('clusters');
+                map.removeLayer('cluster-count');
+                map.removeLayer('unclustered-point');
+                map.removeSource('clientes');
+            }
 
-                const marker = new mapboxgl.Marker(el)
-                    .setLngLat([cliente.longitude, cliente.latitude])
-                    .setPopup(
-                        new mapboxgl.Popup({ offset: 25 })
-                            .setHTML(`<strong>${cliente.address}</strong><br><small>${cliente.latitude.toFixed(6)}, ${cliente.longitude.toFixed(6)}</small>`)
-                    )
+            // Add source with clustering
+            map.addSource('clientes', {
+                type: 'geojson',
+                data: geojson,
+                cluster: true,
+                clusterMaxZoom: 14,
+                clusterRadius: 50
+            });
+
+            // Cluster circles
+            map.addLayer({
+                id: 'clusters',
+                type: 'circle',
+                source: 'clientes',
+                filter: ['has', 'point_count'],
+                paint: {
+                    'circle-color': [
+                        'step',
+                        ['get', 'point_count'],
+                        '#0ea5e9',
+                        10,
+                        '#0284c7',
+                        30,
+                        '#0369a1'
+                    ],
+                    'circle-radius': [
+                        'step',
+                        ['get', 'point_count'],
+                        20,
+                        10,
+                        30,
+                        30,
+                        40
+                    ]
+                }
+            });
+
+            // Cluster count
+            map.addLayer({
+                id: 'cluster-count',
+                type: 'symbol',
+                source: 'clientes',
+                filter: ['has', 'point_count'],
+                layout: {
+                    'text-field': '{point_count_abbreviated}',
+                    'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+                    'text-size': 12
+                },
+                paint: {
+                    'text-color': '#ffffff'
+                }
+            });
+
+            // Individual points
+            map.addLayer({
+                id: 'unclustered-point',
+                type: 'circle',
+                source: 'clientes',
+                filter: ['!', ['has', 'point_count']],
+                paint: {
+                    'circle-color': '#0ea5e9',
+                    'circle-radius': 8,
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#fff'
+                }
+            });
+
+            // Click on cluster to zoom
+            map.on('click', 'clusters', (e) => {
+                const features = map.queryRenderedFeatures(e.point, {
+                    layers: ['clusters']
+                });
+                const clusterId = features[0].properties.cluster_id;
+                map.getSource('clientes').getClusterExpansionZoom(
+                    clusterId,
+                    (err, zoom) => {
+                        if (err) return;
+                        map.easeTo({
+                            center: features[0].geometry.coordinates,
+                            zoom: zoom
+                        });
+                    }
+                );
+            });
+
+            // Show popup on individual point click
+            map.on('click', 'unclustered-point', (e) => {
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                const { address, latitude, longitude } = e.features[0].properties;
+
+                while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                    coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+                }
+
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`<strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small>`)
                     .addTo(map);
+            });
 
-                markers.push(marker);
+            // Change cursor on hover
+            map.on('mouseenter', 'clusters', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', 'clusters', () => {
+                map.getCanvas().style.cursor = '';
+            });
+            map.on('mouseenter', 'unclustered-point', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', 'unclustered-point', () => {
+                map.getCanvas().style.cursor = '';
             });
         }
 
