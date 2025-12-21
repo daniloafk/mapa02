@@ -1072,6 +1072,24 @@
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
         getUserLocationAndInitMap();
 
+        // Load clients immediately (independent of map)
+        loadClientesOnly();
+
+        async function loadClientesOnly() {
+            try {
+                const { data, error } = await db
+                    .from('clients')
+                    .select('*')
+                    .order('id', { ascending: false });
+
+                if (error) throw error;
+                renderClientes(data);
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                document.getElementById('clienteCount').textContent = 'Erro ao carregar';
+            }
+        }
+
         // Sidebar functionality
         const menuBtn = document.getElementById('menuBtn');
         const sidebar = document.getElementById('sidebar');
@@ -1264,14 +1282,15 @@
         function renderClientes(clientes) {
             loadingState.style.display = 'none';
 
-            if (clientes.length === 0) {
+            if (!clientes || clientes.length === 0) {
                 emptyState.style.display = 'flex';
                 clienteList.style.display = 'none';
                 clienteCount.textContent = 'Nenhum cliente';
                 return;
             }
 
-            clienteCount.textContent = `${clientes.length} cliente${clientes.length > 1 ? 's' : ''}`;
+            const total = clientes.length;
+            clienteCount.textContent = `${total} cliente${total > 1 ? 's' : ''}`;
             emptyState.style.display = 'none';
             clienteList.style.display = 'flex';
             clienteList.innerHTML = '';
