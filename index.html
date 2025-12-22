@@ -2870,7 +2870,11 @@
                 // Normalize address text for comparison
                 function normalizeAddress(addr) {
                     if (!addr) return '';
-                    return addr
+
+                    // Remove everything after "Bairro:" (client addresses have extra info)
+                    let cleanAddr = addr.split(/bairro:/i)[0];
+
+                    return cleanAddr
                         .toLowerCase()
                         .trim()
                         .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
@@ -2878,6 +2882,8 @@
                         .replace(/\s+/g, ' ') // Multiple spaces to single
                         .replace(/\b(rua|r|av|avenida|travessa|tv|alameda|al|praca|pca|largo|lg|rod|rodovia|est|estrada)\b/gi, '')
                         .replace(/\b(apt|apto|apartamento|bloco|bl|casa|cs|lote|lt|qd|quadra|conj|conjunto)\b/gi, '')
+                        .replace(/\b(belem|mosqueiro|para|pa)\b/gi, '') // Remove city/state names
+                        .replace(/\d{5}\s*\-?\s*\d{3}/g, '') // Remove CEP
                         .replace(/\s+/g, ' ')
                         .trim();
                 }
