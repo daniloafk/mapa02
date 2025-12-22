@@ -2813,31 +2813,133 @@
                     return;
                 }
 
-                // Group by destination_address text (same address = same marker)
-                const stopGroups = {};
-                data.forEach(row => {
-                    const addressKey = (row.destination_address || '').trim().toLowerCase();
-                    if (!addressKey) return; // Skip empty addresses
+                // Normalize address text for comparison
+                function normalizeAddress(addr) {
+                    if (!addr) return '';
+                    return addr
+                        .toLowerCase()
+                        .trim()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove accents
+                        .replace(/[.,;:\-\/\\()]/g, ' ') // Replace punctuation with space
+                        .replace(/\s+/g, ' ') // Multiple spaces to single
+                        .replace(/\b(rua|r|av|avenida|travessa|tv|alameda|al|praca|pca|largo|lg|rod|rodovia|est|estrada)\b/gi, '')
+                        .replace(/\b(apt|apto|apartamento|bloco|bl|casa|cs|lote|lt|qd|quadra|conj|conjunto)\b/gi, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                }
 
-                    if (!stopGroups[addressKey]) {
-                        stopGroups[addressKey] = {
-                            stop: row.stop,
-                            address: row.destination_address,
-                            latitude: row.latitude,
-                            longitude: row.longitude,
-                            sequences: [],
-                            stops: []
+                // Calculate distance between two coordinates in km
+                function haversineDistance(lat1, lon1, lat2, lon2) {
+                    const R = 6371; // Earth radius in km
+                    const dLat = (lat2 - lat1) * Math.PI / 180;
+                    const dLon = (lon2 - lon1) * Math.PI / 180;
+                    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                              Math.sin(dLon/2) * Math.sin(dLon/2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                    return R * c;
+                }
+
+                // Calculate text similarity (Jaccard index based on words)
+                function textSimilarity(text1, text2) {
+                    const words1 = new Set(text1.split(' ').filter(w => w.length > 2));
+                    const words2 = new Set(text2.split(' ').filter(w => w.length > 2));
+                    if (words1.size === 0 || words2.size === 0) return 0;
+                    const intersection = new Set([...words1].filter(x => words2.has(x)));
+                    const union = new Set([...words1, ...words2]);
+                    return intersection.size / union.size;
+                }
+
+                // First pass: Group by exact normalized address
+                const initialGroups = {};
+                data.forEach(row => {
+                    const normalizedAddr = normalizeAddress(row.destination_address);
+                    if (!normalizedAddr) return;
+
+                    if (!initialGroups[normalizedAddr]) {
+                        initialGroups[normalizedAddr] = {
+                            originalAddress: row.destination_address,
+                            items: []
                         };
                     }
-                    if (row.sequence) {
-                        stopGroups[addressKey].sequences.push(row.sequence);
-                    }
-                    if (row.stop && !stopGroups[addressKey].stops.includes(row.stop)) {
-                        stopGroups[addressKey].stops.push(row.stop);
-                    }
+                    initialGroups[normalizedAddr].items.push(row);
                 });
 
-                const stops = Object.values(stopGroups);
+                // Second pass: Merge similar addresses and find best coordinates
+                const mergedGroups = [];
+                const processedKeys = new Set();
+
+                Object.keys(initialGroups).forEach(key1 => {
+                    if (processedKeys.has(key1)) return;
+
+                    const group1 = initialGroups[key1];
+                    const mergedItems = [...group1.items];
+                    processedKeys.add(key1);
+
+                    // Find similar addresses to merge
+                    Object.keys(initialGroups).forEach(key2 => {
+                        if (processedKeys.has(key2)) return;
+                        if (key1 === key2) return;
+
+                        const similarity = textSimilarity(key1, key2);
+                        if (similarity >= 0.6) { // 60% similarity threshold
+                            // Check if coordinates are close (within 500m)
+                            const group2 = initialGroups[key2];
+                            const item1 = group1.items[0];
+                            const item2 = group2.items[0];
+                            const distance = haversineDistance(
+                                item1.latitude, item1.longitude,
+                                item2.latitude, item2.longitude
+                            );
+
+                            if (distance <= 0.5) { // Within 500 meters - merge
+                                mergedItems.push(...group2.items);
+                                processedKeys.add(key2);
+                            }
+                        }
+                    });
+
+                    // Determine best coordinates (most common or centroid)
+                    const coordCounts = {};
+                    mergedItems.forEach(item => {
+                        const coordKey = `${item.latitude.toFixed(5)},${item.longitude.toFixed(5)}`;
+                        coordCounts[coordKey] = (coordCounts[coordKey] || 0) + 1;
+                    });
+
+                    // Find most frequent coordinate
+                    let bestCoord = null;
+                    let maxCount = 0;
+                    Object.entries(coordCounts).forEach(([coord, count]) => {
+                        if (count > maxCount) {
+                            maxCount = count;
+                            bestCoord = coord;
+                        }
+                    });
+
+                    const [bestLat, bestLng] = bestCoord.split(',').map(Number);
+
+                    // Build the merged group
+                    const sequences = [];
+                    const stops = [];
+                    mergedItems.forEach(item => {
+                        if (item.sequence && !sequences.includes(item.sequence)) {
+                            sequences.push(item.sequence);
+                        }
+                        if (item.stop && !stops.includes(item.stop)) {
+                            stops.push(item.stop);
+                        }
+                    });
+
+                    mergedGroups.push({
+                        address: group1.originalAddress,
+                        latitude: bestLat,
+                        longitude: bestLng,
+                        sequences: sequences,
+                        stops: stops
+                    });
+                });
+
+                const stops = mergedGroups;
 
                 // Generate and add high-resolution pin icons for each unique package count needed
                 const uniquePackageCounts = new Set();
