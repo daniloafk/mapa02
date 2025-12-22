@@ -1608,6 +1608,43 @@
             background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
         }
 
+        /* View Marker (for "Ver no mapa" button) */
+        .view-marker {
+            position: relative;
+            width: 30px;
+            height: 40px;
+        }
+
+        .view-marker-pin {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border: 3px solid white;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 3px 10px rgba(59, 130, 246, 0.5);
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .view-marker-pulse {
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 14px;
+            background: rgba(59, 130, 246, 0.4);
+            border-radius: 50%;
+            animation: markerPulse 1.5s ease-out infinite;
+        }
+
+        @keyframes markerPulse {
+            0% { transform: translateX(-50%) scale(1); opacity: 1; }
+            100% { transform: translateX(-50%) scale(2.5); opacity: 0; }
+        }
+
         /* Adjust Mode UI */
         .adjust-mode-bar {
             position: fixed;
@@ -2278,6 +2315,48 @@
             clienteList.innerHTML = html;
         }
 
+        // Temporary marker for "View on map"
+        let viewMarker = null;
+
+        function showViewMarker(lat, lng, address) {
+            // Remove existing marker if any
+            if (viewMarker) {
+                viewMarker.remove();
+                viewMarker = null;
+            }
+
+            // Create marker element
+            const markerEl = document.createElement('div');
+            markerEl.className = 'view-marker';
+            markerEl.innerHTML = `
+                <div class="view-marker-pin"></div>
+                <div class="view-marker-pulse"></div>
+            `;
+
+            // Create popup
+            const popup = new mapboxgl.Popup({
+                offset: 25,
+                closeButton: true,
+                closeOnClick: false
+            }).setHTML(`<div style="font-size: 13px; font-weight: 500; max-width: 200px;">${address}</div>`);
+
+            // Add marker to map
+            viewMarker = new mapboxgl.Marker({
+                element: markerEl,
+                anchor: 'bottom'
+            })
+                .setLngLat([lng, lat])
+                .setPopup(popup)
+                .addTo(map);
+
+            // Show popup after map finishes flying
+            map.once('moveend', () => {
+                if (viewMarker) {
+                    viewMarker.togglePopup();
+                }
+            });
+        }
+
         // Event delegation for cliente list actions
         clienteList.addEventListener('click', (e) => {
             const btn = e.target.closest('.cliente-item-btn');
@@ -2290,6 +2369,7 @@
             const address = item.dataset.address;
 
             if (btn.classList.contains('view')) {
+                showViewMarker(lat, lng, address);
                 map.flyTo({
                     center: [lng, lat],
                     zoom: 16,
