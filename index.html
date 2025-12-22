@@ -2308,7 +2308,7 @@
                 });
                 closeSidebar();
             } else if (btn.classList.contains('edit')) {
-                console.log('Edit functionality coming soon for:', id);
+                // Edit functionality - TODO
             } else if (btn.classList.contains('delete')) {
                 showDeleteConfirm(id, address);
             }
@@ -2341,25 +2341,17 @@
         // Delete cliente
         async function deleteCliente(id) {
             try {
-                console.log('Deletando cliente ID:', id);
-
-                const { data, error } = await db
+                const { error } = await db
                     .from('clients')
                     .delete()
-                    .eq('id', id)
-                    .select();
-
-                console.log('Resultado da exclusão:', { data, error });
+                    .eq('id', id);
 
                 if (error) throw error;
 
-                // Show quick success
                 showQuickSuccess();
-
                 await loadClientes();
             } catch (error) {
-                console.error('Erro ao excluir:', error);
-                showErrorModal('Erro ao excluir cliente. Verifique o console para detalhes.');
+                showErrorModal('Erro ao excluir cliente.');
             }
         }
 
