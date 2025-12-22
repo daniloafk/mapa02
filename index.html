@@ -149,7 +149,7 @@
         /* Menu Button */
         .menu-btn {
             position: fixed;
-            top: 140px;
+            top: 180px;
             right: 10px;
             z-index: 1000;
             width: 48px;
@@ -181,7 +181,7 @@
         /* Toggle Markers Button */
         .toggle-markers-btn {
             position: fixed;
-            top: 200px;
+            top: 240px;
             right: 10px;
             z-index: 1000;
             width: 48px;
@@ -279,7 +279,8 @@
             z-index: 999;
             opacity: 0;
             visibility: hidden;
-            transition: all 0.3s ease;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            will-change: opacity;
         }
 
         .overlay.active {
@@ -297,11 +298,13 @@
             height: 100%;
             background: var(--surface-light);
             z-index: 1001;
-            transform: translateX(-100%);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: translate3d(-100%, 0, 0);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
             box-shadow: var(--shadow);
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
         body.dark .sidebar {
@@ -309,7 +312,7 @@
         }
 
         .sidebar.active {
-            transform: translateX(0);
+            transform: translate3d(0, 0, 0);
         }
 
         .sidebar-header {
@@ -1009,18 +1012,22 @@
             }
         }
 
-        // Search functionality
+        // Search functionality with debounce
+        let searchTimeout;
         searchInput.addEventListener('input', (e) => {
-            const searchTerm = e.target.value.toLowerCase().trim();
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                const searchTerm = e.target.value.toLowerCase().trim();
 
-            if (searchTerm === '') {
-                renderClientes(allClientes);
-            } else {
-                const filtered = allClientes.filter(cliente =>
-                    cliente.address.toLowerCase().includes(searchTerm)
-                );
-                renderClientes(filtered);
-            }
+                if (searchTerm === '') {
+                    renderClientes(allClientes);
+                } else {
+                    const filtered = allClientes.filter(cliente =>
+                        cliente.address.toLowerCase().includes(searchTerm)
+                    );
+                    renderClientes(filtered);
+                }
+            }, 150);
         });
 
         // Render clientes list
