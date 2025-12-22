@@ -1617,15 +1617,31 @@
                 </div>
                 <h4>QR Code Detectado!</h4>
                 <div class="qr-result-data" id="qrResultData" style="text-align: left; font-family: inherit; font-size: 14px; line-height: 1.5;"></div>
-                <div class="qr-result-actions">
-                    <button class="qr-result-btn qr-result-btn-secondary" id="qrScanAgain">Escanear Outro</button>
-                    <button class="qr-result-btn qr-result-btn-primary" id="qrConfirm" style="display: flex; align-items: center; gap: 8px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Ver no Mapa
-                    </button>
+                <div class="qr-result-actions" style="flex-direction: column; gap: 10px;">
+                    <div style="display: flex; gap: 12px; width: 100%;">
+                        <button class="qr-result-btn qr-result-btn-secondary" id="qrScanAgain">Escanear Outro</button>
+                        <button class="qr-result-btn qr-result-btn-primary" id="qrConfirm" style="display: flex; align-items: center; gap: 8px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Ver no Mapa
+                        </button>
+                    </div>
+                    <div style="display: flex; gap: 12px; width: 100%;">
+                        <button class="qr-result-btn qr-result-btn-secondary" id="qrAdjustMap" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                            Ajustar no Mapa
+                        </button>
+                        <button class="qr-result-btn qr-result-btn-primary" id="qrSave" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            Salvar
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
