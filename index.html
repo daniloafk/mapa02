@@ -679,6 +679,42 @@
             to { transform: rotate(360deg); }
         }
 
+        /* Quick Success Toast */
+        .quick-success {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            z-index: 10001;
+            animation: quickSuccessAnim 1.2s ease forwards;
+        }
+
+        .quick-success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 32px rgba(34, 197, 94, 0.5);
+        }
+
+        .quick-success-icon svg {
+            width: 44px;
+            height: 44px;
+            color: white;
+            stroke-width: 3;
+        }
+
+        @keyframes quickSuccessAnim {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            30% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            70% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+        }
+
 
         /* Cadastrar Button */
         .cadastrar-btn {
@@ -3032,13 +3068,62 @@
             exitAdjustMode();
         });
 
-        // Confirm adjust mode - save adjusted coordinates
-        adjustModeConfirm.addEventListener('click', () => {
+        // Confirm adjust mode - save adjusted coordinates with quick success
+        adjustModeConfirm.addEventListener('click', async () => {
             if (adjustedCoordinates) {
-                saveClientLocation(adjustedCoordinates);
+                await saveClientLocationQuick(adjustedCoordinates);
             }
             exitAdjustMode();
         });
+
+        // Show quick success icon
+        function showQuickSuccess() {
+            const toast = document.createElement('div');
+            toast.className = 'quick-success';
+            toast.innerHTML = `
+                <div class="quick-success-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            // Remove after animation
+            setTimeout(() => {
+                toast.remove();
+            }, 1200);
+        }
+
+        // Save client location quickly (for adjust mode - no loading modal)
+        async function saveClientLocationQuick(coordinates) {
+            if (!currentRecord) return;
+
+            try {
+                const { error } = await db
+                    .from('clients')
+                    .insert({
+                        address: currentRecord.destination_address,
+                        latitude: coordinates.latitude,
+                        longitude: coordinates.longitude
+                    });
+
+                if (error) throw error;
+
+                // Show quick success icon
+                showQuickSuccess();
+
+                // Refresh clients list
+                loadClientes();
+
+                // Reset current record
+                currentRecord = null;
+
+            } catch (error) {
+                console.error('Erro ao salvar:', error);
+                showErrorModal('Erro ao salvar o endereço. Tente novamente.');
+            }
+        }
 
         // Exit adjust mode
         function exitAdjustMode() {
