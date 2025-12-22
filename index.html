@@ -2032,18 +2032,36 @@
                     return;
                 }
 
+                // Helper functions to parse values safely
+                const parseIntSafe = (val) => {
+                    if (val === null || val === undefined || val === '' || val === '-') return null;
+                    const num = parseInt(val, 10);
+                    return isNaN(num) ? null : num;
+                };
+
+                const parseFloatSafe = (val) => {
+                    if (val === null || val === undefined || val === '' || val === '-') return null;
+                    const num = parseFloat(val);
+                    return isNaN(num) ? null : num;
+                };
+
+                const parseStringSafe = (val) => {
+                    if (val === null || val === undefined || val === '') return null;
+                    return String(val).trim();
+                };
+
                 // Map column names to database fields
                 parsedData = jsonData.map(row => ({
-                    at_id: row['AT ID'] || null,
-                    sequence: row['Sequence'] || null,
-                    stop: row['Stop'] || null,
-                    spx_tn: row['SPX TN'] || null,
-                    destination_address: row['Destination Address'] || null,
-                    bairro: row['Bairro'] || null,
-                    city: row['City'] || null,
-                    zipcode: row['Zipcode/Postal code'] || null,
-                    latitude: row['Latitude'] || null,
-                    longitude: row['Longitude'] || null
+                    at_id: parseStringSafe(row['AT ID']),
+                    sequence: parseIntSafe(row['Sequence']),
+                    stop: parseIntSafe(row['Stop']),
+                    spx_tn: parseStringSafe(row['SPX TN']),
+                    destination_address: parseStringSafe(row['Destination Address']),
+                    bairro: parseStringSafe(row['Bairro']),
+                    city: parseStringSafe(row['City']),
+                    zipcode: parseStringSafe(row['Zipcode/Postal code']),
+                    latitude: parseFloatSafe(row['Latitude']),
+                    longitude: parseFloatSafe(row['Longitude'])
                 }));
 
                 // Show preview
@@ -2070,15 +2088,20 @@
 
             previewHead.innerHTML = '<tr><th>#</th><th>Endereço</th><th>Bairro</th><th>Lat</th><th>Lng</th></tr>';
 
-            const previewRows = data.slice(0, 5).map((row, i) => `
+            const previewRows = data.slice(0, 5).map((row, i) => {
+                const addr = row.destination_address ? row.destination_address.substring(0, 30) + '...' : '-';
+                const bairro = row.bairro || '-';
+                const lat = row.latitude !== null ? row.latitude.toFixed(4) : '-';
+                const lng = row.longitude !== null ? row.longitude.toFixed(4) : '-';
+                return `
                 <tr>
                     <td>${i + 1}</td>
-                    <td>${(row.destination_address || '').substring(0, 30)}...</td>
-                    <td>${row.bairro || '-'}</td>
-                    <td>${row.latitude ? row.latitude.toFixed(4) : '-'}</td>
-                    <td>${row.longitude ? row.longitude.toFixed(4) : '-'}</td>
-                </tr>
-            `).join('');
+                    <td>${addr}</td>
+                    <td>${bairro}</td>
+                    <td>${lat}</td>
+                    <td>${lng}</td>
+                </tr>`;
+            }).join('');
 
             previewBody.innerHTML = previewRows;
             if (data.length > 5) {
