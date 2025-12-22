@@ -2860,6 +2860,13 @@
 
                 const registeredClients = clientsError ? [] : (clientsData || []);
 
+                console.log('═══════════════════════════════════════════════════════');
+                console.log('🗂️ CLIENTES CADASTRADOS NO SUPABASE:', registeredClients.length);
+                registeredClients.forEach((c, i) => {
+                    console.log(`   ${i + 1}. ${c.address}`);
+                });
+                console.log('═══════════════════════════════════════════════════════');
+
                 // Normalize address text for comparison
                 function normalizeAddress(addr) {
                     if (!addr) return '';
@@ -2922,26 +2929,66 @@
                     const normalizedAddr = normalizeAddress(addr);
                     const addrHouseNum = extractHouseNumber(addr);
 
+                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                    console.log('📍 Buscando match para:', addr);
+                    console.log('   Normalizado:', normalizedAddr);
+                    console.log('   Número casa:', addrHouseNum || '(não encontrado)');
+
+                    let bestMatch = null;
+                    let bestSimilarity = 0;
+
                     for (const client of registeredClients) {
                         const normalizedClient = normalizeAddress(client.address);
                         const clientHouseNum = extractHouseNumber(client.address);
                         const similarity = textSimilarity(normalizedAddr, normalizedClient);
+
+                        if (similarity > bestSimilarity) {
+                            bestSimilarity = similarity;
+                            bestMatch = { client, normalizedClient, clientHouseNum, similarity };
+                        }
 
                         // High similarity threshold for matching
                         if (similarity >= 0.6) {
                             // If both have house numbers, they must match
                             if (addrHouseNum && clientHouseNum) {
                                 if (addrHouseNum === clientHouseNum) {
+                                    console.log('   ✅ MATCH! Cliente:', client.address);
+                                    console.log('   Similaridade:', (similarity * 100).toFixed(1) + '%');
                                     return client;
                                 }
                             } else if (!addrHouseNum && !clientHouseNum) {
                                 // Neither has house number, use higher similarity
                                 if (similarity >= 0.8) {
+                                    console.log('   ✅ MATCH! Cliente:', client.address);
+                                    console.log('   Similaridade:', (similarity * 100).toFixed(1) + '%');
                                     return client;
                                 }
                             }
                         }
                     }
+
+                    // Log why no match was found
+                    if (bestMatch) {
+                        console.log('   ❌ Sem match. Melhor candidato:');
+                        console.log('      Cliente:', bestMatch.client.address);
+                        console.log('      Normalizado:', bestMatch.normalizedClient);
+                        console.log('      Número casa cliente:', bestMatch.clientHouseNum || '(não encontrado)');
+                        console.log('      Similaridade:', (bestMatch.similarity * 100).toFixed(1) + '%');
+                        if (bestMatch.similarity < 0.6) {
+                            console.log('      Motivo: Similaridade < 60%');
+                        } else if (addrHouseNum && bestMatch.clientHouseNum && addrHouseNum !== bestMatch.clientHouseNum) {
+                            console.log('      Motivo: Números de casa diferentes (' + addrHouseNum + ' vs ' + bestMatch.clientHouseNum + ')');
+                        } else if (addrHouseNum && !bestMatch.clientHouseNum) {
+                            console.log('      Motivo: Planilha tem número (' + addrHouseNum + '), cliente não tem');
+                        } else if (!addrHouseNum && bestMatch.clientHouseNum) {
+                            console.log('      Motivo: Cliente tem número (' + bestMatch.clientHouseNum + '), planilha não tem');
+                        } else if (!addrHouseNum && !bestMatch.clientHouseNum && bestMatch.similarity < 0.8) {
+                            console.log('      Motivo: Sem números, similaridade < 80%');
+                        }
+                    } else {
+                        console.log('   ❌ Nenhum cliente cadastrado encontrado');
+                    }
+
                     return null;
                 }
 
