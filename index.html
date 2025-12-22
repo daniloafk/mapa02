@@ -678,11 +678,69 @@
         }
 
 
+        /* GPS Info Balloon */
+        .gps-balloon {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--surface-light);
+            padding: 10px 16px;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-light);
+        }
+
+        body.dark .gps-balloon {
+            background: var(--surface-dark);
+            color: var(--text-dark);
+        }
+
+        .gps-balloon-icon {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .gps-balloon.error .gps-balloon-icon {
+            background: #ef4444;
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .gps-balloon-coords {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            color: var(--text-muted-light);
+        }
+
+        body.dark .gps-balloon-coords {
+            color: var(--text-muted-dark);
+        }
+
         /* Responsive */
         @media (max-width: 480px) {
             .sidebar {
                 width: 100%;
                 max-width: 100%;
+            }
+
+            .gps-balloon {
+                bottom: 16px;
+                padding: 8px 12px;
+                font-size: 11px;
             }
         }
     </style>
@@ -719,6 +777,13 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
     </button>
+
+    <!-- GPS Balloon -->
+    <div class="gps-balloon" id="gpsBalloon">
+        <div class="gps-balloon-icon"></div>
+        <span id="gpsAccuracy">Obtendo GPS...</span>
+        <span class="gps-balloon-coords" id="gpsCoords"></span>
+    </div>
 
     <!-- Overlay -->
     <div class="overlay" id="overlay"></div>
@@ -882,6 +947,66 @@
 
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
         getUserLocationAndInitMap();
+
+        // GPS Balloon - Real-time tracking
+        const gpsBalloon = document.getElementById('gpsBalloon');
+        const gpsAccuracy = document.getElementById('gpsAccuracy');
+        const gpsCoords = document.getElementById('gpsCoords');
+        let gpsWatchId = null;
+
+        function initGPSTracking() {
+            if (!navigator.geolocation) {
+                gpsBalloon.classList.add('error');
+                gpsAccuracy.textContent = 'GPS não disponível';
+                gpsCoords.textContent = '';
+                return;
+            }
+
+            gpsWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const accuracy = position.coords.accuracy;
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    gpsBalloon.classList.remove('error');
+
+                    // Display accuracy in meters
+                    if (accuracy < 10) {
+                        gpsAccuracy.textContent = `±${accuracy.toFixed(1)}m`;
+                    } else {
+                        gpsAccuracy.textContent = `±${Math.round(accuracy)}m`;
+                    }
+
+                    // Display coordinates
+                    gpsCoords.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                },
+                (error) => {
+                    gpsBalloon.classList.add('error');
+
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            gpsAccuracy.textContent = 'Acesso negado';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            gpsAccuracy.textContent = 'GPS indisponível';
+                            break;
+                        case error.TIMEOUT:
+                            gpsAccuracy.textContent = 'Timeout GPS';
+                            break;
+                        default:
+                            gpsAccuracy.textContent = 'Erro GPS';
+                    }
+                    gpsCoords.textContent = '';
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        initGPSTracking();
 
         // Sidebar functionality
         const menuBtn = document.getElementById('menuBtn');
