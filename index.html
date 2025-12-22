@@ -847,29 +847,6 @@
             color: #a78bfa;
         }
 
-        /* Route Stop Marker */
-        .route-stop-marker {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            border: 3px solid white;
-            border-radius: 50%;
-            color: white;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 12px;
-            font-weight: 700;
-            box-shadow: 0 3px 10px rgba(139, 92, 246, 0.5);
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
-
-        .route-stop-marker:hover {
-            transform: scale(1.15);
-        }
-
         /* Route Popup */
         .route-popup-content {
             font-size: 13px;
@@ -2754,11 +2731,12 @@
         }
 
         // ========================================
-        // Route Markers Functionality
+        // Route Markers Functionality (Native Mapbox Layers)
         // ========================================
         const routeMarkersBtn = document.getElementById('routeMarkersBtn');
-        let routeMarkers = [];
         let routeMarkersVisible = false;
+        let routeStopsData = []; // Store data for popup lookup
+        let routePopup = null;
 
         async function loadRouteMarkers() {
             try {
@@ -2794,50 +2772,119 @@
                     }
                 });
 
-                // Create markers for each stop
-                Object.values(stopGroups).forEach(stop => {
-                    const markerEl = document.createElement('div');
-                    markerEl.className = 'route-stop-marker';
-                    markerEl.textContent = stop.stop;
+                // Store for popup lookup
+                routeStopsData = Object.values(stopGroups);
 
-                    // Sort sequences
+                // Create GeoJSON features
+                const features = routeStopsData.map(stop => {
                     stop.sequences.sort((a, b) => a - b);
-                    const ordersHtml = stop.sequences.map(seq =>
-                        `<span class="route-popup-order">${seq}</span>`
-                    ).join('');
-
-                    const popup = new mapboxgl.Popup({
-                        offset: 20,
-                        closeButton: true,
-                        closeOnClick: false
-                    }).setHTML(`
-                        <div class="route-popup-content">
-                            <div class="route-popup-address">${stop.address || 'Endereço não disponível'}</div>
-                            <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada ${stop.stop} - Ordem:</div>
-                            <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
-                        </div>
-                    `);
-
-                    const marker = new mapboxgl.Marker({
-                        element: markerEl,
-                        anchor: 'center'
-                    })
-                        .setLngLat([stop.longitude, stop.latitude])
-                        .setPopup(popup)
-                        .addTo(map);
-
-                    routeMarkers.push(marker);
+                    return {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [stop.longitude, stop.latitude]
+                        },
+                        properties: {
+                            stop: stop.stop,
+                            address: stop.address || 'Endereço não disponível',
+                            sequences: stop.sequences.join(', ')
+                        }
+                    };
                 });
+
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+
+                // Add source if not exists, otherwise update data
+                if (map.getSource('route-stops')) {
+                    map.getSource('route-stops').setData(geojson);
+                } else {
+                    map.addSource('route-stops', {
+                        type: 'geojson',
+                        data: geojson
+                    });
+
+                    // Add circle layer (marker background)
+                    map.addLayer({
+                        id: 'route-stops-circle',
+                        type: 'circle',
+                        source: 'route-stops',
+                        paint: {
+                            'circle-radius': 16,
+                            'circle-color': '#8b5cf6',
+                            'circle-stroke-width': 3,
+                            'circle-stroke-color': '#ffffff'
+                        }
+                    });
+
+                    // Add symbol layer (stop number text)
+                    map.addLayer({
+                        id: 'route-stops-label',
+                        type: 'symbol',
+                        source: 'route-stops',
+                        layout: {
+                            'text-field': ['get', 'stop'],
+                            'text-size': 12,
+                            'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+                            'text-allow-overlap': true
+                        },
+                        paint: {
+                            'text-color': '#ffffff'
+                        }
+                    });
+
+                    // Add click event for popup
+                    map.on('click', 'route-stops-circle', (e) => {
+                        const feature = e.features[0];
+                        const coords = feature.geometry.coordinates.slice();
+                        const props = feature.properties;
+
+                        const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
+                        const ordersHtml = sequencesArr.map(seq =>
+                            `<span class="route-popup-order">${seq}</span>`
+                        ).join('');
+
+                        // Close existing popup
+                        if (routePopup) routePopup.remove();
+
+                        routePopup = new mapboxgl.Popup({
+                            offset: 20,
+                            closeButton: true,
+                            closeOnClick: true
+                        })
+                            .setLngLat(coords)
+                            .setHTML(`
+                                <div class="route-popup-content">
+                                    <div class="route-popup-address">${props.address}</div>
+                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada ${props.stop} - Ordem:</div>
+                                    <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                                </div>
+                            `)
+                            .addTo(map);
+                    });
+
+                    // Change cursor on hover
+                    map.on('mouseenter', 'route-stops-circle', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+                    map.on('mouseleave', 'route-stops-circle', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                }
+
+                // Show layers
+                map.setLayoutProperty('route-stops-circle', 'visibility', 'visible');
+                map.setLayoutProperty('route-stops-label', 'visibility', 'visible');
 
                 routeMarkersVisible = true;
                 routeMarkersBtn.classList.add('active');
 
                 // Fit map to show all markers
-                if (routeMarkers.length > 0) {
+                if (features.length > 0) {
                     const bounds = new mapboxgl.LngLatBounds();
-                    routeMarkers.forEach(marker => {
-                        bounds.extend(marker.getLngLat());
-                    });
+                    features.forEach(f => bounds.extend(f.geometry.coordinates));
                     map.fitBounds(bounds, { padding: 50, duration: 1500 });
                 }
 
@@ -2848,8 +2895,16 @@
         }
 
         function removeRouteMarkers() {
-            routeMarkers.forEach(marker => marker.remove());
-            routeMarkers = [];
+            if (map.getLayer('route-stops-circle')) {
+                map.setLayoutProperty('route-stops-circle', 'visibility', 'none');
+            }
+            if (map.getLayer('route-stops-label')) {
+                map.setLayoutProperty('route-stops-label', 'visibility', 'none');
+            }
+            if (routePopup) {
+                routePopup.remove();
+                routePopup = null;
+            }
             routeMarkersVisible = false;
             routeMarkersBtn.classList.remove('active');
         }
