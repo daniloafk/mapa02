@@ -847,56 +847,6 @@
             color: #a78bfa;
         }
 
-        /* Route Stop Pin Marker (needle style like adjust mode) */
-        .route-stop-pin {
-            position: relative;
-            width: 24px;
-            height: 50px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .route-stop-pin-head {
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            border: 2px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.6);
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 11px;
-            font-weight: 700;
-        }
-
-        .route-stop-pin-needle {
-            width: 3px;
-            height: 22px;
-            background: linear-gradient(to bottom, #7c3aed 0%, #5b21b6 100%);
-            border-radius: 0 0 2px 2px;
-            box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.3);
-        }
-
-        .route-stop-pin-shadow {
-            position: absolute;
-            bottom: -4px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 10px;
-            height: 6px;
-            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
-        }
-
-        .route-stop-pin:hover .route-stop-pin-head {
-            transform: scale(1.1);
-            transition: transform 0.2s ease;
-        }
-
         /* Route Popup */
         .route-popup-content {
             font-size: 13px;
@@ -2781,11 +2731,63 @@
         }
 
         // ========================================
-        // Route Markers Functionality (DOM Markers with needle style)
+        // Route Markers Functionality (Native Mapbox Layers with custom pin icon)
         // ========================================
         const routeMarkersBtn = document.getElementById('routeMarkersBtn');
-        let routeMarkers = [];
         let routeMarkersVisible = false;
+        let routePopup = null;
+
+        // Generate pin icon with number using Canvas
+        function generatePinIcon(number) {
+            const canvas = document.createElement('canvas');
+            const width = 30;
+            const height = 50;
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            // Draw needle
+            ctx.fillStyle = '#7c3aed';
+            ctx.beginPath();
+            ctx.moveTo(width / 2 - 1.5, 24);
+            ctx.lineTo(width / 2 + 1.5, 24);
+            ctx.lineTo(width / 2 + 1, height - 4);
+            ctx.lineTo(width / 2 - 1, height - 4);
+            ctx.closePath();
+            ctx.fill();
+
+            // Draw shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(width / 2, height - 2, 5, 3, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw head circle with gradient
+            const gradient = ctx.createLinearGradient(0, 0, width, 24);
+            gradient.addColorStop(0, '#8b5cf6');
+            gradient.addColorStop(1, '#7c3aed');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(width / 2, 12, 11, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw white border
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(width / 2, 12, 11, 0, Math.PI * 2);
+            ctx.stroke();
+
+            // Draw number
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 11px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(String(number), width / 2, 12);
+
+            return canvas.toDataURL();
+        }
 
         async function loadRouteMarkers() {
             try {
@@ -2823,53 +2825,118 @@
 
                 const stops = Object.values(stopGroups);
 
-                // Create markers for each stop
-                stops.forEach(stop => {
-                    // Create pin element (needle style)
-                    const pinEl = document.createElement('div');
-                    pinEl.className = 'route-stop-pin';
-                    pinEl.innerHTML = `
-                        <div class="route-stop-pin-head">${stop.stop}</div>
-                        <div class="route-stop-pin-needle"></div>
-                        <div class="route-stop-pin-shadow"></div>
-                    `;
-
-                    // Sort sequences
-                    stop.sequences.sort((a, b) => a - b);
-                    const ordersHtml = stop.sequences.map(seq =>
-                        `<span class="route-popup-order">${seq}</span>`
-                    ).join('');
-
-                    const popup = new mapboxgl.Popup({
-                        offset: [0, -50],
-                        closeButton: true,
-                        closeOnClick: true
-                    }).setHTML(`
-                        <div class="route-popup-content">
-                            <div class="route-popup-address">${stop.address || 'Endereço não disponível'}</div>
-                            <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada ${stop.stop} - Ordem:</div>
-                            <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
-                        </div>
-                    `);
-
-                    const marker = new mapboxgl.Marker({
-                        element: pinEl,
-                        anchor: 'bottom'
-                    })
-                        .setLngLat([stop.longitude, stop.latitude])
-                        .setPopup(popup)
-                        .addTo(map);
-
-                    routeMarkers.push(marker);
+                // Generate and add pin icons for each unique stop number
+                const iconPromises = stops.map(stop => {
+                    return new Promise((resolve) => {
+                        const iconName = `pin-${stop.stop}`;
+                        if (!map.hasImage(iconName)) {
+                            const img = new Image();
+                            img.onload = () => {
+                                map.addImage(iconName, img);
+                                resolve();
+                            };
+                            img.src = generatePinIcon(stop.stop);
+                        } else {
+                            resolve();
+                        }
+                    });
                 });
+
+                await Promise.all(iconPromises);
+
+                // Create GeoJSON features
+                const features = stops.map(stop => {
+                    stop.sequences.sort((a, b) => a - b);
+                    return {
+                        type: 'Feature',
+                        geometry: {
+                            type: 'Point',
+                            coordinates: [stop.longitude, stop.latitude]
+                        },
+                        properties: {
+                            stop: stop.stop,
+                            icon: `pin-${stop.stop}`,
+                            address: stop.address || 'Endereço não disponível',
+                            sequences: stop.sequences.join(', ')
+                        }
+                    };
+                });
+
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features
+                };
+
+                // Add or update source
+                if (map.getSource('route-stops')) {
+                    map.getSource('route-stops').setData(geojson);
+                } else {
+                    map.addSource('route-stops', {
+                        type: 'geojson',
+                        data: geojson
+                    });
+
+                    // Add symbol layer with custom pin icons
+                    map.addLayer({
+                        id: 'route-stops-pins',
+                        type: 'symbol',
+                        source: 'route-stops',
+                        layout: {
+                            'icon-image': ['get', 'icon'],
+                            'icon-size': 1,
+                            'icon-anchor': 'bottom',
+                            'icon-allow-overlap': true
+                        }
+                    });
+
+                    // Add click event for popup
+                    map.on('click', 'route-stops-pins', (e) => {
+                        const feature = e.features[0];
+                        const coords = feature.geometry.coordinates.slice();
+                        const props = feature.properties;
+
+                        const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
+                        const ordersHtml = sequencesArr.map(seq =>
+                            `<span class="route-popup-order">${seq}</span>`
+                        ).join('');
+
+                        if (routePopup) routePopup.remove();
+
+                        routePopup = new mapboxgl.Popup({
+                            offset: [0, -50],
+                            closeButton: true,
+                            closeOnClick: true
+                        })
+                            .setLngLat(coords)
+                            .setHTML(`
+                                <div class="route-popup-content">
+                                    <div class="route-popup-address">${props.address}</div>
+                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada ${props.stop} - Ordem:</div>
+                                    <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                                </div>
+                            `)
+                            .addTo(map);
+                    });
+
+                    // Change cursor on hover
+                    map.on('mouseenter', 'route-stops-pins', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+                    map.on('mouseleave', 'route-stops-pins', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                }
+
+                // Show layer
+                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
 
                 routeMarkersVisible = true;
                 routeMarkersBtn.classList.add('active');
 
                 // Fit map to show all markers
-                if (routeMarkers.length > 0) {
+                if (features.length > 0) {
                     const bounds = new mapboxgl.LngLatBounds();
-                    routeMarkers.forEach(marker => bounds.extend(marker.getLngLat()));
+                    features.forEach(f => bounds.extend(f.geometry.coordinates));
                     map.fitBounds(bounds, { padding: 50, duration: 1500 });
                 }
 
@@ -2880,8 +2947,13 @@
         }
 
         function removeRouteMarkers() {
-            routeMarkers.forEach(marker => marker.remove());
-            routeMarkers = [];
+            if (map.getLayer('route-stops-pins')) {
+                map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
+            }
+            if (routePopup) {
+                routePopup.remove();
+                routePopup = null;
+            }
             routeMarkersVisible = false;
             routeMarkersBtn.classList.remove('active');
         }
