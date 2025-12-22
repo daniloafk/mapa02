@@ -848,6 +848,19 @@
         }
 
         /* Route Popup */
+        .mapboxgl-popup {
+            touch-action: none;
+            pointer-events: auto;
+        }
+
+        .mapboxgl-popup-content {
+            touch-action: pan-x pan-y;
+        }
+
+        .mapboxgl-popup-close-button {
+            touch-action: manipulation;
+        }
+
         .route-popup-content {
             font-size: 13px;
             max-width: 220px;
@@ -2467,6 +2480,24 @@
                 .setPopup(viewPopup)
                 .addTo(map);
 
+            // Prevent popup from interfering with map touch gestures
+            viewPopup.on('open', () => {
+                const popupEl = viewPopup.getElement();
+                if (popupEl) {
+                    popupEl.addEventListener('touchstart', (e) => {
+                        if (!e.target.closest('.mapboxgl-popup-close-button')) {
+                            e.stopPropagation();
+                        }
+                    }, { passive: true });
+                    popupEl.addEventListener('touchmove', (e) => {
+                        e.stopPropagation();
+                    }, { passive: true });
+                    popupEl.addEventListener('touchend', (e) => {
+                        e.stopPropagation();
+                    }, { passive: true });
+                }
+            });
+
             // Show popup after map finishes flying
             map.once('moveend', () => {
                 if (viewMarker) {
@@ -3102,6 +3133,23 @@
                                 </div>
                             `)
                             .addTo(map);
+
+                        // Prevent popup from interfering with map touch gestures
+                        const popupEl = routePopup.getElement();
+                        if (popupEl) {
+                            popupEl.addEventListener('touchstart', (e) => {
+                                // Only allow touch on interactive elements
+                                if (!e.target.closest('.mapboxgl-popup-close-button')) {
+                                    e.stopPropagation();
+                                }
+                            }, { passive: true });
+                            popupEl.addEventListener('touchmove', (e) => {
+                                e.stopPropagation();
+                            }, { passive: true });
+                            popupEl.addEventListener('touchend', (e) => {
+                                e.stopPropagation();
+                            }, { passive: true });
+                        }
                     });
 
                     // Change cursor on hover
