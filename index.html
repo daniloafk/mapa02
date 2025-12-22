@@ -2094,9 +2094,10 @@
 
             initializeMapControls();
 
-            // Load clientes after map is fully loaded
+            // Load clientes and setup handlers after map is fully loaded
             map.on('load', () => {
                 loadClientes();
+                setupMapClickHandler();
             });
         }
 
@@ -2417,9 +2418,6 @@
                 }
             });
         }
-
-        // Setup map click handler once map is ready
-        map.on('load', setupMapClickHandler);
 
         // Event delegation for cliente list actions
         clienteList.addEventListener('click', (e) => {
