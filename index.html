@@ -2865,7 +2865,8 @@
                     initialGroups[normalizedAddr].items.push(row);
                 });
 
-                // Second pass: Merge similar addresses and find best coordinates
+                // Second pass: Merge similar addresses regardless of distance
+                // Then use clustering to find correct coordinates (outliers get corrected)
                 const mergedGroups = [];
                 const processedKeys = new Set();
 
@@ -2876,49 +2877,56 @@
                     const mergedItems = [...group1.items];
                     processedKeys.add(key1);
 
-                    // Find similar addresses to merge
+                    // Find similar addresses to merge (ignoring distance - coords fixed by clustering)
                     Object.keys(initialGroups).forEach(key2 => {
                         if (processedKeys.has(key2)) return;
                         if (key1 === key2) return;
 
                         const similarity = textSimilarity(key1, key2);
-                        if (similarity >= 0.6) { // 60% similarity threshold
-                            // Check if coordinates are close (within 500m)
-                            const group2 = initialGroups[key2];
-                            const item1 = group1.items[0];
-                            const item2 = group2.items[0];
-                            const distance = haversineDistance(
-                                item1.latitude, item1.longitude,
-                                item2.latitude, item2.longitude
-                            );
+                        // If texts are similar (>= 50%), merge them
+                        // Correct coordinates will be determined by clustering (majority)
+                        if (similarity >= 0.5) {
+                            mergedItems.push(...initialGroups[key2].items);
+                            processedKeys.add(key2);
+                        }
+                    });
 
-                            if (distance <= 0.5) { // Within 500 meters - merge
-                                mergedItems.push(...group2.items);
-                                processedKeys.add(key2);
+                    // Use clustering to find the correct coordinates
+                    // Group coordinates that are close together, pick the largest cluster
+                    const coordClusters = [];
+
+                    mergedItems.forEach(item => {
+                        // Find a cluster within 200m
+                        let foundCluster = null;
+                        for (const cluster of coordClusters) {
+                            const dist = haversineDistance(cluster.lat, cluster.lng, item.latitude, item.longitude);
+                            if (dist <= 0.2) { // Within 200 meters
+                                foundCluster = cluster;
+                                break;
                             }
                         }
-                    });
 
-                    // Determine best coordinates (most common or centroid)
-                    const coordCounts = {};
-                    mergedItems.forEach(item => {
-                        const coordKey = `${item.latitude.toFixed(5)},${item.longitude.toFixed(5)}`;
-                        coordCounts[coordKey] = (coordCounts[coordKey] || 0) + 1;
-                    });
-
-                    // Find most frequent coordinate
-                    let bestCoord = null;
-                    let maxCount = 0;
-                    Object.entries(coordCounts).forEach(([coord, count]) => {
-                        if (count > maxCount) {
-                            maxCount = count;
-                            bestCoord = coord;
+                        if (foundCluster) {
+                            // Add to existing cluster, update centroid
+                            const totalCount = foundCluster.count + 1;
+                            foundCluster.lat = (foundCluster.lat * foundCluster.count + item.latitude) / totalCount;
+                            foundCluster.lng = (foundCluster.lng * foundCluster.count + item.longitude) / totalCount;
+                            foundCluster.count = totalCount;
+                        } else {
+                            // Create new cluster
+                            coordClusters.push({ lat: item.latitude, lng: item.longitude, count: 1 });
                         }
                     });
 
-                    const [bestLat, bestLng] = bestCoord.split(',').map(Number);
+                    // Find the largest cluster (most items = most likely correct location)
+                    let bestCluster = coordClusters[0];
+                    coordClusters.forEach(cluster => {
+                        if (cluster.count > bestCluster.count) {
+                            bestCluster = cluster;
+                        }
+                    });
 
-                    // Build the merged group
+                    // Build the merged group with corrected coordinates
                     const sequences = [];
                     const stops = [];
                     mergedItems.forEach(item => {
@@ -2932,8 +2940,8 @@
 
                     mergedGroups.push({
                         address: group1.originalAddress,
-                        latitude: bestLat,
-                        longitude: bestLng,
+                        latitude: bestCluster.lat,
+                        longitude: bestCluster.lng,
                         sequences: sequences,
                         stops: stops
                     });
