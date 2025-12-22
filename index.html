@@ -1520,35 +1520,55 @@
             font-size: 14px;
         }
 
-        /* Adjust Location Marker */
-        .adjust-marker {
-            width: 40px;
-            height: 40px;
-            cursor: grab;
+        /* Center Pin - Fixed in center of screen */
+        .center-pin {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            z-index: 1000;
+            pointer-events: none;
+            display: none;
         }
 
-        .adjust-marker:active {
-            cursor: grabbing;
+        .center-pin.active {
+            display: block;
         }
 
-        .adjust-marker-inner {
-            width: 40px;
-            height: 40px;
+        .center-pin-marker {
+            width: 44px;
+            height: 44px;
+            position: relative;
+        }
+
+        .center-pin-inner {
+            width: 44px;
+            height: 44px;
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             border: 3px solid white;
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.5);
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
-        .adjust-marker-inner svg {
+        .center-pin-inner svg {
             width: 18px;
             height: 18px;
             color: white;
             transform: rotate(45deg);
+        }
+
+        .center-pin-shadow {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 8px;
+            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.3) 0%, transparent 70%);
         }
 
         /* Adjust Mode UI */
@@ -1866,10 +1886,23 @@
         </div>
     </div>
 
+    <!-- Center Pin for Adjust Mode -->
+    <div class="center-pin" id="centerPin">
+        <div class="center-pin-marker">
+            <div class="center-pin-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </div>
+            <div class="center-pin-shadow"></div>
+        </div>
+    </div>
+
     <!-- Adjust Mode Bar -->
     <div class="adjust-mode-bar" id="adjustModeBar">
         <div class="adjust-mode-info">
-            <p>Arraste o marcador para ajustar</p>
+            <p>Mova o mapa para ajustar a posição</p>
             <strong id="adjustModeAddress">Endereço aqui...</strong>
         </div>
         <div class="adjust-mode-actions">
@@ -2920,9 +2953,18 @@
         const adjustModeCancel = document.getElementById('adjustModeCancel');
         const adjustModeConfirm = document.getElementById('adjustModeConfirm');
 
-        let adjustMarker = null;
         let adjustedCoordinates = null;
         let isAdjustMode = false;
+        const centerPin = document.getElementById('centerPin');
+
+        // Function to update coordinates from map center
+        function updateAdjustedCoordinates() {
+            const center = map.getCenter();
+            adjustedCoordinates = {
+                latitude: center.lat,
+                longitude: center.lng
+            };
+        }
 
         // Adjust Map button
         qrAdjustMap.addEventListener('click', () => {
@@ -2936,63 +2978,49 @@
             saveClientLocation();
         });
 
-        // Enter adjust mode - show draggable marker on map
-        function enterAdjustMode() {
+        // Enter adjust mode - show fixed center pin, start at GPS position
+        async function enterAdjustMode() {
             closeQrScanner();
             isAdjustMode = true;
 
-            // Get initial position (from record or current GPS)
-            let initialLng = currentRecord.longitude;
-            let initialLat = currentRecord.latitude;
+            // Get current GPS position (not the address location)
+            let initialLng, initialLat;
 
-            // If no coordinates in record, use current position or map center
-            if (!initialLng || !initialLat) {
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+                initialLng = position.coords.longitude;
+                initialLat = position.coords.latitude;
+            } catch {
+                // Fallback to map center if GPS fails
                 const center = map.getCenter();
                 initialLng = center.lng;
                 initialLat = center.lat;
             }
 
-            // Fly to location
+            // Fly to current GPS position
             map.flyTo({
                 center: [initialLng, initialLat],
                 zoom: 17,
                 duration: 1500
             });
 
-            // Create draggable marker
-            const markerEl = document.createElement('div');
-            markerEl.className = 'adjust-marker';
-            markerEl.innerHTML = `
-                <div class="adjust-marker-inner">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                </div>
-            `;
+            // Show center pin
+            centerPin.classList.add('active');
 
-            adjustMarker = new mapboxgl.Marker({
-                element: markerEl,
-                draggable: true,
-                anchor: 'bottom'
-            })
-                .setLngLat([initialLng, initialLat])
-                .addTo(map);
-
-            // Store adjusted coordinates when marker is dragged
-            adjustMarker.on('dragend', () => {
-                const lngLat = adjustMarker.getLngLat();
-                adjustedCoordinates = {
-                    latitude: lngLat.lat,
-                    longitude: lngLat.lng
-                };
-            });
-
-            // Initialize adjusted coordinates
+            // Initialize adjusted coordinates with current GPS position
             adjustedCoordinates = {
                 latitude: initialLat,
                 longitude: initialLng
             };
+
+            // Listen to map move to update coordinates
+            map.on('move', updateAdjustedCoordinates);
 
             // Show adjust mode UI
             adjustModeAddress.textContent = currentRecord.destination_address || 'Endereço';
@@ -3019,11 +3047,11 @@
         function exitAdjustMode() {
             isAdjustMode = false;
 
-            // Remove marker
-            if (adjustMarker) {
-                adjustMarker.remove();
-                adjustMarker = null;
-            }
+            // Remove map move listener
+            map.off('move', updateAdjustedCoordinates);
+
+            // Hide center pin
+            centerPin.classList.remove('active');
 
             // Hide adjust mode UI
             adjustModeBar.classList.remove('active');
