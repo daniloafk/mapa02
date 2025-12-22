@@ -2769,7 +2769,7 @@
         let routePopup = null;
 
         // Generate high-resolution pin icon with number using Canvas (3x for Retina/HiDPI)
-        function generatePinIcon(number) {
+        function generatePinIcon(number, color = 'red') {
             const scale = 3; // High resolution for crisp display on all devices (PC, mobile, car)
             const baseWidth = 30;
             const baseHeight = 50;
@@ -2784,8 +2784,15 @@
             // Scale all drawing operations
             ctx.scale(scale, scale);
 
+            // Define colors based on color parameter
+            const colors = {
+                red: { needle: '#dc2626', light: '#f87171', mid: '#ef4444', dark: '#dc2626' },
+                green: { needle: '#16a34a', light: '#4ade80', mid: '#22c55e', dark: '#16a34a' }
+            };
+            const colorSet = colors[color] || colors.red;
+
             // Draw needle
-            ctx.fillStyle = '#dc2626';
+            ctx.fillStyle = colorSet.needle;
             ctx.beginPath();
             ctx.moveTo(15 - 2, 24);
             ctx.lineTo(15 + 2, 24);
@@ -2800,11 +2807,11 @@
             ctx.ellipse(15, 48, 6, 3, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Draw head circle with gradient (red)
+            // Draw head circle with gradient
             const gradient = ctx.createLinearGradient(0, 0, 30, 24);
-            gradient.addColorStop(0, '#f87171');
-            gradient.addColorStop(0.5, '#ef4444');
-            gradient.addColorStop(1, '#dc2626');
+            gradient.addColorStop(0, colorSet.light);
+            gradient.addColorStop(0.5, colorSet.mid);
+            gradient.addColorStop(1, colorSet.dark);
 
             ctx.fillStyle = gradient;
             ctx.beginPath();
@@ -2843,6 +2850,15 @@
                     showErrorModal('Nenhum dado encontrado na planilha. Faça o upload de uma planilha primeiro.');
                     return;
                 }
+
+                // Fetch active clients from clients table to check registered addresses
+                const { data: clientsData, error: clientsError } = await db
+                    .from('clients')
+                    .select('address, latitude, longitude')
+                    .not('latitude', 'is', null)
+                    .not('longitude', 'is', null);
+
+                const registeredClients = clientsError ? [] : (clientsData || []);
 
                 // Normalize address text for comparison
                 function normalizeAddress(addr) {
@@ -2898,6 +2914,35 @@
                     const intersection = new Set([...words1].filter(x => words2.has(x)));
                     const union = new Set([...words1, ...words2]);
                     return intersection.size / union.size;
+                }
+
+                // Find matching registered client for an address
+                function findRegisteredClient(addr) {
+                    if (!addr || registeredClients.length === 0) return null;
+                    const normalizedAddr = normalizeAddress(addr);
+                    const addrHouseNum = extractHouseNumber(addr);
+
+                    for (const client of registeredClients) {
+                        const normalizedClient = normalizeAddress(client.address);
+                        const clientHouseNum = extractHouseNumber(client.address);
+                        const similarity = textSimilarity(normalizedAddr, normalizedClient);
+
+                        // High similarity threshold for matching
+                        if (similarity >= 0.6) {
+                            // If both have house numbers, they must match
+                            if (addrHouseNum && clientHouseNum) {
+                                if (addrHouseNum === clientHouseNum) {
+                                    return client;
+                                }
+                            } else if (!addrHouseNum && !clientHouseNum) {
+                                // Neither has house number, use higher similarity
+                                if (similarity >= 0.8) {
+                                    return client;
+                                }
+                            }
+                        }
+                    }
+                    return null;
                 }
 
                 // Check if two addresses should be merged (same street AND same house number)
@@ -3016,29 +3061,35 @@
                         }
                     });
 
+                    // Check if this address has a registered client
+                    const registeredClient = findRegisteredClient(group1.originalAddress);
+
                     mergedGroups.push({
                         address: group1.originalAddress,
-                        latitude: bestCluster.lat,
-                        longitude: bestCluster.lng,
+                        latitude: registeredClient ? registeredClient.latitude : bestCluster.lat,
+                        longitude: registeredClient ? registeredClient.longitude : bestCluster.lng,
                         sequences: sequences,
-                        stops: stops
+                        stops: stops,
+                        isRegistered: !!registeredClient
                     });
                 });
 
                 const stops = mergedGroups;
 
-                // Generate and add high-resolution pin icons for each unique package count needed
-                const uniquePackageCounts = new Set();
+                // Generate and add high-resolution pin icons for each unique package count needed (red and green)
+                const iconConfigs = new Set();
                 stops.forEach(stop => {
                     const packageCount = stop.sequences.length;
-                    uniquePackageCounts.add(packageCount);
+                    const color = stop.isRegistered ? 'green' : 'red';
+                    iconConfigs.add(`${packageCount}-${color}`);
                 });
 
-                const iconPromises = Array.from(uniquePackageCounts).map(count => {
+                const iconPromises = Array.from(iconConfigs).map(config => {
                     return new Promise((resolve) => {
-                        const iconName = `pin-count-${count}`;
+                        const [count, color] = config.split('-');
+                        const iconName = `pin-${color}-${count}`;
                         if (!map.hasImage(iconName)) {
-                            const { dataUrl, pixelRatio } = generatePinIcon(count);
+                            const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
                             const img = new Image();
                             img.onload = () => {
                                 map.addImage(iconName, img, { pixelRatio: pixelRatio });
@@ -3058,6 +3109,7 @@
                     stop.sequences.sort((a, b) => a - b);
                     stop.stops.sort((a, b) => a - b);
                     const packageCount = stop.sequences.length;
+                    const color = stop.isRegistered ? 'green' : 'red';
                     return {
                         type: 'Feature',
                         geometry: {
@@ -3067,9 +3119,10 @@
                         properties: {
                             packageCount: packageCount,
                             allStops: stop.stops.join(', '),
-                            icon: `pin-count-${packageCount}`,
+                            icon: `pin-${color}-${packageCount}`,
                             address: stop.address || 'Endereço não disponível',
-                            sequences: stop.sequences.join(', ')
+                            sequences: stop.sequences.join(', '),
+                            isRegistered: stop.isRegistered
                         }
                     };
                 });
