@@ -2317,13 +2317,21 @@
 
         // Temporary marker for "View on map"
         let viewMarker = null;
+        let viewPopup = null;
+        let closedByXButton = false;
 
-        function showViewMarker(lat, lng, address) {
-            // Remove existing marker if any
+        function removeViewMarker() {
             if (viewMarker) {
                 viewMarker.remove();
                 viewMarker = null;
+                viewPopup = null;
             }
+        }
+
+        function showViewMarker(lat, lng, address) {
+            // Remove existing marker if any
+            removeViewMarker();
+            closedByXButton = false;
 
             // Create marker element
             const markerEl = document.createElement('div');
@@ -2333,11 +2341,11 @@
                 <div class="view-marker-pulse"></div>
             `;
 
-            // Create popup
-            const popup = new mapboxgl.Popup({
+            // Create popup - closeOnClick: true to hide popup when clicking map
+            viewPopup = new mapboxgl.Popup({
                 offset: 25,
                 closeButton: true,
-                closeOnClick: false
+                closeOnClick: true
             }).setHTML(`<div style="font-size: 13px; font-weight: 500; max-width: 200px;">${address}</div>`);
 
             // Add marker to map
@@ -2346,13 +2354,34 @@
                 anchor: 'bottom'
             })
                 .setLngLat([lng, lat])
-                .setPopup(popup)
+                .setPopup(viewPopup)
                 .addTo(map);
 
-            // Show popup after map finishes flying
+            // When popup is closed, check if it was by X button
+            viewPopup.on('close', () => {
+                if (closedByXButton) {
+                    removeViewMarker();
+                    closedByXButton = false;
+                }
+            });
+
+            // Show popup after map finishes flying, then add X button listener
             map.once('moveend', () => {
-                if (viewMarker) {
+                if (viewMarker && viewPopup) {
                     viewMarker.togglePopup();
+
+                    // Add listener to X button after popup is shown
+                    setTimeout(() => {
+                        const popupEl = viewPopup.getElement();
+                        if (popupEl) {
+                            const closeBtn = popupEl.querySelector('.mapboxgl-popup-close-button');
+                            if (closeBtn) {
+                                closeBtn.addEventListener('click', () => {
+                                    closedByXButton = true;
+                                });
+                            }
+                        }
+                    }, 50);
                 }
             });
         }
