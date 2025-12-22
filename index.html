@@ -1616,10 +1616,16 @@
                     </svg>
                 </div>
                 <h4>QR Code Detectado!</h4>
-                <div class="qr-result-data" id="qrResultData">BR123456789</div>
+                <div class="qr-result-data" id="qrResultData" style="text-align: left; font-family: inherit; font-size: 14px; line-height: 1.5;"></div>
                 <div class="qr-result-actions">
                     <button class="qr-result-btn qr-result-btn-secondary" id="qrScanAgain">Escanear Outro</button>
-                    <button class="qr-result-btn qr-result-btn-primary" id="qrConfirm">Confirmar</button>
+                    <button class="qr-result-btn qr-result-btn-primary" id="qrConfirm" style="display: flex; align-items: center; gap: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Ver no Mapa
+                    </button>
                 </div>
             </div>
         </div>
@@ -2568,11 +2574,9 @@
             startScanning();
         });
 
-        // Confirm button
+        // Confirm button - navigate to map
         qrConfirm.addEventListener('click', () => {
-            if (lastScannedCode) {
-                handleQrCodeConfirm(lastScannedCode);
-            }
+            handleQrCodeConfirm();
         });
 
         async function openQrScanner() {
@@ -2659,9 +2663,9 @@
                     });
 
                     if (code && code.data) {
-                        // QR Code found!
+                        // QR Code found! Search in database immediately
                         lastScannedCode = code.data;
-                        showQrResult(code.data);
+                        searchAndShowResult(code.data);
                         return; // Stop scanning
                     }
                 }
@@ -2672,17 +2676,12 @@
             qrAnimationFrame = requestAnimationFrame(tick);
         }
 
-        function showQrResult(data) {
-            qrResultData.textContent = data;
-            qrResult.classList.add('active');
-            qrStatusText.textContent = 'QR Code lido com sucesso!';
-        }
+        // Store current record for navigation
+        let currentRecord = null;
 
-        async function handleQrCodeConfirm(qrData) {
-            console.log('QR Code confirmado:', qrData);
-
-            // Show loading state
-            qrResult.classList.remove('active');
+        // Search in database and show result with address
+        async function searchAndShowResult(qrData) {
+            // Show loading
             qrLoading.classList.add('active');
             document.querySelector('.qr-loading-text').textContent = 'Buscando endereço...';
 
@@ -2699,108 +2698,53 @@
                 qrLoading.classList.remove('active');
 
                 if (data && data.length > 0) {
-                    const record = data[0];
-                    closeQrScanner();
-
-                    // Show the found address
-                    showAddressModal(record);
+                    currentRecord = data[0];
+                    // Show the address in the result area
+                    qrResultData.innerHTML = `<strong>${currentRecord.destination_address || 'Endereço não disponível'}</strong><br><span style="opacity: 0.7; font-size: 12px;">${currentRecord.bairro || ''} - ${currentRecord.city || ''}</span>`;
+                    qrResult.classList.add('active');
+                    qrStatusText.textContent = 'QR Code lido com sucesso!';
                 } else {
-                    // Code not found
-                    closeQrScanner();
-                    showErrorModal(`Código não encontrado na planilha: ${qrData}`);
+                    // Code not found - show error in result
+                    currentRecord = null;
+                    qrResultData.innerHTML = `<span style="color: #f87171;">Código não encontrado na planilha</span><br><span style="opacity: 0.7; font-size: 12px; font-family: monospace;">${qrData}</span>`;
+                    qrResult.classList.add('active');
+                    qrStatusText.textContent = 'Código não encontrado';
                 }
 
             } catch (error) {
                 console.error('Erro ao buscar endereço:', error);
                 qrLoading.classList.remove('active');
-                closeQrScanner();
-                showErrorModal('Erro ao buscar endereço. Verifique o console para detalhes.');
+                currentRecord = null;
+                qrResultData.innerHTML = `<span style="color: #f87171;">Erro ao buscar endereço</span>`;
+                qrResult.classList.add('active');
+                qrStatusText.textContent = 'Erro na busca';
             }
         }
 
-        // Show address modal with delivery details
-        function showAddressModal(record) {
-            const modal = document.createElement('div');
-            modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
-            modal.innerHTML = `
-                <div style="background: var(--surface-light); padding: 24px; border-radius: 16px; box-shadow: var(--shadow); max-width: 450px; width: 90%; margin: 0 16px;">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
-                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2" style="width: 24px; height: 24px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-light);">Endereço Encontrado</h3>
-                            <p style="font-size: 12px; color: var(--text-muted-light); font-family: monospace;">${record.spx_tn || '-'}</p>
-                        </div>
-                    </div>
+        // Handle confirm button - navigate to map
+        function handleQrCodeConfirm() {
+            if (currentRecord && currentRecord.latitude && currentRecord.longitude && map) {
+                closeQrScanner();
+                map.flyTo({
+                    center: [currentRecord.longitude, currentRecord.latitude],
+                    zoom: 17,
+                    duration: 2000
+                });
 
-                    <div style="background: var(--bg-light); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                        <p style="font-size: 15px; color: var(--text-light); line-height: 1.6; font-weight: 500;">${record.destination_address || 'Endereço não disponível'}</p>
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-                        <div style="background: var(--bg-light); border-radius: 10px; padding: 12px;">
-                            <p style="font-size: 11px; color: var(--text-muted-light); text-transform: uppercase; margin-bottom: 4px;">Bairro</p>
-                            <p style="font-size: 13px; color: var(--text-light); font-weight: 500;">${record.bairro || '-'}</p>
-                        </div>
-                        <div style="background: var(--bg-light); border-radius: 10px; padding: 12px;">
-                            <p style="font-size: 11px; color: var(--text-muted-light); text-transform: uppercase; margin-bottom: 4px;">Cidade</p>
-                            <p style="font-size: 13px; color: var(--text-light); font-weight: 500;">${record.city || '-'}</p>
-                        </div>
-                        <div style="background: var(--bg-light); border-radius: 10px; padding: 12px;">
-                            <p style="font-size: 11px; color: var(--text-muted-light); text-transform: uppercase; margin-bottom: 4px;">CEP</p>
-                            <p style="font-size: 13px; color: var(--text-light); font-weight: 500;">${record.zipcode || '-'}</p>
-                        </div>
-                        <div style="background: var(--bg-light); border-radius: 10px; padding: 12px;">
-                            <p style="font-size: 11px; color: var(--text-muted-light); text-transform: uppercase; margin-bottom: 4px;">Parada</p>
-                            <p style="font-size: 13px; color: var(--text-light); font-weight: 500;">${record.sequence || '-'} / ${record.stop || '-'}</p>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; gap: 12px;">
-                        <button id="addressClose" style="flex: 1; padding: 14px; border: 2px solid var(--border-light); background: transparent; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text-light); transition: all 0.2s ease;">Fechar</button>
-                        <button id="addressNavigate" style="flex: 1; padding: 14px; border: none; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: white; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            Ver no Mapa
-                        </button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-
-            // Close button
-            modal.querySelector('#addressClose').addEventListener('click', () => modal.remove());
-
-            // Navigate button - fly to location on map
-            modal.querySelector('#addressNavigate').addEventListener('click', () => {
-                modal.remove();
-                if (record.latitude && record.longitude && map) {
-                    map.flyTo({
-                        center: [record.longitude, record.latitude],
-                        zoom: 17,
-                        duration: 2000
-                    });
-
-                    // Add a temporary marker
-                    new mapboxgl.Popup({ closeOnClick: true, closeButton: true })
-                        .setLngLat([record.longitude, record.latitude])
-                        .setHTML(`<strong>${record.destination_address}</strong><br><small>${record.bairro || ''} - ${record.city || ''}</small>`)
-                        .addTo(map);
-                } else {
-                    showErrorModal('Coordenadas não disponíveis para este endereço.');
-                }
-            });
-
-            // Click outside to close
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.remove();
-            });
+                // Add popup at location
+                new mapboxgl.Popup({ closeOnClick: true, closeButton: true })
+                    .setLngLat([currentRecord.longitude, currentRecord.latitude])
+                    .setHTML(`<strong>${currentRecord.destination_address}</strong><br><small>${currentRecord.bairro || ''} - ${currentRecord.city || ''}</small>`)
+                    .addTo(map);
+            } else if (currentRecord) {
+                closeQrScanner();
+                showErrorModal('Coordenadas não disponíveis para este endereço.');
+            } else {
+                // No record found, just close and let user scan again
+                qrResult.classList.remove('active');
+                lastScannedCode = null;
+                startScanning();
+            }
         }
 
         // Show success modal
