@@ -2148,6 +2148,34 @@
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
         getUserLocationAndInitMap();
 
+        // Re-center map on GPS when returning to the app (after screen off, tab switch, etc.)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && map && !adjustModeActive) {
+                // Remove view marker if any
+                removeViewMarker();
+
+                // Get current GPS position and center map
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const { latitude, longitude } = position.coords;
+                        map.flyTo({
+                            center: [longitude, latitude],
+                            zoom: Math.max(map.getZoom(), 14),
+                            duration: 1500
+                        });
+                    },
+                    () => {
+                        // Silently fail if GPS not available
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            }
+        });
+
         // Sidebar functionality
         const menuBtn = document.getElementById('menuBtn');
         const sidebar = document.getElementById('sidebar');
