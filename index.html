@@ -647,213 +647,6 @@
             color: var(--text-muted-dark);
         }
 
-        /* Form Modal */
-        .form-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(4px);
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .form-modal.show {
-            display: flex;
-        }
-
-        .form-container {
-            background: var(--surface-light);
-            border-radius: 16px;
-            box-shadow: var(--shadow);
-            max-width: 500px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        body.dark .form-container {
-            background: var(--surface-dark);
-        }
-
-        .form-header {
-            padding: 24px;
-            border-bottom: 1px solid var(--border-light);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        body.dark .form-header {
-            border-bottom-color: var(--border-dark);
-        }
-
-        .form-header h3 {
-            font-size: 18px;
-            font-weight: 700;
-        }
-
-        .form-body {
-            padding: 24px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--border-light);
-            border-radius: 10px;
-            font-family: inherit;
-            font-size: 15px;
-            background: var(--bg-light);
-            color: var(--text-light);
-            transition: all 0.2s ease;
-        }
-
-        body.dark .form-group input {
-            border-color: var(--border-dark);
-            background: var(--bg-dark);
-            color: var(--text-dark);
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-
-        .form-group input::placeholder {
-            color: var(--text-muted-light);
-        }
-
-        body.dark .form-group input::placeholder {
-            color: var(--text-muted-dark);
-        }
-
-        .form-group .helper-text {
-            font-size: 12px;
-            color: var(--text-muted-light);
-            margin-top: 6px;
-        }
-
-        body.dark .form-group .helper-text {
-            color: var(--text-muted-dark);
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 12px;
-            padding: 20px 24px;
-            border-top: 1px solid var(--border-light);
-        }
-
-        body.dark .form-actions {
-            border-top-color: var(--border-dark);
-        }
-
-        .btn {
-            flex: 1;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 10px;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .btn-cancel {
-            background: var(--bg-light);
-            color: var(--text-light);
-        }
-
-        body.dark .btn-cancel {
-            background: var(--bg-dark);
-            color: var(--text-dark);
-        }
-
-        .btn-cancel:hover {
-            background: var(--border-light);
-        }
-
-        body.dark .btn-cancel:hover {
-            background: var(--border-dark);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, #0369a1 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px -8px rgba(14, 165, 233, 0.5);
-        }
-
-        .btn-primary:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .map-click-btn {
-            width: 100%;
-            padding: 12px 16px;
-            background: var(--bg-light);
-            border: 2px dashed var(--border-light);
-            border-radius: 10px;
-            font-family: inherit;
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-muted-light);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        body.dark .map-click-btn {
-            background: var(--bg-dark);
-            border-color: var(--border-dark);
-            color: var(--text-muted-dark);
-        }
-
-        .map-click-btn:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        .map-click-btn.active {
-            background: #dbeafe;
-            border-color: var(--primary);
-            color: var(--primary);
-        }
-
-        body.dark .map-click-btn.active {
-            background: #1e3a8a;
-        }
-
-        .map-click-btn svg {
-            width: 18px;
-            height: 18px;
-        }
 
         /* Loading */
         .loading {
@@ -885,43 +678,6 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Sidebar Footer */
-        .sidebar-footer {
-            padding: 16px 24px;
-            border-top: 1px solid var(--border-light);
-        }
-
-        body.dark .sidebar-footer {
-            border-top-color: var(--border-dark);
-        }
-
-        .add-btn {
-            width: 100%;
-            padding: 14px 20px;
-            background: linear-gradient(135deg, var(--primary) 0%, #0369a1 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .add-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px -8px rgba(14, 165, 233, 0.5);
-        }
-
-        .add-btn svg {
-            width: 20px;
-            height: 20px;
-        }
 
         /* Custom Marker */
         .custom-marker {
@@ -957,15 +713,6 @@
             .sidebar {
                 width: 100%;
                 max-width: 100%;
-            }
-
-            .form-container {
-                max-width: 100%;
-                border-radius: 16px 16px 0 0;
-            }
-
-            .form-modal {
-                align-items: flex-end;
             }
         }
     </style>
@@ -1057,63 +804,6 @@
             <!-- Cliente List -->
             <div class="cliente-list" id="clienteList" style="display: none;"></div>
         </div>
-
-        <div class="sidebar-footer">
-            <button class="add-btn" id="addBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                Novo Cliente
-            </button>
-        </div>
-    </div>
-
-    <!-- Form Modal -->
-    <div class="form-modal" id="formModal">
-        <div class="form-container">
-            <div class="form-header">
-                <h3 id="formTitle">Novo Cliente</h3>
-                <button class="close-btn" id="closeFormBtn">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <div class="form-body">
-                <form id="clienteForm">
-                    <div class="form-group">
-                        <label for="address">Endereço</label>
-                        <input type="text" id="address" name="address" placeholder="Rua, número, bairro..." required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Coordenadas</label>
-                        <button type="button" class="map-click-btn" id="mapClickBtn">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            <span id="mapClickBtnText">Clique no mapa para marcar</span>
-                        </button>
-                        <p class="helper-text">Clique no botão e depois clique no mapa para definir a localização</p>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="latitude">Latitude</label>
-                        <input type="number" id="latitude" name="latitude" step="any" placeholder="-23.5505" required readonly>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="longitude">Longitude</label>
-                        <input type="number" id="longitude" name="longitude" step="any" placeholder="-46.6333" required readonly>
-                    </div>
-                </form>
-            </div>
-            <div class="form-actions">
-                <button type="button" class="btn btn-cancel" id="cancelFormBtn">Cancelar</button>
-                <button type="submit" class="btn btn-primary" id="saveFormBtn">Salvar</button>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -1143,7 +833,6 @@
         const retryBtn = document.getElementById('retryBtn');
         let markersVisible = false;
         let allClientes = [];
-        let mapClickHandlerAttached = false;
 
         // In-memory cache (sessionStorage not available in iframe)
         let clientesCache = {
@@ -1229,7 +918,6 @@
         const sidebar = document.getElementById('sidebar');
         const overlay = document.getElementById('overlay');
         const closeBtn = document.getElementById('closeBtn');
-        const addBtn = document.getElementById('addBtn');
         const clienteList = document.getElementById('clienteList');
         const emptyState = document.getElementById('emptyState');
         const loadingState = document.getElementById('loadingState');
@@ -1268,139 +956,6 @@
                 addMarkersToMap(allClientes);
             } else {
                 removeMarkersFromMap();
-            }
-        });
-
-        // Form Modal
-        const formModal = document.getElementById('formModal');
-        const formTitle = document.getElementById('formTitle');
-        const clienteForm = document.getElementById('clienteForm');
-        const closeFormBtn = document.getElementById('closeFormBtn');
-        const cancelFormBtn = document.getElementById('cancelFormBtn');
-        const saveFormBtn = document.getElementById('saveFormBtn');
-        const addressInput = document.getElementById('address');
-        const latitudeInput = document.getElementById('latitude');
-        const longitudeInput = document.getElementById('longitude');
-        const mapClickBtn = document.getElementById('mapClickBtn');
-        const mapClickBtnText = document.getElementById('mapClickBtnText');
-
-        let isMapClickMode = false;
-        let editingClienteId = null;
-        let tempMarker = null;
-
-        function openForm(cliente = null) {
-            if (cliente) {
-                formTitle.textContent = 'Editar Cliente';
-                editingClienteId = cliente.id;
-                addressInput.value = cliente.address;
-                latitudeInput.value = cliente.latitude;
-                longitudeInput.value = cliente.longitude;
-            } else {
-                formTitle.textContent = 'Novo Cliente';
-                editingClienteId = null;
-                clienteForm.reset();
-            }
-            formModal.classList.add('show');
-        }
-
-        function closeForm() {
-            formModal.classList.remove('show');
-            isMapClickMode = false;
-            mapClickBtn.classList.remove('active');
-            mapClickBtnText.textContent = 'Clique no mapa para marcar';
-            if (tempMarker) {
-                tempMarker.remove();
-                tempMarker = null;
-            }
-        }
-
-        addBtn.addEventListener('click', () => openForm());
-        closeFormBtn.addEventListener('click', closeForm);
-        cancelFormBtn.addEventListener('click', closeForm);
-
-        // Map click mode
-        mapClickBtn.addEventListener('click', () => {
-            isMapClickMode = !isMapClickMode;
-            if (isMapClickMode) {
-                mapClickBtn.classList.add('active');
-                mapClickBtnText.textContent = 'Aguardando clique no mapa...';
-                map.getCanvas().style.cursor = 'crosshair';
-            } else {
-                mapClickBtn.classList.remove('active');
-                mapClickBtnText.textContent = 'Clique no mapa para marcar';
-                map.getCanvas().style.cursor = '';
-            }
-        });
-
-        // Map click handler
-        function handleMapClick(e) {
-            if (!isMapClickMode) return;
-
-            const { lng, lat } = e.lngLat;
-            latitudeInput.value = lat.toFixed(6);
-            longitudeInput.value = lng.toFixed(6);
-
-            // Remove previous temp marker
-            if (tempMarker) {
-                tempMarker.remove();
-            }
-
-            // Add temp marker
-            const el = document.createElement('div');
-            el.className = 'custom-marker';
-            tempMarker = new mapboxgl.Marker(el)
-                .setLngLat([lng, lat])
-                .addTo(map);
-
-            // Exit map click mode
-            isMapClickMode = false;
-            mapClickBtn.classList.remove('active');
-            mapClickBtnText.textContent = 'Coordenadas definidas ✓';
-            map.getCanvas().style.cursor = '';
-        }
-
-        // Save form
-        saveFormBtn.addEventListener('click', async () => {
-            if (!clienteForm.checkValidity()) {
-                clienteForm.reportValidity();
-                return;
-            }
-
-            const clienteData = {
-                address: addressInput.value,
-                latitude: parseFloat(latitudeInput.value),
-                longitude: parseFloat(longitudeInput.value)
-            };
-
-            saveFormBtn.disabled = true;
-            saveFormBtn.textContent = 'Salvando...';
-
-            try {
-                if (editingClienteId) {
-                    // Update
-                    const { error } = await db
-                        .from('clients')
-                        .update(clienteData)
-                        .eq('id', editingClienteId);
-
-                    if (error) throw error;
-                } else {
-                    // Insert
-                    const { error } = await db
-                        .from('clients')
-                        .insert([clienteData]);
-
-                    if (error) throw error;
-                }
-
-                closeForm();
-                await loadClientes();
-            } catch (error) {
-                console.error('Erro ao salvar:', error);
-                showErrorModal('Erro ao salvar cliente. Verifique o console para detalhes.');
-            } finally {
-                saveFormBtn.disabled = false;
-                saveFormBtn.textContent = 'Salvar';
             }
         });
 
@@ -1531,10 +1086,10 @@
                     closeSidebar();
                 });
 
-                // Edit button
+                // Edit button - functionality to be implemented later
                 item.querySelector('.edit').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    openForm(cliente);
+                    console.log('Edit functionality coming soon for:', cliente);
                 });
 
                 // Delete button
@@ -1543,19 +1098,15 @@
 
                     // Custom confirm dialog
                     const modal = document.createElement('div');
-                    modal.className = 'form-modal show';
+                    modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(4px);';
                     modal.innerHTML = `
-                        <div class="form-container" style="max-width: 400px;">
-                            <div class="form-header">
-                                <h3>Confirmar exclusão</h3>
-                            </div>
-                            <div class="form-body">
-                                <p>Tem certeza que deseja excluir este cliente?</p>
-                                <p style="margin-top: 12px; font-weight: 600;">${cliente.address}</p>
-                            </div>
-                            <div class="form-actions">
-                                <button class="btn btn-cancel" id="confirmCancel">Cancelar</button>
-                                <button class="btn btn-primary" id="confirmDelete" style="background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);">Excluir</button>
+                        <div style="background: var(--surface-light); padding: 24px; border-radius: 16px; box-shadow: var(--shadow); max-width: 400px; width: 90%; margin: 0 16px;">
+                            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--text-light);">Confirmar exclusão</h3>
+                            <p style="font-size: 14px; color: var(--text-muted-light); margin-bottom: 8px;">Tem certeza que deseja excluir este cliente?</p>
+                            <p style="font-size: 14px; font-weight: 600; color: var(--text-light);">${cliente.address}</p>
+                            <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end;">
+                                <button id="confirmCancel" style="padding: 10px 20px; border: 2px solid var(--border-light); background: transparent; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text-light); transition: all 0.2s ease;">Cancelar</button>
+                                <button id="confirmDelete" style="padding: 10px 20px; border: none; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: white; transition: all 0.2s ease;">Excluir</button>
                             </div>
                         </div>
                     `;
@@ -1595,17 +1146,13 @@
         // Show error modal
         function showErrorModal(message) {
             const modal = document.createElement('div');
-            modal.className = 'form-modal show';
+            modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000; backdrop-filter: blur(4px);';
             modal.innerHTML = `
-                <div class="form-container" style="max-width: 400px;">
-                    <div class="form-header">
-                        <h3>Erro</h3>
-                    </div>
-                    <div class="form-body">
-                        <p>${message}</p>
-                    </div>
-                    <div class="form-actions">
-                        <button class="btn btn-primary" id="errorOk">OK</button>
+                <div style="background: var(--surface-light); padding: 24px; border-radius: 16px; box-shadow: var(--shadow); max-width: 400px; width: 90%; margin: 0 16px;">
+                    <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--text-light);">Erro</h3>
+                    <p style="font-size: 14px; color: var(--text-muted-light); line-height: 1.6;">${message}</p>
+                    <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+                        <button id="errorOk" style="padding: 10px 20px; border: none; background: var(--primary); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: white; transition: all 0.2s ease;">OK</button>
                     </div>
                 </div>
             `;
@@ -1780,14 +1327,6 @@
             });
         }
 
-        // Attach map click handler when map is ready
-        const checkMapReady = setInterval(() => {
-            if (map && map.loaded() && !mapClickHandlerAttached) {
-                map.on('click', handleMapClick);
-                mapClickHandlerAttached = true;
-                clearInterval(checkMapReady);
-            }
-        }, 100);
 
         // Load clients immediately on page load
         (async function initLoadClientes() {
