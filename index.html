@@ -2044,49 +2044,38 @@
             timestamp: 0
         };
 
+        // Initialize map with given coordinates
+        function initMapWithCoords(lat, lng, zoom = 14) {
+            locationError.classList.remove('show');
+
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: [lng, lat],
+                zoom: zoom
+            });
+
+            initializeMapControls();
+
+            // Load clientes after map is fully loaded
+            map.on('load', () => {
+                loadClientes();
+            });
+        }
+
         function getUserLocationAndInitMap() {
+            // Default location (Belém, PA, Brazil)
+            const defaultLat = -1.4558;
+            const defaultLng = -48.4902;
+
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        const userLat = position.coords.latitude;
-                        const userLng = position.coords.longitude;
-
-                        locationError.classList.remove('show');
-
-                        map = new mapboxgl.Map({
-                            container: 'map',
-                            style: 'mapbox://styles/mapbox/streets-v12',
-                            center: [userLng, userLat],
-                            zoom: 14
-                        });
-
-                        initializeMapControls();
-
-                        // Load clientes after map is fully loaded
-                        map.on('load', () => {
-                            loadClientes();
-                        });
+                        initMapWithCoords(position.coords.latitude, position.coords.longitude);
                     },
                     (error) => {
-                        console.error('Geolocation error:', error);
-                        let message = '';
-
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                message = 'Você negou o acesso à localização. Permita o acesso nas configurações do navegador.';
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                message = 'Não foi possível obter sua localização. Verifique se o GPS está ativado.';
-                                break;
-                            case error.TIMEOUT:
-                                message = 'Tempo esgotado ao tentar obter sua localização. Tente novamente.';
-                                break;
-                            default:
-                                message = 'Erro ao obter sua localização. Verifique as permissões do navegador.';
-                        }
-
-                        errorMessage.textContent = message;
-                        locationError.classList.add('show');
+                        // GPS failed - load map with default location anyway
+                        initMapWithCoords(defaultLat, defaultLng, 12);
                     },
                     {
                         enableHighAccuracy: true,
@@ -2095,8 +2084,8 @@
                     }
                 );
             } else {
-                errorMessage.textContent = 'Seu navegador não suporta geolocalização.';
-                locationError.classList.add('show');
+                // No geolocation support - load map with default location
+                initMapWithCoords(defaultLat, defaultLng, 12);
             }
         }
 
