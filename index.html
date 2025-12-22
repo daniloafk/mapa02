@@ -796,6 +796,107 @@
             color: #4ade80;
         }
 
+        /* Route Markers Button */
+        .route-markers-btn {
+            position: fixed;
+            top: 240px;
+            right: 10px;
+            z-index: 1000;
+            width: 48px;
+            height: 48px;
+            border: none;
+            border-radius: 12px;
+            background: var(--surface-light);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.dark .route-markers-btn {
+            background: var(--surface-dark);
+        }
+
+        .route-markers-btn:hover {
+            transform: scale(1.05);
+            background: #8b5cf6;
+        }
+
+        .route-markers-btn:hover svg {
+            color: white;
+        }
+
+        .route-markers-btn.active {
+            background: #8b5cf6;
+        }
+
+        .route-markers-btn.active svg {
+            color: white;
+        }
+
+        .route-markers-btn svg {
+            width: 24px;
+            height: 24px;
+            color: #8b5cf6;
+            transition: color 0.3s ease;
+        }
+
+        body.dark .route-markers-btn svg {
+            color: #a78bfa;
+        }
+
+        /* Route Stop Marker */
+        .route-stop-marker {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            border: 3px solid white;
+            border-radius: 50%;
+            color: white;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            box-shadow: 0 3px 10px rgba(139, 92, 246, 0.5);
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .route-stop-marker:hover {
+            transform: scale(1.15);
+        }
+
+        /* Route Popup */
+        .route-popup-content {
+            font-size: 13px;
+            max-width: 220px;
+        }
+
+        .route-popup-address {
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .route-popup-orders {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .route-popup-order {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
         /* Upload Modal */
         .upload-modal {
             position: fixed;
@@ -1796,6 +1897,14 @@
         </svg>
     </button>
 
+    <!-- Route Markers Button -->
+    <button class="route-markers-btn" id="routeMarkersBtn" aria-label="Paradas da Rota" title="Paradas da Rota">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            <circle cx="12" cy="9" r="2"/>
+        </svg>
+    </button>
+
     <!-- QR Scanner Modal -->
     <div class="qr-modal" id="qrModal">
         <div class="qr-modal-header">
@@ -2643,6 +2752,115 @@
                 map.getCanvas().style.cursor = '';
             });
         }
+
+        // ========================================
+        // Route Markers Functionality
+        // ========================================
+        const routeMarkersBtn = document.getElementById('routeMarkersBtn');
+        let routeMarkers = [];
+        let routeMarkersVisible = false;
+
+        async function loadRouteMarkers() {
+            try {
+                // Fetch all data from planilha table
+                const { data, error } = await db
+                    .from('planilha')
+                    .select('destination_address, latitude, longitude, sequence, stop')
+                    .not('latitude', 'is', null)
+                    .not('longitude', 'is', null);
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    showErrorModal('Nenhum dado encontrado na planilha. Faça o upload de uma planilha primeiro.');
+                    return;
+                }
+
+                // Group by stop number (each stop has the same coordinates)
+                const stopGroups = {};
+                data.forEach(row => {
+                    const stopKey = row.stop;
+                    if (!stopGroups[stopKey]) {
+                        stopGroups[stopKey] = {
+                            stop: row.stop,
+                            address: row.destination_address,
+                            latitude: row.latitude,
+                            longitude: row.longitude,
+                            sequences: []
+                        };
+                    }
+                    if (row.sequence) {
+                        stopGroups[stopKey].sequences.push(row.sequence);
+                    }
+                });
+
+                // Create markers for each stop
+                Object.values(stopGroups).forEach(stop => {
+                    const markerEl = document.createElement('div');
+                    markerEl.className = 'route-stop-marker';
+                    markerEl.textContent = stop.stop;
+
+                    // Sort sequences
+                    stop.sequences.sort((a, b) => a - b);
+                    const ordersHtml = stop.sequences.map(seq =>
+                        `<span class="route-popup-order">${seq}</span>`
+                    ).join('');
+
+                    const popup = new mapboxgl.Popup({
+                        offset: 20,
+                        closeButton: true,
+                        closeOnClick: false
+                    }).setHTML(`
+                        <div class="route-popup-content">
+                            <div class="route-popup-address">${stop.address || 'Endereço não disponível'}</div>
+                            <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada ${stop.stop} - Ordem:</div>
+                            <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                        </div>
+                    `);
+
+                    const marker = new mapboxgl.Marker({
+                        element: markerEl,
+                        anchor: 'center'
+                    })
+                        .setLngLat([stop.longitude, stop.latitude])
+                        .setPopup(popup)
+                        .addTo(map);
+
+                    routeMarkers.push(marker);
+                });
+
+                routeMarkersVisible = true;
+                routeMarkersBtn.classList.add('active');
+
+                // Fit map to show all markers
+                if (routeMarkers.length > 0) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    routeMarkers.forEach(marker => {
+                        bounds.extend(marker.getLngLat());
+                    });
+                    map.fitBounds(bounds, { padding: 50, duration: 1500 });
+                }
+
+            } catch (error) {
+                console.error('Erro ao carregar paradas:', error);
+                showErrorModal('Erro ao carregar as paradas da planilha.');
+            }
+        }
+
+        function removeRouteMarkers() {
+            routeMarkers.forEach(marker => marker.remove());
+            routeMarkers = [];
+            routeMarkersVisible = false;
+            routeMarkersBtn.classList.remove('active');
+        }
+
+        routeMarkersBtn.addEventListener('click', () => {
+            if (routeMarkersVisible) {
+                removeRouteMarkers();
+            } else {
+                loadRouteMarkers();
+            }
+        });
 
         // ========================================
         // Spreadsheet Upload Functionality
