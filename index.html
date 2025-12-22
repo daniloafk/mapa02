@@ -2375,6 +2375,23 @@
 
             markerEl.style.cursor = 'pointer';
 
+            // Track if marker was just clicked
+            let markerClicked = false;
+
+            // Click on marker to toggle popup
+            markerEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                markerClicked = true;
+                if (viewMarker && viewPopup) {
+                    if (viewPopup.isOpen()) {
+                        viewPopup.remove();
+                    } else {
+                        viewPopup.setLngLat([lng, lat]).addTo(map);
+                    }
+                }
+                setTimeout(() => { markerClicked = false; }, 100);
+            });
+
             // X button click handler - capture phase to run before anything else
             viewXClickHandler = (e) => {
                 if (e.target.classList.contains('view-popup-close-btn')) {
@@ -2387,7 +2404,8 @@
             document.addEventListener('click', viewXClickHandler, true);
 
             // Map click handler - close popup only, keep marker
-            viewMapClickHandler = (e) => {
+            viewMapClickHandler = () => {
+                if (markerClicked) return;
                 if (viewPopup && viewPopup.isOpen()) {
                     viewPopup.remove();
                 }
