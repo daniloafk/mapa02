@@ -2175,14 +2175,8 @@
                 container: 'map',
                 style: 'mapbox://styles/mapbox/streets-v12',
                 center: [lng, lat],
-                zoom: zoom,
-                pitchWithRotate: false,
-                dragRotate: false,
-                touchPitch: false
+                zoom: zoom
             });
-
-            // Disable rotation to prevent pinch-zoom gesture conflicts
-            map.touchZoomRotate.disableRotation();
 
             initializeMapControls();
 
