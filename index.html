@@ -2318,8 +2318,18 @@
         // Temporary marker for "View on map"
         let viewMarker = null;
         let viewPopup = null;
+        let viewMapClickHandler = null;
+        let viewXClickHandler = null;
 
         function removeViewMarker() {
+            if (viewMapClickHandler) {
+                map.off('click', viewMapClickHandler);
+                viewMapClickHandler = null;
+            }
+            if (viewXClickHandler) {
+                document.removeEventListener('click', viewXClickHandler, true);
+                viewXClickHandler = null;
+            }
             if (viewPopup) {
                 viewPopup.remove();
                 viewPopup = null;
@@ -2342,15 +2352,14 @@
                 <div class="view-marker-pulse"></div>
             `;
 
-            // Create popup with custom X button
-            const popupId = 'popup-' + Date.now();
+            // Create popup with custom X button - NO closeOnClick
             viewPopup = new mapboxgl.Popup({
                 offset: 25,
                 closeButton: false,
-                closeOnClick: true
+                closeOnClick: false
             }).setHTML(`
                 <div style="position: relative; padding-right: 20px;">
-                    <button id="${popupId}" style="position: absolute; top: -5px; right: -15px; width: 22px; height: 22px; border: none; background: #ef4444; color: white; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">×</button>
+                    <button class="view-popup-close-btn" style="position: absolute; top: -5px; right: -15px; width: 22px; height: 22px; border: none; background: #ef4444; color: white; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">×</button>
                     <div style="font-size: 13px; font-weight: 500; max-width: 200px;">${address}</div>
                 </div>
             `);
@@ -2364,31 +2373,33 @@
                 .setPopup(viewPopup)
                 .addTo(map);
 
-            // Click on marker to reopen popup
             markerEl.style.cursor = 'pointer';
 
-            // Function to attach close button listener
-            function attachCloseListener() {
-                const closeBtn = document.getElementById(popupId);
-                if (closeBtn) {
-                    closeBtn.onclick = (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        removeViewMarker();
-                    };
+            // X button click handler - capture phase to run before anything else
+            viewXClickHandler = (e) => {
+                if (e.target.classList.contains('view-popup-close-btn')) {
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    e.preventDefault();
+                    removeViewMarker();
                 }
-            }
+            };
+            document.addEventListener('click', viewXClickHandler, true);
+
+            // Map click handler - close popup only, keep marker
+            viewMapClickHandler = (e) => {
+                if (viewPopup && viewPopup.isOpen()) {
+                    viewPopup.remove();
+                }
+            };
 
             // Show popup after map finishes flying
             map.once('moveend', () => {
                 if (viewMarker && viewPopup) {
-                    viewPopup.addTo(map);
-                    attachCloseListener();
+                    viewPopup.setLngLat([lng, lat]).addTo(map);
+                    map.on('click', viewMapClickHandler);
                 }
             });
-
-            // Re-attach listener when popup is reopened via marker click
-            viewPopup.on('open', attachCloseListener);
         }
 
         // Event delegation for cliente list actions
