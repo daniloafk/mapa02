@@ -847,6 +847,56 @@
             color: #a78bfa;
         }
 
+        /* Route Stop Pin Marker (needle style like adjust mode) */
+        .route-stop-pin {
+            position: relative;
+            width: 24px;
+            height: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .route-stop-pin-head {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.6);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .route-stop-pin-needle {
+            width: 3px;
+            height: 22px;
+            background: linear-gradient(to bottom, #7c3aed 0%, #5b21b6 100%);
+            border-radius: 0 0 2px 2px;
+            box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .route-stop-pin-shadow {
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 6px;
+            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
+        }
+
+        .route-stop-pin:hover .route-stop-pin-head {
+            transform: scale(1.1);
+            transition: transform 0.2s ease;
+        }
+
         /* Route Popup */
         .route-popup-content {
             font-size: 13px;
@@ -2731,12 +2781,11 @@
         }
 
         // ========================================
-        // Route Markers Functionality (Native Mapbox Layers)
+        // Route Markers Functionality (DOM Markers with needle style)
         // ========================================
         const routeMarkersBtn = document.getElementById('routeMarkersBtn');
+        let routeMarkers = [];
         let routeMarkersVisible = false;
-        let routeStopsData = []; // Store data for popup lookup
-        let routePopup = null;
 
         async function loadRouteMarkers() {
             try {
@@ -2772,119 +2821,55 @@
                     }
                 });
 
-                // Store for popup lookup
-                routeStopsData = Object.values(stopGroups);
+                const stops = Object.values(stopGroups);
 
-                // Create GeoJSON features
-                const features = routeStopsData.map(stop => {
+                // Create markers for each stop
+                stops.forEach(stop => {
+                    // Create pin element (needle style)
+                    const pinEl = document.createElement('div');
+                    pinEl.className = 'route-stop-pin';
+                    pinEl.innerHTML = `
+                        <div class="route-stop-pin-head">${stop.stop}</div>
+                        <div class="route-stop-pin-needle"></div>
+                        <div class="route-stop-pin-shadow"></div>
+                    `;
+
+                    // Sort sequences
                     stop.sequences.sort((a, b) => a - b);
-                    return {
-                        type: 'Feature',
-                        geometry: {
-                            type: 'Point',
-                            coordinates: [stop.longitude, stop.latitude]
-                        },
-                        properties: {
-                            stop: stop.stop,
-                            address: stop.address || 'Endereço não disponível',
-                            sequences: stop.sequences.join(', ')
-                        }
-                    };
+                    const ordersHtml = stop.sequences.map(seq =>
+                        `<span class="route-popup-order">${seq}</span>`
+                    ).join('');
+
+                    const popup = new mapboxgl.Popup({
+                        offset: [0, -50],
+                        closeButton: true,
+                        closeOnClick: true
+                    }).setHTML(`
+                        <div class="route-popup-content">
+                            <div class="route-popup-address">${stop.address || 'Endereço não disponível'}</div>
+                            <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada ${stop.stop} - Ordem:</div>
+                            <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                        </div>
+                    `);
+
+                    const marker = new mapboxgl.Marker({
+                        element: pinEl,
+                        anchor: 'bottom'
+                    })
+                        .setLngLat([stop.longitude, stop.latitude])
+                        .setPopup(popup)
+                        .addTo(map);
+
+                    routeMarkers.push(marker);
                 });
-
-                const geojson = {
-                    type: 'FeatureCollection',
-                    features: features
-                };
-
-                // Add source if not exists, otherwise update data
-                if (map.getSource('route-stops')) {
-                    map.getSource('route-stops').setData(geojson);
-                } else {
-                    map.addSource('route-stops', {
-                        type: 'geojson',
-                        data: geojson
-                    });
-
-                    // Add circle layer (marker background)
-                    map.addLayer({
-                        id: 'route-stops-circle',
-                        type: 'circle',
-                        source: 'route-stops',
-                        paint: {
-                            'circle-radius': 16,
-                            'circle-color': '#8b5cf6',
-                            'circle-stroke-width': 3,
-                            'circle-stroke-color': '#ffffff'
-                        }
-                    });
-
-                    // Add symbol layer (stop number text)
-                    map.addLayer({
-                        id: 'route-stops-label',
-                        type: 'symbol',
-                        source: 'route-stops',
-                        layout: {
-                            'text-field': ['get', 'stop'],
-                            'text-size': 12,
-                            'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
-                            'text-allow-overlap': true
-                        },
-                        paint: {
-                            'text-color': '#ffffff'
-                        }
-                    });
-
-                    // Add click event for popup
-                    map.on('click', 'route-stops-circle', (e) => {
-                        const feature = e.features[0];
-                        const coords = feature.geometry.coordinates.slice();
-                        const props = feature.properties;
-
-                        const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
-                        const ordersHtml = sequencesArr.map(seq =>
-                            `<span class="route-popup-order">${seq}</span>`
-                        ).join('');
-
-                        // Close existing popup
-                        if (routePopup) routePopup.remove();
-
-                        routePopup = new mapboxgl.Popup({
-                            offset: 20,
-                            closeButton: true,
-                            closeOnClick: true
-                        })
-                            .setLngLat(coords)
-                            .setHTML(`
-                                <div class="route-popup-content">
-                                    <div class="route-popup-address">${props.address}</div>
-                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada ${props.stop} - Ordem:</div>
-                                    <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
-                                </div>
-                            `)
-                            .addTo(map);
-                    });
-
-                    // Change cursor on hover
-                    map.on('mouseenter', 'route-stops-circle', () => {
-                        map.getCanvas().style.cursor = 'pointer';
-                    });
-                    map.on('mouseleave', 'route-stops-circle', () => {
-                        map.getCanvas().style.cursor = '';
-                    });
-                }
-
-                // Show layers
-                map.setLayoutProperty('route-stops-circle', 'visibility', 'visible');
-                map.setLayoutProperty('route-stops-label', 'visibility', 'visible');
 
                 routeMarkersVisible = true;
                 routeMarkersBtn.classList.add('active');
 
                 // Fit map to show all markers
-                if (features.length > 0) {
+                if (routeMarkers.length > 0) {
                     const bounds = new mapboxgl.LngLatBounds();
-                    features.forEach(f => bounds.extend(f.geometry.coordinates));
+                    routeMarkers.forEach(marker => bounds.extend(marker.getLngLat()));
                     map.fitBounds(bounds, { padding: 50, duration: 1500 });
                 }
 
@@ -2895,16 +2880,8 @@
         }
 
         function removeRouteMarkers() {
-            if (map.getLayer('route-stops-circle')) {
-                map.setLayoutProperty('route-stops-circle', 'visibility', 'none');
-            }
-            if (map.getLayer('route-stops-label')) {
-                map.setLayoutProperty('route-stops-label', 'visibility', 'none');
-            }
-            if (routePopup) {
-                routePopup.remove();
-                routePopup = null;
-            }
+            routeMarkers.forEach(marker => marker.remove());
+            routeMarkers = [];
             routeMarkersVisible = false;
             routeMarkersBtn.classList.remove('active');
         }
