@@ -2343,17 +2343,14 @@
             });
         }
 
-        // Override X button to remove marker completely
-        function overrideCloseButton() {
-            const closeBtn = document.querySelector('.mapboxgl-popup-close-button');
-            if (closeBtn) {
-                closeBtn.onclick = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    removeViewMarker();
-                };
+        // Global click handler for popup close button (using capture phase for reliability)
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('mapboxgl-popup-close-button') && viewMarker) {
+                e.preventDefault();
+                e.stopPropagation();
+                removeViewMarker();
             }
-        }
+        }, true);
 
         function showViewMarker(lat, lng, address) {
             // Remove existing marker if any
@@ -2382,11 +2379,6 @@
                 .setLngLat([lng, lat])
                 .setPopup(viewPopup)
                 .addTo(map);
-
-            // Override X button when popup opens
-            viewPopup.on('open', () => {
-                setTimeout(overrideCloseButton, 20);
-            });
 
             // Show popup after map finishes flying
             map.once('moveend', () => {
