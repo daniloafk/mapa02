@@ -2313,7 +2313,8 @@
         // Temporary marker for "View on map"
         let viewMarker = null;
         let viewPopup = null;
-        let closedByXButton = false;
+        let viewMarkerEl = null;
+        let viewLngLat = null;
 
         function removeViewMarker() {
             if (viewPopup) {
@@ -2324,79 +2325,97 @@
                 viewMarker.remove();
                 viewMarker = null;
             }
-            closedByXButton = false;
+            viewMarkerEl = null;
+            viewLngLat = null;
         }
 
-        // Global map click handler for closing popup (keep marker)
+        // Global map click handler for closing popup
         function setupMapClickHandler() {
             map.on('click', (e) => {
-                // Don't close if clicking on marker or popup
-                if (e.originalEvent.target.closest('.view-marker') ||
-                    e.originalEvent.target.closest('.mapboxgl-popup')) {
+                // Check if click was on the marker
+                if (viewMarkerEl && viewMarkerEl.contains(e.originalEvent.target)) {
                     return;
                 }
-                // Just close popup, keep marker
-                if (viewMarker) {
-                    const popup = viewMarker.getPopup();
-                    if (popup && popup.isOpen()) {
-                        viewMarker.togglePopup();
-                    }
+                // Check if click was on popup
+                if (e.originalEvent.target.closest('.mapboxgl-popup')) {
+                    return;
+                }
+                // Close popup but keep marker
+                if (viewPopup && viewPopup.isOpen()) {
+                    viewPopup.remove();
                 }
             });
+        }
+
+        // Attach X button click handler to popup
+        function attachPopupCloseHandler() {
+            const closeBtn = document.querySelector('.view-popup-close-btn');
+            if (closeBtn) {
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    removeViewMarker();
+                };
+            }
         }
 
         function showViewMarker(lat, lng, address) {
             // Remove existing marker if any
             removeViewMarker();
-            closedByXButton = false;
+
+            // Store coordinates
+            viewLngLat = [lng, lat];
 
             // Create marker element
-            const markerEl = document.createElement('div');
-            markerEl.className = 'view-marker';
-            markerEl.innerHTML = `
+            viewMarkerEl = document.createElement('div');
+            viewMarkerEl.className = 'view-marker';
+            viewMarkerEl.innerHTML = `
                 <div class="view-marker-pin"></div>
                 <div class="view-marker-pulse"></div>
             `;
 
-            // Create popup with native Mapbox close button
+            // Create popup with custom X button
             viewPopup = new mapboxgl.Popup({
                 offset: 25,
-                closeButton: true,
+                closeButton: false,
                 closeOnClick: false
-            }).setHTML(`<div style="font-size: 13px; font-weight: 500; max-width: 200px; padding-right: 8px;">${address}</div>`);
+            }).setHTML(`
+                <div style="position: relative; padding-right: 20px;">
+                    <button class="view-popup-close-btn" style="position: absolute; top: -5px; right: -15px; width: 22px; height: 22px; border: none; background: #ef4444; color: white; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; line-height: 1; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,0.3);">×</button>
+                    <div style="font-size: 13px; font-weight: 500; max-width: 200px;">${address}</div>
+                </div>
+            `);
 
-            // When popup closes, check if it was via X button to remove marker
-            viewPopup.on('close', () => {
-                if (closedByXButton) {
-                    removeViewMarker();
-                }
-            });
-
-            // Create marker with popup attached (native Mapbox way)
+            // Add marker to map
             viewMarker = new mapboxgl.Marker({
-                element: markerEl,
+                element: viewMarkerEl,
                 anchor: 'bottom'
             })
-                .setLngLat([lng, lat])
-                .setPopup(viewPopup)
+                .setLngLat(viewLngLat)
                 .addTo(map);
 
-            // Detect X button click when popup opens
-            viewPopup.on('open', () => {
-                setTimeout(() => {
-                    const closeBtn = document.querySelector('.mapboxgl-popup-close-button');
-                    if (closeBtn) {
-                        closeBtn.addEventListener('click', () => {
-                            closedByXButton = true;
-                        }, { once: true });
+            viewMarkerEl.style.cursor = 'pointer';
+
+            // Click on marker to toggle popup
+            viewMarkerEl.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (viewPopup) {
+                    if (viewPopup.isOpen()) {
+                        viewPopup.remove();
+                    } else if (viewLngLat) {
+                        viewPopup.setLngLat(viewLngLat).addTo(map);
+                        // Re-attach close handler when popup reopens
+                        setTimeout(attachPopupCloseHandler, 50);
                     }
-                }, 10);
+                }
             });
 
             // Show popup after map finishes flying
             map.once('moveend', () => {
-                if (viewMarker) {
-                    viewMarker.togglePopup();
+                if (viewPopup && viewLngLat) {
+                    viewPopup.setLngLat(viewLngLat).addTo(map);
+                    // Attach close handler after popup is added
+                    setTimeout(attachPopupCloseHandler, 50);
                 }
             });
         }
