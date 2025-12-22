@@ -2737,56 +2737,64 @@
         let routeMarkersVisible = false;
         let routePopup = null;
 
-        // Generate pin icon with number using Canvas
+        // Generate high-resolution pin icon with number using Canvas (3x for Retina/HiDPI)
         function generatePinIcon(number) {
+            const scale = 3; // High resolution for crisp display on all devices (PC, mobile, car)
+            const baseWidth = 30;
+            const baseHeight = 50;
+            const width = baseWidth * scale;
+            const height = baseHeight * scale;
+
             const canvas = document.createElement('canvas');
-            const width = 30;
-            const height = 50;
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
 
+            // Scale all drawing operations
+            ctx.scale(scale, scale);
+
             // Draw needle
             ctx.fillStyle = '#7c3aed';
             ctx.beginPath();
-            ctx.moveTo(width / 2 - 1.5, 24);
-            ctx.lineTo(width / 2 + 1.5, 24);
-            ctx.lineTo(width / 2 + 1, height - 4);
-            ctx.lineTo(width / 2 - 1, height - 4);
+            ctx.moveTo(15 - 2, 24);
+            ctx.lineTo(15 + 2, 24);
+            ctx.lineTo(15 + 1.5, 46);
+            ctx.lineTo(15 - 1.5, 46);
             ctx.closePath();
             ctx.fill();
 
             // Draw shadow
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
             ctx.beginPath();
-            ctx.ellipse(width / 2, height - 2, 5, 3, 0, 0, Math.PI * 2);
+            ctx.ellipse(15, 48, 6, 3, 0, 0, Math.PI * 2);
             ctx.fill();
 
             // Draw head circle with gradient
-            const gradient = ctx.createLinearGradient(0, 0, width, 24);
-            gradient.addColorStop(0, '#8b5cf6');
+            const gradient = ctx.createLinearGradient(0, 0, 30, 24);
+            gradient.addColorStop(0, '#a78bfa');
+            gradient.addColorStop(0.5, '#8b5cf6');
             gradient.addColorStop(1, '#7c3aed');
 
             ctx.fillStyle = gradient;
             ctx.beginPath();
-            ctx.arc(width / 2, 12, 11, 0, Math.PI * 2);
+            ctx.arc(15, 12, 11, 0, Math.PI * 2);
             ctx.fill();
 
             // Draw white border
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.arc(width / 2, 12, 11, 0, Math.PI * 2);
+            ctx.arc(15, 12, 11, 0, Math.PI * 2);
             ctx.stroke();
 
-            // Draw number
+            // Draw number with better font
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 11px Arial';
+            ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(String(number), width / 2, 12);
+            ctx.fillText(String(number), 15, 12.5);
 
-            return canvas.toDataURL();
+            return { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
         }
 
         async function loadRouteMarkers() {
@@ -2825,17 +2833,18 @@
 
                 const stops = Object.values(stopGroups);
 
-                // Generate and add pin icons for each unique stop number
+                // Generate and add high-resolution pin icons for each unique stop number
                 const iconPromises = stops.map(stop => {
                     return new Promise((resolve) => {
                         const iconName = `pin-${stop.stop}`;
                         if (!map.hasImage(iconName)) {
+                            const { dataUrl, pixelRatio } = generatePinIcon(stop.stop);
                             const img = new Image();
                             img.onload = () => {
-                                map.addImage(iconName, img);
+                                map.addImage(iconName, img, { pixelRatio: pixelRatio });
                                 resolve();
                             };
-                            img.src = generatePinIcon(stop.stop);
+                            img.src = dataUrl;
                         } else {
                             resolve();
                         }
