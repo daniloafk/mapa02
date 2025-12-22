@@ -2341,12 +2341,20 @@
         // Delete cliente
         async function deleteCliente(id) {
             try {
-                const { error } = await db
+                console.log('Deletando cliente ID:', id);
+
+                const { data, error } = await db
                     .from('clients')
                     .delete()
-                    .eq('id', id);
+                    .eq('id', id)
+                    .select();
+
+                console.log('Resultado da exclusão:', { data, error });
 
                 if (error) throw error;
+
+                // Show quick success
+                showQuickSuccess();
 
                 await loadClientes();
             } catch (error) {
