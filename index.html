@@ -2903,17 +2903,28 @@
                 // Extract house number from address
                 function extractHouseNumber(addr) {
                     if (!addr) return null;
-                    // Match patterns like: ", 123", "nº 123", "n 123", "numero 123", or standalone numbers
+
+                    // First, remove CEP patterns to avoid extracting them as house numbers
+                    let cleanAddr = addr
+                        .replace(/\d{5}\s*[-]?\s*\d{3}/g, '') // Remove CEP (66910-100)
+                        .replace(/\b\d{8}\b/g, ''); // Remove CEP without dash (66910100)
+
+                    // Also remove everything after "Bairro:" as it may contain CEP
+                    cleanAddr = cleanAddr.split(/bairro:/i)[0];
+
+                    // Match patterns like: ", 123", ", 1b", "nº 123", "n 123a", "numero 123"
+                    // Captures numbers with optional letter suffix (1b, 61 b, 772A)
                     const patterns = [
-                        /[,\s](\d+)(?:\s|$|,|-)/,           // ", 123" or " 123,"
-                        /n[º°]?\s*(\d+)/i,                   // "nº 123", "n 123"
-                        /numero\s*(\d+)/i,                   // "numero 123"
-                        /^.*?[a-z]\s+(\d+)(?:\s|$|,)/i      // "Rua xyz 123"
+                        /[,\s](\d+\s*[a-zA-Z]?)(?:\s|$|,|-)/,    // ", 123" or ", 1b" or " 61 b"
+                        /n[º°]?\s*(\d+\s*[a-zA-Z]?)/i,           // "nº 123", "n 1b"
+                        /numero\s*(\d+\s*[a-zA-Z]?)/i,           // "numero 123", "numero 1b"
+                        /^.*?[a-z]\s+(\d+\s*[a-zA-Z]?)(?:\s|$|,)/i  // "Rua xyz 123" or "Alameda xyz 1b"
                     ];
                     for (const pattern of patterns) {
-                        const match = addr.match(pattern);
+                        const match = cleanAddr.match(pattern);
                         if (match && match[1]) {
-                            return match[1];
+                            // Normalize: remove spaces and lowercase the letter suffix
+                            return match[1].replace(/\s+/g, '').toLowerCase();
                         }
                     }
                     return null;
