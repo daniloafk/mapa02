@@ -678,6 +678,43 @@
         }
 
 
+        /* Cadastrar Button */
+        .cadastrar-btn {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+            box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .cadastrar-btn:hover {
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 6px 24px rgba(14, 165, 233, 0.5);
+        }
+
+        .cadastrar-btn:active {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .cadastrar-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
         /* Responsive */
         @media (max-width: 480px) {
             .sidebar {
@@ -718,6 +755,14 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
+    </button>
+
+    <!-- Cadastrar Button -->
+    <button class="cadastrar-btn" id="cadastrarBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+        </svg>
+        Cadastrar
     </button>
 
     <!-- Overlay -->
