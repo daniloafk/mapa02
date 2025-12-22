@@ -2191,12 +2191,16 @@
                 zoom: zoom
             });
 
+            // Add map controls (sync, doesn't need load event)
             initializeMapControls();
 
-            // Load clientes and setup handlers after map is fully loaded
+            // Single load event for all initialization
             map.on('load', () => {
                 loadClientes();
                 setupMapClickHandler();
+                // Trigger geolocate after map is fully loaded
+                const geolocateControl = document.querySelector('.mapboxgl-ctrl-geolocate');
+                if (geolocateControl) geolocateControl.click();
             });
         }
 
@@ -2238,10 +2242,6 @@
             });
 
             map.addControl(geolocate, 'top-right');
-
-            map.on('load', () => {
-                geolocate.trigger();
-            });
         }
 
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
@@ -2331,7 +2331,6 @@
                     addMarkersToMap(data);
                 }
             } catch (error) {
-                console.error('Erro ao carregar clientes:', error);
                 clienteCount.textContent = 'Erro ao carregar';
 
                 // If we have cached data, use it as fallback
@@ -2860,13 +2859,6 @@
 
                 const registeredClients = clientsError ? [] : (clientsData || []);
 
-                console.log('═══════════════════════════════════════════════════════');
-                console.log('🗂️ CLIENTES CADASTRADOS NO SUPABASE:', registeredClients.length);
-                registeredClients.forEach((c, i) => {
-                    console.log(`   ${i + 1}. ${c.address}`);
-                });
-                console.log('═══════════════════════════════════════════════════════');
-
                 // Normalize address text for comparison
                 function normalizeAddress(addr) {
                     if (!addr) return '';
@@ -2946,64 +2938,25 @@
                     const normalizedAddr = normalizeAddress(addr);
                     const addrHouseNum = extractHouseNumber(addr);
 
-                    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                    console.log('📍 Buscando match para:', addr);
-                    console.log('   Normalizado:', normalizedAddr);
-                    console.log('   Número casa:', addrHouseNum || '(não encontrado)');
-
-                    let bestMatch = null;
-                    let bestSimilarity = 0;
-
                     for (const client of registeredClients) {
                         const normalizedClient = normalizeAddress(client.address);
                         const clientHouseNum = extractHouseNumber(client.address);
                         const similarity = textSimilarity(normalizedAddr, normalizedClient);
-
-                        if (similarity > bestSimilarity) {
-                            bestSimilarity = similarity;
-                            bestMatch = { client, normalizedClient, clientHouseNum, similarity };
-                        }
 
                         // High similarity threshold for matching
                         if (similarity >= 0.6) {
                             // If both have house numbers, they must match
                             if (addrHouseNum && clientHouseNum) {
                                 if (addrHouseNum === clientHouseNum) {
-                                    console.log('   ✅ MATCH! Cliente:', client.address);
-                                    console.log('   Similaridade:', (similarity * 100).toFixed(1) + '%');
                                     return client;
                                 }
                             } else if (!addrHouseNum && !clientHouseNum) {
                                 // Neither has house number, use higher similarity
                                 if (similarity >= 0.8) {
-                                    console.log('   ✅ MATCH! Cliente:', client.address);
-                                    console.log('   Similaridade:', (similarity * 100).toFixed(1) + '%');
                                     return client;
                                 }
                             }
                         }
-                    }
-
-                    // Log why no match was found
-                    if (bestMatch) {
-                        console.log('   ❌ Sem match. Melhor candidato:');
-                        console.log('      Cliente:', bestMatch.client.address);
-                        console.log('      Normalizado:', bestMatch.normalizedClient);
-                        console.log('      Número casa cliente:', bestMatch.clientHouseNum || '(não encontrado)');
-                        console.log('      Similaridade:', (bestMatch.similarity * 100).toFixed(1) + '%');
-                        if (bestMatch.similarity < 0.6) {
-                            console.log('      Motivo: Similaridade < 60%');
-                        } else if (addrHouseNum && bestMatch.clientHouseNum && addrHouseNum !== bestMatch.clientHouseNum) {
-                            console.log('      Motivo: Números de casa diferentes (' + addrHouseNum + ' vs ' + bestMatch.clientHouseNum + ')');
-                        } else if (addrHouseNum && !bestMatch.clientHouseNum) {
-                            console.log('      Motivo: Planilha tem número (' + addrHouseNum + '), cliente não tem');
-                        } else if (!addrHouseNum && bestMatch.clientHouseNum) {
-                            console.log('      Motivo: Cliente tem número (' + bestMatch.clientHouseNum + '), planilha não tem');
-                        } else if (!addrHouseNum && !bestMatch.clientHouseNum && bestMatch.similarity < 0.8) {
-                            console.log('      Motivo: Sem números, similaridade < 80%');
-                        }
-                    } else {
-                        console.log('   ❌ Nenhum cliente cadastrado encontrado');
                     }
 
                     return null;
@@ -3312,7 +3265,6 @@
                 }
 
             } catch (error) {
-                console.error('Erro ao carregar paradas:', error);
                 showErrorModal('Erro ao carregar as paradas da planilha.');
             }
         }
@@ -3466,7 +3418,6 @@
                 showPreview(file.name, parsedData);
 
             } catch (error) {
-                console.error('Erro ao ler planilha:', error);
                 showErrorModal('Erro ao ler a planilha. Verifique se o arquivo está no formato correto.');
             }
         }
@@ -3552,11 +3503,10 @@
                 }, 2000);
 
             } catch (error) {
-                console.error('Erro ao salvar dados:', error);
                 uploadProgress.classList.remove('active');
                 uploadModalFooter.style.display = 'flex';
                 uploadPreview.classList.add('active');
-                showErrorModal('Erro ao salvar os dados. Verifique o console para detalhes.');
+                showErrorModal('Erro ao salvar os dados. Tente novamente.');
             }
         });
 
@@ -3630,7 +3580,6 @@
                 startScanning();
 
             } catch (error) {
-                console.error('Erro ao acessar câmera:', error);
                 qrLoading.classList.remove('active');
                 qrStatusText.textContent = 'Erro ao acessar a câmera';
                 showErrorModal('Não foi possível acessar a câmera. Verifique as permissões do navegador.');
@@ -3739,7 +3688,6 @@
                 }
 
             } catch (error) {
-                console.error('Erro ao buscar endereço:', error);
                 qrLoading.classList.remove('active');
                 currentRecord = null;
                 qrResultData.innerHTML = `<span style="color: #f87171;">Erro ao buscar endereço</span>`;
@@ -3844,7 +3792,6 @@
                 currentRecord = null;
 
             } catch (error) {
-                console.error('Erro ao salvar:', error);
                 if (error.code === 1) {
                     showErrorModal('Não foi possível obter sua localização. Verifique as permissões do GPS.');
                 } else {
@@ -3962,7 +3909,6 @@
                 currentRecord = null;
 
             } catch (error) {
-                console.error('Erro ao salvar:', error);
                 showErrorModal('Erro ao salvar o endereço. Tente novamente.');
             }
         }
@@ -3985,99 +3931,6 @@
 
             // Reset adjusted coordinates
             adjustedCoordinates = null;
-        }
-
-        // Save client location to database
-        async function saveClientLocation(coordinates = null) {
-            if (!currentRecord) return;
-
-            closeQrScanner();
-
-            // Show loading
-            const loadingModal = document.createElement('div');
-            loadingModal.style.cssText = 'position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
-            loadingModal.innerHTML = `
-                <div style="background: var(--surface-light); padding: 32px; border-radius: 16px; box-shadow: var(--shadow); text-align: center;">
-                    <div style="width: 48px; height: 48px; border: 4px solid var(--border-light); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;"></div>
-                    <p style="font-size: 14px; color: var(--text-muted-light);">Salvando endereço...</p>
-                </div>
-            `;
-            document.body.appendChild(loadingModal);
-
-            try {
-                let lat, lng;
-
-                if (coordinates) {
-                    // Use adjusted coordinates
-                    lat = coordinates.latitude;
-                    lng = coordinates.longitude;
-                } else {
-                    // Get current GPS position
-                    const position = await new Promise((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject, {
-                            enableHighAccuracy: true,
-                            timeout: 10000,
-                            maximumAge: 0
-                        });
-                    });
-                    lat = position.coords.latitude;
-                    lng = position.coords.longitude;
-                }
-
-                // Save to clients table
-                const { error } = await db
-                    .from('clients')
-                    .insert({
-                        address: currentRecord.destination_address,
-                        latitude: lat,
-                        longitude: lng
-                    });
-
-                if (error) throw error;
-
-                loadingModal.remove();
-
-                // Refresh clients list
-                loadClientes();
-
-                // Show success
-                showSuccessModal(`Endereço salvo com sucesso!\n\n${currentRecord.destination_address}`);
-
-                // Reset current record
-                currentRecord = null;
-
-            } catch (error) {
-                console.error('Erro ao salvar:', error);
-                loadingModal.remove();
-
-                if (error.code === 1) {
-                    showErrorModal('Não foi possível obter sua localização. Verifique as permissões do GPS.');
-                } else {
-                    showErrorModal('Erro ao salvar o endereço. Tente novamente.');
-                }
-            }
-        }
-
-        // Show success modal
-        function showSuccessModal(message) {
-            const modal = document.createElement('div');
-            modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
-            modal.innerHTML = `
-                <div style="background: var(--surface-light); padding: 24px; border-radius: 16px; box-shadow: var(--shadow); max-width: 400px; width: 90%; margin: 0 16px; text-align: center;">
-                    <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2" style="width: 32px; height: 32px;">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 12px; color: var(--text-light);">Sucesso!</h3>
-                    <p style="font-size: 14px; color: var(--text-muted-light); line-height: 1.6; word-break: break-all;">${message}</p>
-                    <div style="display: flex; justify-content: center; margin-top: 20px;">
-                        <button id="successOk" style="padding: 12px 32px; border: none; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: white; transition: all 0.2s ease;">OK</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(modal);
-            modal.querySelector('#successOk').addEventListener('click', () => modal.remove());
         }
 
         // Re-center map on GPS when returning to the app (after screen off, tab switch, etc.)
