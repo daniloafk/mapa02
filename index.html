@@ -2813,32 +2813,45 @@
                     return;
                 }
 
-                // Group by stop number (each stop has the same coordinates)
+                // Group by destination_address text (same address = same marker)
                 const stopGroups = {};
                 data.forEach(row => {
-                    const stopKey = row.stop;
-                    if (!stopGroups[stopKey]) {
-                        stopGroups[stopKey] = {
+                    const addressKey = (row.destination_address || '').trim().toLowerCase();
+                    if (!addressKey) return; // Skip empty addresses
+
+                    if (!stopGroups[addressKey]) {
+                        stopGroups[addressKey] = {
                             stop: row.stop,
                             address: row.destination_address,
                             latitude: row.latitude,
                             longitude: row.longitude,
-                            sequences: []
+                            sequences: [],
+                            stops: []
                         };
                     }
                     if (row.sequence) {
-                        stopGroups[stopKey].sequences.push(row.sequence);
+                        stopGroups[addressKey].sequences.push(row.sequence);
+                    }
+                    if (row.stop && !stopGroups[addressKey].stops.includes(row.stop)) {
+                        stopGroups[addressKey].stops.push(row.stop);
                     }
                 });
 
                 const stops = Object.values(stopGroups);
 
-                // Generate and add high-resolution pin icons for each unique stop number
-                const iconPromises = stops.map(stop => {
+                // Generate and add high-resolution pin icons for each unique stop number needed
+                const uniqueStopNumbers = new Set();
+                stops.forEach(stop => {
+                    stop.stops.sort((a, b) => a - b);
+                    const displayStop = stop.stops.length > 0 ? stop.stops[0] : stop.stop;
+                    uniqueStopNumbers.add(displayStop);
+                });
+
+                const iconPromises = Array.from(uniqueStopNumbers).map(stopNum => {
                     return new Promise((resolve) => {
-                        const iconName = `pin-${stop.stop}`;
+                        const iconName = `pin-${stopNum}`;
                         if (!map.hasImage(iconName)) {
-                            const { dataUrl, pixelRatio } = generatePinIcon(stop.stop);
+                            const { dataUrl, pixelRatio } = generatePinIcon(stopNum);
                             const img = new Image();
                             img.onload = () => {
                                 map.addImage(iconName, img, { pixelRatio: pixelRatio });
@@ -2856,6 +2869,9 @@
                 // Create GeoJSON features
                 const features = stops.map(stop => {
                     stop.sequences.sort((a, b) => a - b);
+                    stop.stops.sort((a, b) => a - b);
+                    // Use first stop number for the icon
+                    const displayStop = stop.stops.length > 0 ? stop.stops[0] : stop.stop;
                     return {
                         type: 'Feature',
                         geometry: {
@@ -2863,8 +2879,9 @@
                             coordinates: [stop.longitude, stop.latitude]
                         },
                         properties: {
-                            stop: stop.stop,
-                            icon: `pin-${stop.stop}`,
+                            stop: displayStop,
+                            allStops: stop.stops.join(', '),
+                            icon: `pin-${displayStop}`,
                             address: stop.address || 'Endereço não disponível',
                             sequences: stop.sequences.join(', ')
                         }
@@ -2909,6 +2926,9 @@
                             `<span class="route-popup-order">${seq}</span>`
                         ).join('');
 
+                        // Show all stops if grouped, or single stop
+                        const stopsText = props.allStops || props.stop;
+
                         if (routePopup) routePopup.remove();
 
                         routePopup = new mapboxgl.Popup({
@@ -2920,7 +2940,7 @@
                             .setHTML(`
                                 <div class="route-popup-content">
                                     <div class="route-popup-address">${props.address}</div>
-                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada ${props.stop} - Ordem:</div>
+                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada(s): ${stopsText} - Ordem:</div>
                                     <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
                                 </div>
                             `)
