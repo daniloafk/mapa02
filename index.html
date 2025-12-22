@@ -2678,14 +2678,129 @@
             qrStatusText.textContent = 'QR Code lido com sucesso!';
         }
 
-        function handleQrCodeConfirm(qrData) {
-            // Por enquanto, apenas exibe o código lido
+        async function handleQrCodeConfirm(qrData) {
             console.log('QR Code confirmado:', qrData);
-            closeQrScanner();
 
-            // Aqui você pode adicionar a lógica para processar o QR Code
-            // Por exemplo: buscar dados na tabela planilha, cadastrar cliente, etc.
-            showSuccessModal(`QR Code registrado: ${qrData}`);
+            // Show loading state
+            qrResult.classList.remove('active');
+            qrLoading.classList.add('active');
+            document.querySelector('.qr-loading-text').textContent = 'Buscando endereço...';
+
+            try {
+                // Search for the QR code in the planilha table (spx_tn column)
+                const { data, error } = await db
+                    .from('planilha')
+                    .select('*')
+                    .eq('spx_tn', qrData)
+                    .limit(1);
+
+                if (error) throw error;
+
+                qrLoading.classList.remove('active');
+
+                if (data && data.length > 0) {
+                    const record = data[0];
+                    closeQrScanner();
+
+                    // Show the found address
+                    showAddressModal(record);
+                } else {
+                    // Code not found
+                    closeQrScanner();
+                    showErrorModal(`Código não encontrado na planilha: ${qrData}`);
+                }
+
+            } catch (error) {
+                console.error('Erro ao buscar endereço:', error);
+                qrLoading.classList.remove('active');
+                closeQrScanner();
+                showErrorModal('Erro ao buscar endereço. Verifique o console para detalhes.');
+            }
+        }
+
+        // Show address modal with delivery details
+        function showAddressModal(record) {
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            modal.innerHTML = `
+                <div style="background: var(--surface-light); padding: 24px; border-radius: 16px; box-shadow: var(--shadow); max-width: 450px; width: 90%; margin: 0 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                        <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2" style="width: 24px; height: 24px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 style="font-size: 18px; font-weight: 700; color: var(--text-light);">Endereço Encontrado</h3>
+                            <p style="font-size: 12px; color: var(--text-muted-light); font-family: monospace;">${record.spx_tn || '-'}</p>
+                        </div>
+                    </div>
+
+                    <div style="background: var(--bg-light); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                        <p style="font-size: 15px; color: var(--text-light); line-height: 1.6; font-weight: 500;">${record.destination_address || 'Endereço não disponível'}</p>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                        <div style="background: var(--bg-light); border-radius: 10px; padding: 12px;">
+                            <p style="font-size: 11px; color: var(--text-muted-light); text-transform: uppercase; margin-bottom: 4px;">Bairro</p>
+                            <p style="font-size: 13px; color: var(--text-light); font-weight: 500;">${record.bairro || '-'}</p>
+                        </div>
+                        <div style="background: var(--bg-light); border-radius: 10px; padding: 12px;">
+                            <p style="font-size: 11px; color: var(--text-muted-light); text-transform: uppercase; margin-bottom: 4px;">Cidade</p>
+                            <p style="font-size: 13px; color: var(--text-light); font-weight: 500;">${record.city || '-'}</p>
+                        </div>
+                        <div style="background: var(--bg-light); border-radius: 10px; padding: 12px;">
+                            <p style="font-size: 11px; color: var(--text-muted-light); text-transform: uppercase; margin-bottom: 4px;">CEP</p>
+                            <p style="font-size: 13px; color: var(--text-light); font-weight: 500;">${record.zipcode || '-'}</p>
+                        </div>
+                        <div style="background: var(--bg-light); border-radius: 10px; padding: 12px;">
+                            <p style="font-size: 11px; color: var(--text-muted-light); text-transform: uppercase; margin-bottom: 4px;">Parada</p>
+                            <p style="font-size: 13px; color: var(--text-light); font-weight: 500;">${record.sequence || '-'} / ${record.stop || '-'}</p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <button id="addressClose" style="flex: 1; padding: 14px; border: 2px solid var(--border-light); background: transparent; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text-light); transition: all 0.2s ease;">Fechar</button>
+                        <button id="addressNavigate" style="flex: 1; padding: 14px; border: none; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: white; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Ver no Mapa
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            // Close button
+            modal.querySelector('#addressClose').addEventListener('click', () => modal.remove());
+
+            // Navigate button - fly to location on map
+            modal.querySelector('#addressNavigate').addEventListener('click', () => {
+                modal.remove();
+                if (record.latitude && record.longitude && map) {
+                    map.flyTo({
+                        center: [record.longitude, record.latitude],
+                        zoom: 17,
+                        duration: 2000
+                    });
+
+                    // Add a temporary marker
+                    new mapboxgl.Popup({ closeOnClick: true, closeButton: true })
+                        .setLngLat([record.longitude, record.latitude])
+                        .setHTML(`<strong>${record.destination_address}</strong><br><small>${record.bairro || ''} - ${record.city || ''}</small>`)
+                        .addTo(map);
+                } else {
+                    showErrorModal('Coordenadas não disponíveis para este endereço.');
+                }
+            });
+
+            // Click outside to close
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
         }
 
         // Show success modal
