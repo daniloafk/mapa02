@@ -2318,18 +2318,10 @@
         // Temporary marker for "View on map"
         let viewMarker = null;
         let viewPopup = null;
-        let viewMapClickHandler = null;
-        let viewXClickHandler = null;
+        let viewMarkerEl = null;
+        let viewLngLat = null;
 
         function removeViewMarker() {
-            if (viewMapClickHandler) {
-                map.off('click', viewMapClickHandler);
-                viewMapClickHandler = null;
-            }
-            if (viewXClickHandler) {
-                document.removeEventListener('click', viewXClickHandler, true);
-                viewXClickHandler = null;
-            }
             if (viewPopup) {
                 viewPopup.remove();
                 viewPopup = null;
@@ -2338,21 +2330,53 @@
                 viewMarker.remove();
                 viewMarker = null;
             }
+            viewMarkerEl = null;
+            viewLngLat = null;
+        }
+
+        // Global X button handler (always active)
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('view-popup-close-btn')) {
+                e.stopPropagation();
+                e.preventDefault();
+                removeViewMarker();
+            }
+        }, true);
+
+        // Global map click handler for closing popup
+        function setupMapClickHandler() {
+            map.on('click', (e) => {
+                // Check if click was on the marker
+                if (viewMarkerEl && viewMarkerEl.contains(e.originalEvent.target)) {
+                    return;
+                }
+                // Check if click was on popup
+                if (e.originalEvent.target.closest('.mapboxgl-popup')) {
+                    return;
+                }
+                // Close popup but keep marker
+                if (viewPopup && viewPopup.isOpen()) {
+                    viewPopup.remove();
+                }
+            });
         }
 
         function showViewMarker(lat, lng, address) {
             // Remove existing marker if any
             removeViewMarker();
 
+            // Store coordinates
+            viewLngLat = [lng, lat];
+
             // Create marker element
-            const markerEl = document.createElement('div');
-            markerEl.className = 'view-marker';
-            markerEl.innerHTML = `
+            viewMarkerEl = document.createElement('div');
+            viewMarkerEl.className = 'view-marker';
+            viewMarkerEl.innerHTML = `
                 <div class="view-marker-pin"></div>
                 <div class="view-marker-pulse"></div>
             `;
 
-            // Create popup with custom X button - NO closeOnClick
+            // Create popup with custom X button
             viewPopup = new mapboxgl.Popup({
                 offset: 25,
                 closeButton: false,
@@ -2366,59 +2390,36 @@
 
             // Add marker to map
             viewMarker = new mapboxgl.Marker({
-                element: markerEl,
+                element: viewMarkerEl,
                 anchor: 'bottom'
             })
-                .setLngLat([lng, lat])
-                .setPopup(viewPopup)
+                .setLngLat(viewLngLat)
                 .addTo(map);
 
-            markerEl.style.cursor = 'pointer';
-
-            // Track if marker was just clicked
-            let markerClicked = false;
+            viewMarkerEl.style.cursor = 'pointer';
 
             // Click on marker to toggle popup
-            markerEl.addEventListener('click', (e) => {
+            viewMarkerEl.addEventListener('click', (e) => {
                 e.stopPropagation();
-                markerClicked = true;
-                if (viewMarker && viewPopup) {
+                if (viewPopup) {
                     if (viewPopup.isOpen()) {
                         viewPopup.remove();
-                    } else {
-                        viewPopup.setLngLat([lng, lat]).addTo(map);
+                    } else if (viewLngLat) {
+                        viewPopup.setLngLat(viewLngLat).addTo(map);
                     }
                 }
-                setTimeout(() => { markerClicked = false; }, 100);
             });
-
-            // X button click handler - capture phase to run before anything else
-            viewXClickHandler = (e) => {
-                if (e.target.classList.contains('view-popup-close-btn')) {
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    e.preventDefault();
-                    removeViewMarker();
-                }
-            };
-            document.addEventListener('click', viewXClickHandler, true);
-
-            // Map click handler - close popup only, keep marker
-            viewMapClickHandler = () => {
-                if (markerClicked) return;
-                if (viewPopup && viewPopup.isOpen()) {
-                    viewPopup.remove();
-                }
-            };
 
             // Show popup after map finishes flying
             map.once('moveend', () => {
-                if (viewMarker && viewPopup) {
-                    viewPopup.setLngLat([lng, lat]).addTo(map);
-                    map.on('click', viewMapClickHandler);
+                if (viewPopup && viewLngLat) {
+                    viewPopup.setLngLat(viewLngLat).addTo(map);
                 }
             });
         }
+
+        // Setup map click handler once map is ready
+        map.on('load', setupMapClickHandler);
 
         // Event delegation for cliente list actions
         clienteList.addEventListener('click', (e) => {
