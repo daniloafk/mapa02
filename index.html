@@ -2329,15 +2329,6 @@
             viewLngLat = null;
         }
 
-        // Global X button handler (always active)
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('view-popup-close-btn')) {
-                e.stopPropagation();
-                e.preventDefault();
-                removeViewMarker();
-            }
-        }, true);
-
         // Global map click handler for closing popup
         function setupMapClickHandler() {
             map.on('click', (e) => {
@@ -2354,6 +2345,18 @@
                     viewPopup.remove();
                 }
             });
+        }
+
+        // Attach X button click handler to popup
+        function attachPopupCloseHandler() {
+            const closeBtn = document.querySelector('.view-popup-close-btn');
+            if (closeBtn) {
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    removeViewMarker();
+                };
+            }
         }
 
         function showViewMarker(lat, lng, address) {
@@ -2401,6 +2404,8 @@
                         viewPopup.remove();
                     } else if (viewLngLat) {
                         viewPopup.setLngLat(viewLngLat).addTo(map);
+                        // Re-attach close handler when popup reopens
+                        setTimeout(attachPopupCloseHandler, 50);
                     }
                 }
             });
@@ -2409,6 +2414,8 @@
             map.once('moveend', () => {
                 if (viewPopup && viewLngLat) {
                     viewPopup.setLngLat(viewLngLat).addTo(map);
+                    // Attach close handler after popup is added
+                    setTimeout(attachPopupCloseHandler, 50);
                 }
             });
         }
