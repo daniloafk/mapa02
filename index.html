@@ -2754,7 +2754,7 @@
             ctx.scale(scale, scale);
 
             // Draw needle
-            ctx.fillStyle = '#7c3aed';
+            ctx.fillStyle = '#dc2626';
             ctx.beginPath();
             ctx.moveTo(15 - 2, 24);
             ctx.lineTo(15 + 2, 24);
@@ -2769,11 +2769,11 @@
             ctx.ellipse(15, 48, 6, 3, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Draw head circle with gradient
+            // Draw head circle with gradient (red)
             const gradient = ctx.createLinearGradient(0, 0, 30, 24);
-            gradient.addColorStop(0, '#a78bfa');
-            gradient.addColorStop(0.5, '#8b5cf6');
-            gradient.addColorStop(1, '#7c3aed');
+            gradient.addColorStop(0, '#f87171');
+            gradient.addColorStop(0.5, '#ef4444');
+            gradient.addColorStop(1, '#dc2626');
 
             ctx.fillStyle = gradient;
             ctx.beginPath();
