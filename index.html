@@ -2839,19 +2839,18 @@
 
                 const stops = Object.values(stopGroups);
 
-                // Generate and add high-resolution pin icons for each unique stop number needed
-                const uniqueStopNumbers = new Set();
+                // Generate and add high-resolution pin icons for each unique package count needed
+                const uniquePackageCounts = new Set();
                 stops.forEach(stop => {
-                    stop.stops.sort((a, b) => a - b);
-                    const displayStop = stop.stops.length > 0 ? stop.stops[0] : stop.stop;
-                    uniqueStopNumbers.add(displayStop);
+                    const packageCount = stop.sequences.length;
+                    uniquePackageCounts.add(packageCount);
                 });
 
-                const iconPromises = Array.from(uniqueStopNumbers).map(stopNum => {
+                const iconPromises = Array.from(uniquePackageCounts).map(count => {
                     return new Promise((resolve) => {
-                        const iconName = `pin-${stopNum}`;
+                        const iconName = `pin-count-${count}`;
                         if (!map.hasImage(iconName)) {
-                            const { dataUrl, pixelRatio } = generatePinIcon(stopNum);
+                            const { dataUrl, pixelRatio } = generatePinIcon(count);
                             const img = new Image();
                             img.onload = () => {
                                 map.addImage(iconName, img, { pixelRatio: pixelRatio });
@@ -2870,8 +2869,7 @@
                 const features = stops.map(stop => {
                     stop.sequences.sort((a, b) => a - b);
                     stop.stops.sort((a, b) => a - b);
-                    // Use first stop number for the icon
-                    const displayStop = stop.stops.length > 0 ? stop.stops[0] : stop.stop;
+                    const packageCount = stop.sequences.length;
                     return {
                         type: 'Feature',
                         geometry: {
@@ -2879,9 +2877,9 @@
                             coordinates: [stop.longitude, stop.latitude]
                         },
                         properties: {
-                            stop: displayStop,
+                            packageCount: packageCount,
                             allStops: stop.stops.join(', '),
-                            icon: `pin-${displayStop}`,
+                            icon: `pin-count-${packageCount}`,
                             address: stop.address || 'Endereço não disponível',
                             sequences: stop.sequences.join(', ')
                         }
@@ -2926,8 +2924,8 @@
                             `<span class="route-popup-order">${seq}</span>`
                         ).join('');
 
-                        // Show all stops if grouped, or single stop
-                        const stopsText = props.allStops || props.stop;
+                        // Show all stops if grouped
+                        const stopsText = props.allStops || '-';
 
                         if (routePopup) routePopup.remove();
 
@@ -2940,7 +2938,8 @@
                             .setHTML(`
                                 <div class="route-popup-content">
                                     <div class="route-popup-address">${props.address}</div>
-                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada(s): ${stopsText} - Ordem:</div>
+                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">📦 Pacotes: <strong>${props.packageCount}</strong></div>
+                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Parada(s): ${stopsText} | Ordem:</div>
                                     <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
                                 </div>
                             `)
