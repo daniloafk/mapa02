@@ -2313,7 +2313,6 @@
         // Temporary marker for "View on map"
         let viewMarker = null;
         let viewPopup = null;
-        let closedByXButton = false;
 
         function removeViewMarker() {
             if (viewPopup) {
@@ -2324,7 +2323,6 @@
                 viewMarker.remove();
                 viewMarker = null;
             }
-            closedByXButton = false;
         }
 
         // Global map click handler for closing popup (keep marker)
@@ -2345,10 +2343,21 @@
             });
         }
 
+        // Override X button to remove marker completely
+        function overrideCloseButton() {
+            const closeBtn = document.querySelector('.mapboxgl-popup-close-button');
+            if (closeBtn) {
+                closeBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeViewMarker();
+                };
+            }
+        }
+
         function showViewMarker(lat, lng, address) {
             // Remove existing marker if any
             removeViewMarker();
-            closedByXButton = false;
 
             // Create marker element
             const markerEl = document.createElement('div');
@@ -2365,14 +2374,7 @@
                 closeOnClick: false
             }).setHTML(`<div style="font-size: 13px; font-weight: 500; max-width: 200px; padding-right: 8px;">${address}</div>`);
 
-            // When popup closes, check if it was via X button to remove marker
-            viewPopup.on('close', () => {
-                if (closedByXButton) {
-                    removeViewMarker();
-                }
-            });
-
-            // Create marker with popup attached (native Mapbox way)
+            // Create marker with popup attached
             viewMarker = new mapboxgl.Marker({
                 element: markerEl,
                 anchor: 'bottom'
@@ -2381,16 +2383,9 @@
                 .setPopup(viewPopup)
                 .addTo(map);
 
-            // Detect X button click when popup opens
+            // Override X button when popup opens
             viewPopup.on('open', () => {
-                setTimeout(() => {
-                    const closeBtn = document.querySelector('.mapboxgl-popup-close-button');
-                    if (closeBtn) {
-                        closeBtn.addEventListener('click', () => {
-                            closedByXButton = true;
-                        }, { once: true });
-                    }
-                }, 10);
+                setTimeout(overrideCloseButton, 20);
             });
 
             // Show popup after map finishes flying
