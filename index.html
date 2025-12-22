@@ -3104,6 +3104,18 @@
 
                     // Add click event for popup
                     map.on('click', 'route-stops-pins', (e) => {
+                        // Prevent default and stop propagation to avoid gesture interference
+                        e.originalEvent.preventDefault();
+                        e.originalEvent.stopPropagation();
+
+                        // Reset touch state by temporarily disabling/enabling touch gestures
+                        map.touchZoomRotate.disable();
+                        map.dragPan.disable();
+                        setTimeout(() => {
+                            map.touchZoomRotate.enable();
+                            map.dragPan.enable();
+                        }, 100);
+
                         const feature = e.features[0];
                         const coords = feature.geometry.coordinates.slice();
                         const props = feature.properties;
@@ -3150,6 +3162,16 @@
                                 e.stopPropagation();
                             }, { passive: true });
                         }
+
+                        // Reset gestures when popup closes
+                        routePopup.on('close', () => {
+                            map.touchZoomRotate.disable();
+                            map.dragPan.disable();
+                            setTimeout(() => {
+                                map.touchZoomRotate.enable();
+                                map.dragPan.enable();
+                            }, 50);
+                        });
                     });
 
                     // Change cursor on hover
