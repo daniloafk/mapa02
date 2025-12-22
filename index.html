@@ -2148,34 +2148,6 @@
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
         getUserLocationAndInitMap();
 
-        // Re-center map on GPS when returning to the app (after screen off, tab switch, etc.)
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && map && !adjustModeActive) {
-                // Remove view marker if any
-                removeViewMarker();
-
-                // Get current GPS position and center map
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const { latitude, longitude } = position.coords;
-                        map.flyTo({
-                            center: [longitude, latitude],
-                            zoom: Math.max(map.getZoom(), 14),
-                            duration: 1500
-                        });
-                    },
-                    () => {
-                        // Silently fail if GPS not available
-                    },
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            }
-        });
-
         // Sidebar functionality
         const menuBtn = document.getElementById('menuBtn');
         const sidebar = document.getElementById('sidebar');
@@ -3414,6 +3386,55 @@
             document.body.appendChild(modal);
             modal.querySelector('#successOk').addEventListener('click', () => modal.remove());
         }
+
+        // Re-center map on GPS when returning to the app (after screen off, tab switch, etc.)
+        function recenterOnGPS() {
+            if (!map || isAdjustMode) return;
+
+            // Remove view marker if any
+            if (typeof removeViewMarker === 'function') {
+                removeViewMarker();
+            }
+
+            // Get current GPS position and center map
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    map.flyTo({
+                        center: [longitude, latitude],
+                        zoom: Math.max(map.getZoom(), 14),
+                        duration: 1500
+                    });
+                },
+                () => {
+                    // Silently fail if GPS not available
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        // Multiple event listeners for better mobile compatibility
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // Small delay to ensure device is fully awake
+                setTimeout(recenterOnGPS, 500);
+            }
+        });
+
+        // Additional events for iOS and other mobile browsers
+        window.addEventListener('focus', () => {
+            setTimeout(recenterOnGPS, 500);
+        });
+
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                setTimeout(recenterOnGPS, 500);
+            }
+        });
     </script>
 </body>
 </html>
