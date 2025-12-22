@@ -1647,6 +1647,152 @@
             font-size: 14px;
         }
 
+        /* QR Address List */
+        .qr-address-list-container {
+            width: 100%;
+            max-width: 400px;
+            margin-top: 16px;
+            max-height: 200px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .qr-address-list-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .qr-address-list-header h4 {
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .qr-address-list-header h4 svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .qr-address-list-search {
+            flex: 1;
+            max-width: 200px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            font-family: inherit;
+            font-size: 13px;
+            margin-left: 12px;
+        }
+
+        .qr-address-list-search::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .qr-address-list-search:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .qr-address-list {
+            flex: 1;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 0 0 12px 12px;
+            max-height: 150px;
+        }
+
+        .qr-address-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .qr-address-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .qr-address-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 3px;
+        }
+
+        .qr-address-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .qr-address-item:last-child {
+            border-bottom: none;
+        }
+
+        .qr-address-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .qr-address-item:active {
+            background: rgba(14, 165, 233, 0.3);
+        }
+
+        .qr-address-order {
+            min-width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .qr-address-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .qr-address-text p {
+            color: white;
+            font-size: 13px;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .qr-address-text span {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+        }
+
+        .qr-address-list-empty {
+            padding: 24px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+        }
+
+        .qr-address-list-loading {
+            padding: 24px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+        }
+
         /* Center Pin - Fixed in center of screen (needle style) */
         .center-pin {
             position: fixed;
@@ -1967,6 +2113,22 @@
         <div class="qr-status">
             <p class="qr-status-text" id="qrStatusText">Posicione o QR Code dentro da área</p>
             <p class="qr-status-hint">A leitura é automática</p>
+        </div>
+
+        <!-- Address List for Manual Selection -->
+        <div class="qr-address-list-container" id="qrAddressListContainer">
+            <div class="qr-address-list-header">
+                <h4>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Selecionar manualmente
+                </h4>
+                <input type="text" class="qr-address-list-search" id="qrAddressSearch" placeholder="Buscar...">
+            </div>
+            <div class="qr-address-list" id="qrAddressList">
+                <div class="qr-address-list-loading">Carregando endereços...</div>
+            </div>
         </div>
     </div>
 
@@ -3525,10 +3687,13 @@
         const qrScanAgain = document.getElementById('qrScanAgain');
         const qrConfirm = document.getElementById('qrConfirm');
         const qrStatusText = document.getElementById('qrStatusText');
+        const qrAddressList = document.getElementById('qrAddressList');
+        const qrAddressSearch = document.getElementById('qrAddressSearch');
 
         let qrStream = null;
         let qrAnimationFrame = null;
         let lastScannedCode = null;
+        let planilhaAddresses = []; // Store addresses for filtering
 
         // Open QR Scanner
         cadastrarBtn.addEventListener('click', () => {
@@ -3561,6 +3726,10 @@
             qrLoading.classList.add('active');
             qrResult.classList.remove('active');
             qrStatusText.textContent = 'Iniciando câmera...';
+            qrAddressSearch.value = '';
+
+            // Load addresses for manual selection
+            loadPlanilhaAddresses();
 
             try {
                 qrStream = await navigator.mediaDevices.getUserMedia({
@@ -3585,6 +3754,90 @@
                 showErrorModal('Não foi possível acessar a câmera. Verifique as permissões do navegador.');
             }
         }
+
+        // Load addresses from planilha for manual selection
+        async function loadPlanilhaAddresses() {
+            qrAddressList.innerHTML = '<div class="qr-address-list-loading">Carregando endereços...</div>';
+
+            try {
+                const { data, error } = await db
+                    .from('planilha')
+                    .select('id, sequence, destination_address, bairro, city, latitude, longitude')
+                    .not('destination_address', 'is', null)
+                    .order('sequence', { ascending: true });
+
+                if (error) throw error;
+
+                if (!data || data.length === 0) {
+                    qrAddressList.innerHTML = '<div class="qr-address-list-empty">Nenhum endereço encontrado na planilha</div>';
+                    planilhaAddresses = [];
+                    return;
+                }
+
+                planilhaAddresses = data;
+                renderAddressList(data);
+
+            } catch (error) {
+                qrAddressList.innerHTML = '<div class="qr-address-list-empty">Erro ao carregar endereços</div>';
+                planilhaAddresses = [];
+            }
+        }
+
+        // Render address list
+        function renderAddressList(addresses) {
+            if (addresses.length === 0) {
+                qrAddressList.innerHTML = '<div class="qr-address-list-empty">Nenhum endereço encontrado</div>';
+                return;
+            }
+
+            qrAddressList.innerHTML = addresses.map(addr => `
+                <div class="qr-address-item" data-id="${addr.id}" data-address="${addr.destination_address || ''}" data-bairro="${addr.bairro || ''}" data-city="${addr.city || ''}" data-lat="${addr.latitude || ''}" data-lng="${addr.longitude || ''}" data-sequence="${addr.sequence || ''}">
+                    <div class="qr-address-order">${addr.sequence || '-'}</div>
+                    <div class="qr-address-text">
+                        <p>${addr.destination_address || 'Endereço não disponível'}</p>
+                        <span>${addr.bairro || ''} ${addr.city ? '- ' + addr.city : ''}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Search/filter addresses
+        qrAddressSearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (!query) {
+                renderAddressList(planilhaAddresses);
+                return;
+            }
+
+            const filtered = planilhaAddresses.filter(addr => {
+                const address = (addr.destination_address || '').toLowerCase();
+                const bairro = (addr.bairro || '').toLowerCase();
+                const sequence = String(addr.sequence || '');
+                return address.includes(query) || bairro.includes(query) || sequence.includes(query);
+            });
+
+            renderAddressList(filtered);
+        });
+
+        // Handle address item click
+        qrAddressList.addEventListener('click', (e) => {
+            const item = e.target.closest('.qr-address-item');
+            if (!item) return;
+
+            // Set current record from the clicked item
+            currentRecord = {
+                id: item.dataset.id,
+                destination_address: item.dataset.address,
+                bairro: item.dataset.bairro,
+                city: item.dataset.city,
+                latitude: parseFloat(item.dataset.lat) || null,
+                longitude: parseFloat(item.dataset.lng) || null,
+                sequence: item.dataset.sequence
+            };
+
+            // Go directly to adjust mode (like qrAdjustMap button)
+            enterAdjustMode();
+        });
 
         function closeQrScanner() {
             qrModal.classList.remove('active');
