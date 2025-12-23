@@ -716,6 +716,47 @@
         }
 
 
+        /* End Navigation Button */
+        .end-nav-btn {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .end-nav-btn.active {
+            display: flex;
+        }
+
+        .end-nav-btn:hover {
+            transform: translateX(-50%) translateY(-2px);
+            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.5);
+        }
+
+        .end-nav-btn:active {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .end-nav-btn svg {
+            width: 20px;
+            height: 20px;
+        }
+
         /* Cadastrar Button */
         .cadastrar-btn {
             position: fixed;
@@ -1927,6 +1968,14 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
+    </button>
+
+    <!-- End Navigation Button -->
+    <button class="end-nav-btn" id="endNavBtn">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Encerrar Navegação
     </button>
 
     <!-- Cadastrar Button -->
@@ -4084,6 +4133,7 @@
         }
 
         // ==================== NAVIGATION SYSTEM ====================
+        const endNavBtn = document.getElementById('endNavBtn');
         let currentNavigation = null;
 
         // Get route from Mapbox Directions API
@@ -4104,6 +4154,17 @@
             }
         }
 
+        // Find the first symbol layer to insert route below labels
+        function getFirstSymbolLayerId() {
+            const layers = map.getStyle().layers;
+            for (const layer of layers) {
+                if (layer.type === 'symbol') {
+                    return layer.id;
+                }
+            }
+            return undefined;
+        }
+
         // Draw route on map
         function drawRoute(route) {
             // Remove existing route first
@@ -4114,13 +4175,16 @@
                 geometry: route.geometry
             };
 
+            // Find first symbol layer to insert below labels
+            const firstSymbolId = getFirstSymbolLayerId();
+
             // Add route source
             map.addSource('navigation-route', {
                 type: 'geojson',
                 data: geojson
             });
 
-            // Add route outline layer (for border effect)
+            // Add route outline layer (for border effect) - below labels
             map.addLayer({
                 id: 'navigation-route-outline',
                 type: 'line',
@@ -4134,9 +4198,9 @@
                     'line-width': 10,
                     'line-opacity': 0.4
                 }
-            });
+            }, firstSymbolId);
 
-            // Add route line layer
+            // Add route line layer - below labels
             map.addLayer({
                 id: 'navigation-route',
                 type: 'line',
@@ -4150,7 +4214,7 @@
                     'line-width': 6,
                     'line-opacity': 0.9
                 }
-            });
+            }, firstSymbolId);
         }
 
         // Remove route from map
@@ -4165,6 +4229,16 @@
                 map.removeSource('navigation-route');
             }
         }
+
+        // Stop navigation
+        function stopNavigation() {
+            removeRoute();
+            currentNavigation = null;
+            endNavBtn.classList.remove('active');
+        }
+
+        // End navigation button event
+        endNavBtn.addEventListener('click', stopNavigation);
 
         // Start navigation - draws route on map
         async function startNavigation(destLng, destLat, destAddress) {
@@ -4193,12 +4267,15 @@
                 // Draw route on map
                 drawRoute(route);
 
+                // Show end navigation button
+                endNavBtn.classList.add('active');
+
                 // Fit map to show entire route
                 const coordinates = route.geometry.coordinates;
                 const bounds = new mapboxgl.LngLatBounds();
                 coordinates.forEach(coord => bounds.extend(coord));
                 map.fitBounds(bounds, {
-                    padding: { top: 80, bottom: 80, left: 50, right: 50 },
+                    padding: { top: 80, bottom: 150, left: 50, right: 50 },
                     duration: 1000
                 });
 
