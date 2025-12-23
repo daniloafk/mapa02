@@ -1681,6 +1681,7 @@
 
         .qr-address-item {
             position: absolute;
+            top: 0;
             left: 0;
             right: 0;
             height: 52px;
@@ -1690,6 +1691,8 @@
             padding: 0 14px;
             box-sizing: border-box;
             border-bottom: 1px solid #2a2a2a;
+            will-change: transform;
+            backface-visibility: hidden;
         }
 
         .qr-address-order {
@@ -3756,22 +3759,22 @@
         qrAddressList.addEventListener('touchstart', expandList, { passive: true });
         qrAddressList.addEventListener('mousedown', expandList);
 
+        let scrollRafId = null;
+
         function onVirtualScroll() {
-            // Expand list on scroll
             expandList();
 
-            // Clear previous timer
             if (scrollEndTimer) clearTimeout(scrollEndTimer);
+            scrollEndTimer = setTimeout(() => { isScrolling = false; }, 200);
+            isScrolling = true;
 
-            scrollEndTimer = setTimeout(() => {
-                isScrolling = false;
-            }, 200);
-
-            if (!isScrolling) {
-                isScrolling = true;
+            // Throttle rendering with RAF
+            if (!scrollRafId) {
+                scrollRafId = requestAnimationFrame(() => {
+                    scrollRafId = null;
+                    renderVisibleItems();
+                });
             }
-
-            renderVisibleItems();
         }
 
         function pauseScanner() {
@@ -3782,7 +3785,6 @@
         }
 
         function resumeScanner() {
-            // Only resume if list is not expanded
             if (isListExpanded) return;
             if (qrStream && qrModal.classList.contains('active') && !qrAnimationFrame) {
                 startScanning();
@@ -3798,15 +3800,14 @@
             const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_ITEMS);
             const endIdx = Math.min(planilhaAddressData.length - 1, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER_ITEMS);
 
-            // Skip re-render if range unchanged
             if (startIdx === lastRenderedRange.start && endIdx === lastRenderedRange.end) return;
             lastRenderedRange = { start: startIdx, end: endIdx };
 
             let html = '';
             for (let i = startIdx; i <= endIdx; i++) {
                 const addr = planilhaAddressData[i];
-                const top = i * ITEM_HEIGHT;
-                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div><div class="qr-address-order">${addr.sequence || '-'}</div></div>`;
+                const y = i * ITEM_HEIGHT;
+                html += `<div class="qr-address-item" data-idx="${i}" style="transform:translateY(${y}px)"><div class="qr-address-text"><p>${addr.destination_address || '-'}</p><span>${addr.bairro || ''}</span></div><div class="qr-address-order">${addr.sequence || '-'}</div></div>`;
             }
             virtualViewport.innerHTML = html;
         }
