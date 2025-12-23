@@ -1529,94 +1529,6 @@
             font-size: 13px;
         }
 
-        .qr-result {
-            display: none;
-            position: absolute;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.85);
-            border-radius: 16px;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-            text-align: center;
-        }
-
-        .qr-result.active {
-            display: flex;
-        }
-
-        .qr-result-icon {
-            width: 64px;
-            height: 64px;
-            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-        }
-
-        .qr-result-icon svg {
-            width: 32px;
-            height: 32px;
-            color: white;
-        }
-
-        .qr-result h4 {
-            color: white;
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .qr-result-data {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 13px;
-            font-family: 'Courier New', monospace;
-            background: rgba(255, 255, 255, 0.1);
-            padding: 12px 16px;
-            border-radius: 8px;
-            max-width: 100%;
-            word-break: break-all;
-            margin-bottom: 20px;
-        }
-
-        .qr-result-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .qr-result-btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 10px;
-            font-family: inherit;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .qr-result-btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        .qr-result-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .qr-result-btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-        }
-
-        .qr-result-btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
-        }
-
         .qr-loading {
             display: none;
             position: absolute;
@@ -2004,41 +1916,6 @@
                 <p class="qr-loading-text">Iniciando câmera...</p>
             </div>
 
-            <div class="qr-result" id="qrResult">
-                <div class="qr-result-icon">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                </div>
-                <h4>QR Code Detectado!</h4>
-                <div class="qr-result-data" id="qrResultData" style="text-align: left; font-family: inherit; font-size: 14px; line-height: 1.5;"></div>
-                <div class="qr-result-actions" style="flex-direction: column; gap: 10px;">
-                    <div style="display: flex; gap: 12px; width: 100%;">
-                        <button class="qr-result-btn qr-result-btn-secondary" id="qrScanAgain">Escanear Outro</button>
-                        <button class="qr-result-btn qr-result-btn-primary" id="qrConfirm" style="display: flex; align-items: center; gap: 8px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            Ver no Mapa
-                        </button>
-                    </div>
-                    <div style="display: flex; gap: 12px; width: 100%;">
-                        <button class="qr-result-btn qr-result-btn-secondary" id="qrAdjustMap" style="display: flex; align-items: center; justify-content: center; gap: 8px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                            Ajustar no Mapa
-                        </button>
-                        <button class="qr-result-btn qr-result-btn-primary" id="qrSave" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                            Salvar
-                        </button>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <div class="qr-status">
@@ -3604,10 +3481,6 @@
         const qrCanvas = document.getElementById('qrCanvas');
         const qrCanvasContext = qrCanvas.getContext('2d', { willReadFrequently: true });
         const qrLoading = document.getElementById('qrLoading');
-        const qrResult = document.getElementById('qrResult');
-        const qrResultData = document.getElementById('qrResultData');
-        const qrScanAgain = document.getElementById('qrScanAgain');
-        const qrConfirm = document.getElementById('qrConfirm');
         const qrStatusText = document.getElementById('qrStatusText');
         const qrAddressList = document.getElementById('qrAddressList');
 
@@ -3629,22 +3502,9 @@
             }
         });
 
-        // Scan again button
-        qrScanAgain.addEventListener('click', () => {
-            qrResult.classList.remove('active');
-            lastScannedCode = null;
-            startScanning();
-        });
-
-        // Confirm button - navigate to map
-        qrConfirm.addEventListener('click', () => {
-            handleQrCodeConfirm();
-        });
-
         async function openQrScanner() {
             qrModal.classList.add('active');
             qrLoading.classList.add('active');
-            qrResult.classList.remove('active');
             qrStatusText.textContent = 'Iniciando câmera...';
 
             // Load addresses for manual selection
@@ -3852,58 +3712,38 @@
 
                 if (data && data.length > 0) {
                     currentRecord = data[0];
-                    // Show the address in the result area
-                    qrResultData.innerHTML = `<strong>${currentRecord.destination_address || 'Endereço não disponível'}</strong><br><span style="opacity: 0.7; font-size: 12px;">${currentRecord.bairro || ''} - ${currentRecord.city || ''}</span>`;
-                    qrResult.classList.add('active');
-                    qrStatusText.textContent = 'QR Code lido com sucesso!';
+                    // Go directly to adjust mode
+                    enterAdjustMode();
                 } else {
-                    // Code not found - show error in result
+                    // Code not found - show error
                     currentRecord = null;
-                    qrResultData.innerHTML = `<span style="color: #f87171;">Código não encontrado na planilha</span><br><span style="opacity: 0.7; font-size: 12px; font-family: monospace;">${qrData}</span>`;
-                    qrResult.classList.add('active');
                     qrStatusText.textContent = 'Código não encontrado';
+                    // Resume scanning after 2 seconds
+                    setTimeout(() => {
+                        if (qrModal.classList.contains('active')) {
+                            qrStatusText.textContent = 'Aponte para o QR Code';
+                            startScanning();
+                        }
+                    }, 2000);
                 }
 
             } catch (error) {
                 qrLoading.classList.remove('active');
                 currentRecord = null;
-                qrResultData.innerHTML = `<span style="color: #f87171;">Erro ao buscar endereço</span>`;
-                qrResult.classList.add('active');
                 qrStatusText.textContent = 'Erro na busca';
-            }
-        }
-
-        // Handle confirm button - navigate to map
-        function handleQrCodeConfirm() {
-            if (currentRecord && currentRecord.latitude && currentRecord.longitude && map) {
-                closeQrScanner();
-                map.flyTo({
-                    center: [currentRecord.longitude, currentRecord.latitude],
-                    zoom: 17,
-                    duration: 2000
-                });
-
-                // Add popup at location
-                new mapboxgl.Popup({ closeOnClick: true, closeButton: true })
-                    .setLngLat([currentRecord.longitude, currentRecord.latitude])
-                    .setHTML(`<strong>${currentRecord.destination_address}</strong><br><small>${currentRecord.bairro || ''} - ${currentRecord.city || ''}</small>`)
-                    .addTo(map);
-            } else if (currentRecord) {
-                closeQrScanner();
-                showErrorModal('Coordenadas não disponíveis para este endereço.');
-            } else {
-                // No record found, just close and let user scan again
-                qrResult.classList.remove('active');
-                lastScannedCode = null;
-                startScanning();
+                // Resume scanning after 2 seconds
+                setTimeout(() => {
+                    if (qrModal.classList.contains('active')) {
+                        qrStatusText.textContent = 'Aponte para o QR Code';
+                        startScanning();
+                    }
+                }, 2000);
             }
         }
 
         // ========================================
         // Adjust Location & Save Functionality
         // ========================================
-        const qrAdjustMap = document.getElementById('qrAdjustMap');
-        const qrSave = document.getElementById('qrSave');
         const adjustModeBar = document.getElementById('adjustModeBar');
         const adjustModeAddress = document.getElementById('adjustModeAddress');
         const adjustModeCancel = document.getElementById('adjustModeCancel');
@@ -3921,19 +3761,6 @@
                 longitude: center.lng
             };
         }
-
-        // Adjust Map button
-        qrAdjustMap.addEventListener('click', () => {
-            if (!currentRecord) return;
-            enterAdjustMode();
-        });
-
-        // Save button - save with current GPS position and quick success
-        qrSave.addEventListener('click', async () => {
-            if (!currentRecord) return;
-            await saveClientLocationWithGPS();
-            closeQrScanner();
-        });
 
         // Save client location with current GPS (for Save button - quick success)
         async function saveClientLocationWithGPS() {
