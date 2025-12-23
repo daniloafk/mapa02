@@ -3446,11 +3446,11 @@
                                     <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Ordem:</div>
                                     <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
                                     <div class="route-popup-actions">
-                                        <button class="route-popup-btn ${isDelivered ? 'active' : ''}" data-status="delivered" data-ids="${props.ids}" data-original-status="${currentStatus}">
+                                        <button class="route-popup-btn ${isDelivered ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}" data-current-status="${currentStatus}">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                                             <span class="btn-text">${isDelivered ? 'Desfazer' : 'Entregue'}</span>
                                         </button>
-                                        <button class="route-popup-btn not-delivered ${isNotDelivered ? 'active' : ''}" data-status="not_delivered" data-ids="${props.ids}" data-original-status="${currentStatus}">
+                                        <button class="route-popup-btn not-delivered ${isNotDelivered ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}" data-current-status="${currentStatus}">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                             <span class="btn-text">${isNotDelivered ? 'Desfazer' : 'Não entreg'}</span>
                                         </button>
@@ -3474,34 +3474,32 @@
                                 const buttons = popupContent.querySelectorAll('.route-popup-btn:not(.navigate)');
                                 buttons.forEach(b => b.disabled = true);
 
-                                const status = btn.dataset.status;
-                                const originalStatus = btn.dataset.originalStatus;
+                                const action = btn.dataset.action; // 'delivered' or 'not_delivered'
+                                const currentStatusData = btn.dataset.currentStatus; // Current status from DB
                                 const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
 
-                                // Check if clicking an active button (toggle to undo)
+                                console.log('Ação:', action, 'Status atual:', currentStatusData, 'Botão ativo?', btn.classList.contains('active'));
+
+                                let statusToSave = null;
+
                                 if (btn.classList.contains('active')) {
-                                    // Revert to original status or pending
-                                    const revertStatus = originalStatus === 'delivered' || originalStatus === 'not_delivered' ? originalStatus : 'pending';
-                                    const success = await updateDeliveryStatus(ids, revertStatus);
-
-                                    if (success) {
-                                        routePopup.remove();
-                                        // Force immediate marker update
-                                        await loadRouteMarkers(true);
-                                    } else {
-                                        buttons.forEach(b => b.disabled = false);
-                                    }
+                                    // Botão está ativo (mostram "Desfazer") - volta para pending
+                                    statusToSave = 'pending';
+                                    console.log('Desfazendo para pending');
                                 } else {
-                                    // Mark with new status
-                                    const success = await updateDeliveryStatus(ids, status);
+                                    // Botão não está ativo - marca com o novo status
+                                    statusToSave = action;
+                                    console.log('Marcando com status:', action);
+                                }
 
-                                    if (success) {
-                                        routePopup.remove();
-                                        // Force immediate marker update
-                                        await loadRouteMarkers(true);
-                                    } else {
-                                        buttons.forEach(b => b.disabled = false);
-                                    }
+                                const success = await updateDeliveryStatus(ids, statusToSave);
+
+                                if (success) {
+                                    routePopup.remove();
+                                    // Force immediate marker update
+                                    await loadRouteMarkers(true);
+                                } else {
+                                    buttons.forEach(b => b.disabled = false);
                                 }
                             });
                         });
