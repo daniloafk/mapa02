@@ -1647,7 +1647,7 @@
             font-size: 14px;
         }
 
-        /* QR Address List - Optimized for smooth scrolling */
+        /* QR Address List - Virtualized */
         .qr-address-list-container {
             width: 100%;
             max-width: 400px;
@@ -1655,32 +1655,31 @@
             height: 180px;
             border-radius: 12px;
             overflow: hidden;
-            contain: strict;
         }
 
         .qr-address-list {
             height: 100%;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            overscroll-behavior: contain;
             background: #1a1a1a;
             border-radius: 12px;
-            transform: translateZ(0);
-            will-change: scroll-position;
-            contain: content;
+        }
+
+        .qr-address-viewport {
+            position: relative;
         }
 
         .qr-address-item {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 52px;
             display: flex;
             align-items: center;
             gap: 10px;
-            padding: 10px 14px;
+            padding: 0 14px;
+            box-sizing: border-box;
             border-bottom: 1px solid #2a2a2a;
-            contain: layout style;
-        }
-
-        .qr-address-item:last-child {
-            border-bottom: none;
         }
 
         .qr-address-order {
@@ -3701,29 +3700,49 @@
             }
         }
 
-        // Store address data for click handling (avoids data-attributes overhead)
+        // Virtualized list - only renders visible items
         let planilhaAddressData = [];
+        const ITEM_HEIGHT = 52;
+        const BUFFER_ITEMS = 2;
+        let virtualViewport = null;
 
-        // Render address list - optimized with minimal DOM attributes
         function renderAddressList(addresses) {
             if (addresses.length === 0) {
                 qrAddressList.innerHTML = '<div class="qr-address-list-empty">Nenhum endereço encontrado</div>';
                 return;
             }
 
-            const fragment = document.createDocumentFragment();
-            addresses.forEach((addr, idx) => {
-                const div = document.createElement('div');
-                div.className = 'qr-address-item';
-                div.dataset.idx = idx;
-                div.innerHTML = `<div class="qr-address-order">${addr.sequence || '-'}</div><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div>`;
-                fragment.appendChild(div);
-            });
-            qrAddressList.innerHTML = '';
-            qrAddressList.appendChild(fragment);
+            const totalHeight = addresses.length * ITEM_HEIGHT;
+            qrAddressList.innerHTML = `<div class="qr-address-viewport" style="height:${totalHeight}px"></div>`;
+            virtualViewport = qrAddressList.querySelector('.qr-address-viewport');
+
+            renderVisibleItems();
+            qrAddressList.addEventListener('scroll', onVirtualScroll, { passive: true });
         }
 
-        // Handle address item click - uses stored data instead of many data-attributes
+        function onVirtualScroll() {
+            requestAnimationFrame(renderVisibleItems);
+        }
+
+        function renderVisibleItems() {
+            if (!virtualViewport || !planilhaAddressData.length) return;
+
+            const scrollTop = qrAddressList.scrollTop;
+            const containerHeight = qrAddressList.clientHeight;
+
+            const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_ITEMS);
+            const endIdx = Math.min(planilhaAddressData.length - 1, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER_ITEMS);
+
+            let html = '';
+            for (let i = startIdx; i <= endIdx; i++) {
+                const addr = planilhaAddressData[i];
+                const top = i * ITEM_HEIGHT;
+                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-order">${addr.sequence || '-'}</div><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div></div>`;
+            }
+            virtualViewport.innerHTML = html;
+        }
+
+        // Handle address item click
         qrAddressList.addEventListener('click', (e) => {
             const item = e.target.closest('.qr-address-item');
             if (!item || item.dataset.idx === undefined) return;
