@@ -1669,14 +1669,20 @@
 
         .qr-address-list {
             height: 100%;
-            overflow-y: auto;
+            overflow-y: scroll;
+            overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
             background: #1a1a1a;
             border-radius: 12px;
+            overscroll-behavior: contain;
+            scroll-behavior: auto;
+            touch-action: pan-y;
+            transform: translateZ(0);
         }
 
         .qr-address-viewport {
             position: relative;
+            transform: translateZ(0);
         }
 
         .qr-address-item {
@@ -3759,8 +3765,6 @@
         qrAddressList.addEventListener('touchstart', expandList, { passive: true });
         qrAddressList.addEventListener('mousedown', expandList);
 
-        let scrollRafId = null;
-
         function onVirtualScroll() {
             expandList();
 
@@ -3768,13 +3772,8 @@
             scrollEndTimer = setTimeout(() => { isScrolling = false; }, 200);
             isScrolling = true;
 
-            // Throttle rendering with RAF
-            if (!scrollRafId) {
-                scrollRafId = requestAnimationFrame(() => {
-                    scrollRafId = null;
-                    renderVisibleItems();
-                });
-            }
+            // Direct render for 120hz support
+            renderVisibleItems();
         }
 
         function pauseScanner() {
