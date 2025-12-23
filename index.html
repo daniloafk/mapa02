@@ -943,6 +943,322 @@
             pointer-events: none;
         }
 
+        .route-popup-btn.navigate {
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            flex: none;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        .route-popup-btn.navigate:hover {
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        }
+
+        /* Navigation Panel */
+        .nav-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface-light);
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 70vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dark .nav-panel {
+            background: var(--surface-dark);
+            box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.4);
+        }
+
+        .nav-panel.active {
+            transform: translateY(0);
+        }
+
+        .nav-panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .dark .nav-panel-header {
+            border-bottom-color: var(--border-dark);
+        }
+
+        .nav-panel-header-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .nav-panel-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-light);
+        }
+
+        .dark .nav-panel-title {
+            color: var(--text-dark);
+        }
+
+        .nav-panel-subtitle {
+            font-size: 13px;
+            color: var(--text-muted-light);
+            display: flex;
+            gap: 12px;
+        }
+
+        .dark .nav-panel-subtitle {
+            color: var(--text-muted-dark);
+        }
+
+        .nav-panel-subtitle span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .nav-panel-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #ef4444;
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .nav-panel-close:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+
+        .nav-panel-close svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .nav-current-instruction {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .nav-instruction-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .nav-instruction-icon svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        .nav-instruction-text {
+            flex: 1;
+        }
+
+        .nav-instruction-main {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .nav-instruction-detail {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .nav-instruction-distance {
+            font-size: 24px;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .nav-steps-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .nav-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .dark .nav-step {
+            border-bottom-color: var(--border-dark);
+        }
+
+        .nav-step:last-child {
+            border-bottom: none;
+        }
+
+        .nav-step-icon {
+            width: 32px;
+            height: 32px;
+            background: #f1f5f9;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: #64748b;
+        }
+
+        .dark .nav-step-icon {
+            background: #334155;
+            color: #94a3b8;
+        }
+
+        .nav-step-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .nav-step-content {
+            flex: 1;
+        }
+
+        .nav-step-instruction {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-light);
+            margin-bottom: 2px;
+        }
+
+        .dark .nav-step-instruction {
+            color: var(--text-dark);
+        }
+
+        .nav-step-distance {
+            font-size: 12px;
+            color: var(--text-muted-light);
+        }
+
+        .dark .nav-step-distance {
+            color: var(--text-muted-dark);
+        }
+
+        .nav-destination {
+            padding: 16px 20px;
+            background: #f0fdf4;
+            border-top: 1px solid #bbf7d0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        .dark .nav-destination {
+            background: #14532d;
+            border-top-color: #166534;
+        }
+
+        .nav-destination-icon {
+            width: 40px;
+            height: 40px;
+            background: #22c55e;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .nav-destination-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .nav-destination-text {
+            flex: 1;
+        }
+
+        .nav-destination-label {
+            font-size: 12px;
+            color: #16a34a;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .dark .nav-destination-label {
+            color: #4ade80;
+        }
+
+        .nav-destination-address {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .dark .nav-destination-address {
+            color: var(--text-dark);
+        }
+
+        .nav-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            gap: 16px;
+        }
+
+        .nav-loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #0ea5e9;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .dark .nav-loading-spinner {
+            border-color: #334155;
+            border-top-color: #0ea5e9;
+        }
+
+        .nav-loading-text {
+            font-size: 14px;
+            color: var(--text-muted-light);
+        }
+
+        .dark .nav-loading-text {
+            color: var(--text-muted-dark);
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
         /* Upload Modal */
         .upload-modal {
             position: fixed;
@@ -1887,6 +2203,34 @@
 <body>
     <div id="map"></div>
 
+    <!-- Navigation Panel -->
+    <div class="nav-panel" id="navPanel">
+        <div class="nav-panel-header">
+            <div class="nav-panel-header-info">
+                <div class="nav-panel-title">Navegação</div>
+                <div class="nav-panel-subtitle">
+                    <span id="navDistance">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                        <span>--</span>
+                    </span>
+                    <span id="navDuration">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span>--</span>
+                    </span>
+                </div>
+            </div>
+            <button class="nav-panel-close" id="navPanelClose" aria-label="Fechar navegação">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+        <div id="navContent">
+            <div class="nav-loading">
+                <div class="nav-loading-spinner"></div>
+                <div class="nav-loading-text">Calculando rota...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Location Error -->
     <div class="location-error" id="locationError">
         <div class="location-error-icon">
@@ -2789,8 +3133,6 @@
             if (!ids || ids.length === 0) return false;
 
             try {
-                console.log('[DEBUG] Atualizando status para:', status, 'IDs:', JSON.stringify(ids));
-
                 const { data, error } = await db
                     .from('planilha')
                     .update({ delivery_status: status })
@@ -2798,30 +3140,8 @@
                     .select();
 
                 if (error) throw error;
-
-                console.log('[DEBUG] Registros atualizados:', data ? data.length : 0);
-
-                if (!data || data.length === 0) {
-                    console.warn('[DEBUG] Nenhum registro atualizado. Verificando se IDs existem...');
-                    // Check if IDs exist in the table
-                    const { data: checkData } = await db
-                        .from('planilha')
-                        .select('id')
-                        .in('id', ids);
-                    console.log('[DEBUG] IDs encontrados no banco:', checkData ? JSON.stringify(checkData) : 'nenhum');
-
-                    // Check RLS policy - if select works but update doesn't, it's an RLS issue
-                    if (checkData && checkData.length > 0) {
-                        showErrorModal('Erro: O update não funcionou. Verifique as políticas RLS (UPDATE) no Supabase.');
-                    } else {
-                        showErrorModal('Erro: IDs não encontrados na tabela planilha.');
-                    }
-                    return false;
-                }
-
-                return true;
+                return data && data.length > 0;
             } catch (error) {
-                console.error('Erro ao atualizar status:', JSON.stringify(error));
                 showErrorModal('Erro ao atualizar status de entrega.');
                 return false;
             }
@@ -3180,15 +3500,6 @@
 
                 const stops = mergedGroups;
 
-                // Debug: log delivery statuses found
-                const statusCounts = { delivered: 0, not_delivered: 0, pending: 0 };
-                stops.forEach(s => {
-                    if (s.deliveryStatus === 'delivered') statusCounts.delivered++;
-                    else if (s.deliveryStatus === 'not_delivered') statusCounts.not_delivered++;
-                    else statusCounts.pending++;
-                });
-                console.log('[DEBUG] Status dos marcadores:', JSON.stringify(statusCounts));
-
                 // Determine icon color based on delivery status
                 function getIconColor(stop) {
                     if (stop.deliveryStatus === 'delivered') return 'gray';
@@ -3203,7 +3514,6 @@
                     const color = getIconColor(stop);
                     iconConfigs.add(`${packageCount}-${color}`);
                 });
-                console.log('[DEBUG] Ícones necessários:', Array.from(iconConfigs));
 
                 const iconPromises = Array.from(iconConfigs).map(config => {
                     return new Promise((resolve) => {
@@ -3340,6 +3650,10 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                                             Não Entregue
                                         </button>
+                                        <button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+                                            Navegar
+                                        </button>
                                     </div>
                                 </div>
                             `)
@@ -3370,6 +3684,20 @@
                                 }
                             });
                         });
+
+                        // Add click handler for navigate button
+                        const navBtn = popupContent.querySelector('.route-popup-btn.navigate');
+                        if (navBtn) {
+                            navBtn.addEventListener('click', (evt) => {
+                                evt.stopPropagation();
+                                evt.preventDefault();
+                                const destLng = parseFloat(navBtn.dataset.lng);
+                                const destLat = parseFloat(navBtn.dataset.lat);
+                                const destAddress = navBtn.dataset.address;
+                                routePopup.remove();
+                                startNavigation(destLng, destLat, destAddress);
+                            });
+                        }
 
                         // Prevent popup from interfering with map touch gestures
                         const popupEl = routePopup.getElement();
@@ -4086,6 +4414,372 @@
             // Reset adjusted coordinates
             adjustedCoordinates = null;
         }
+
+        // ==================== NAVIGATION SYSTEM ====================
+        const navPanel = document.getElementById('navPanel');
+        const navPanelClose = document.getElementById('navPanelClose');
+        const navContent = document.getElementById('navContent');
+        const navDistanceEl = document.getElementById('navDistance');
+        const navDurationEl = document.getElementById('navDuration');
+
+        let currentNavigation = null;
+        let navigationWatchId = null;
+
+        // Format distance for display
+        function formatDistance(meters) {
+            if (meters < 1000) {
+                return `${Math.round(meters)} m`;
+            }
+            return `${(meters / 1000).toFixed(1)} km`;
+        }
+
+        // Format duration for display
+        function formatDuration(seconds) {
+            if (seconds < 60) {
+                return `${Math.round(seconds)} seg`;
+            }
+            const minutes = Math.round(seconds / 60);
+            if (minutes < 60) {
+                return `${minutes} min`;
+            }
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}min`;
+        }
+
+        // Get maneuver icon based on type
+        function getManeuverIcon(type, modifier) {
+            const icons = {
+                'turn': {
+                    'left': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>',
+                    'right': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>',
+                    'slight left': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11l5-5m0 0l5 5m-5-5v12" /></svg>',
+                    'slight right': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 11l5-5m0 0l5 5m-5-5v12" /></svg>',
+                    'sharp left': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>',
+                    'sharp right': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>',
+                    'uturn': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>'
+                },
+                'depart': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" /></svg>',
+                'arrive': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>',
+                'continue': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7" /></svg>',
+                'merge': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>',
+                'roundabout': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>',
+                'fork': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>',
+                'end of road': '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>'
+            };
+
+            if (type === 'turn' && modifier) {
+                return icons.turn[modifier] || icons.continue;
+            }
+            return icons[type] || icons.continue;
+        }
+
+        // Translate maneuver instruction to Portuguese
+        function translateInstruction(instruction) {
+            const translations = {
+                'Turn left': 'Vire à esquerda',
+                'Turn right': 'Vire à direita',
+                'Turn slight left': 'Vire levemente à esquerda',
+                'Turn slight right': 'Vire levemente à direita',
+                'Turn sharp left': 'Vire acentuadamente à esquerda',
+                'Turn sharp right': 'Vire acentuadamente à direita',
+                'Make a U-turn': 'Faça um retorno',
+                'Continue': 'Continue',
+                'Continue straight': 'Continue em frente',
+                'Keep left': 'Mantenha-se à esquerda',
+                'Keep right': 'Mantenha-se à direita',
+                'Merge': 'Entre na via',
+                'Take the ramp': 'Pegue a rampa',
+                'Enter the roundabout': 'Entre na rotatória',
+                'Exit the roundabout': 'Saia da rotatória',
+                'You have arrived': 'Você chegou ao destino',
+                'Head': 'Siga',
+                'north': 'ao norte',
+                'south': 'ao sul',
+                'east': 'a leste',
+                'west': 'a oeste',
+                'onto': 'para'
+            };
+
+            let translated = instruction;
+            for (const [eng, pt] of Object.entries(translations)) {
+                translated = translated.replace(new RegExp(eng, 'gi'), pt);
+            }
+            return translated;
+        }
+
+        // Get route from Mapbox Directions API
+        async function getRoute(startLng, startLat, endLng, endLat) {
+            const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${startLng},${startLat};${endLng},${endLat}?alternatives=false&annotations=distance,duration&geometries=geojson&language=pt&overview=full&steps=true&access_token=${mapboxgl.accessToken}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+                    throw new Error('Não foi possível calcular a rota');
+                }
+
+                return data.routes[0];
+            } catch (error) {
+                throw new Error('Erro ao obter rota. Verifique sua conexão.');
+            }
+        }
+
+        // Draw route on map
+        function drawRoute(route) {
+            const geojson = {
+                type: 'Feature',
+                geometry: route.geometry
+            };
+
+            // Remove existing route layer and source
+            if (map.getLayer('navigation-route')) {
+                map.removeLayer('navigation-route');
+            }
+            if (map.getLayer('navigation-route-outline')) {
+                map.removeLayer('navigation-route-outline');
+            }
+            if (map.getSource('navigation-route')) {
+                map.removeSource('navigation-route');
+            }
+
+            // Add route source
+            map.addSource('navigation-route', {
+                type: 'geojson',
+                data: geojson
+            });
+
+            // Add route outline layer (for border effect)
+            map.addLayer({
+                id: 'navigation-route-outline',
+                type: 'line',
+                source: 'navigation-route',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': '#1e40af',
+                    'line-width': 10,
+                    'line-opacity': 0.4
+                }
+            });
+
+            // Add route line layer
+            map.addLayer({
+                id: 'navigation-route',
+                type: 'line',
+                source: 'navigation-route',
+                layout: {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                paint: {
+                    'line-color': '#3b82f6',
+                    'line-width': 6,
+                    'line-opacity': 0.9
+                }
+            });
+        }
+
+        // Remove route from map
+        function removeRoute() {
+            if (map.getLayer('navigation-route')) {
+                map.removeLayer('navigation-route');
+            }
+            if (map.getLayer('navigation-route-outline')) {
+                map.removeLayer('navigation-route-outline');
+            }
+            if (map.getSource('navigation-route')) {
+                map.removeSource('navigation-route');
+            }
+        }
+
+        // Render navigation steps
+        function renderNavigationSteps(route, destinationAddress) {
+            const steps = route.legs[0].steps;
+            const totalDistance = route.distance;
+            const totalDuration = route.duration;
+
+            // Update header info
+            navDistanceEl.querySelector('span:last-child').textContent = formatDistance(totalDistance);
+            navDurationEl.querySelector('span:last-child').textContent = formatDuration(totalDuration);
+
+            // Build steps HTML
+            let stepsHtml = '';
+
+            // Current instruction (first step)
+            const firstStep = steps[0];
+            const firstIcon = getManeuverIcon(firstStep.maneuver.type, firstStep.maneuver.modifier);
+            const firstInstruction = translateInstruction(firstStep.maneuver.instruction || 'Continue');
+
+            stepsHtml += `
+                <div class="nav-current-instruction">
+                    <div class="nav-instruction-icon">${firstIcon}</div>
+                    <div class="nav-instruction-text">
+                        <div class="nav-instruction-main">${firstInstruction}</div>
+                        <div class="nav-instruction-detail">${firstStep.name || 'Rua sem nome'}</div>
+                    </div>
+                    <div class="nav-instruction-distance">${formatDistance(firstStep.distance)}</div>
+                </div>
+            `;
+
+            // Steps container
+            stepsHtml += '<div class="nav-steps-container">';
+
+            // Remaining steps
+            for (let i = 1; i < steps.length; i++) {
+                const step = steps[i];
+                const icon = getManeuverIcon(step.maneuver.type, step.maneuver.modifier);
+                const instruction = translateInstruction(step.maneuver.instruction || 'Continue');
+
+                stepsHtml += `
+                    <div class="nav-step">
+                        <div class="nav-step-icon">${icon}</div>
+                        <div class="nav-step-content">
+                            <div class="nav-step-instruction">${instruction}</div>
+                            <div class="nav-step-distance">${formatDistance(step.distance)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            stepsHtml += '</div>';
+
+            // Destination
+            stepsHtml += `
+                <div class="nav-destination">
+                    <div class="nav-destination-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </div>
+                    <div class="nav-destination-text">
+                        <div class="nav-destination-label">DESTINO</div>
+                        <div class="nav-destination-address">${destinationAddress}</div>
+                    </div>
+                </div>
+            `;
+
+            navContent.innerHTML = stepsHtml;
+        }
+
+        // Start navigation
+        async function startNavigation(destLng, destLat, destAddress) {
+            // Show navigation panel with loading state
+            navPanel.classList.add('active');
+            navContent.innerHTML = `
+                <div class="nav-loading">
+                    <div class="nav-loading-spinner"></div>
+                    <div class="nav-loading-text">Calculando rota...</div>
+                </div>
+            `;
+
+            try {
+                // Get current position
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+
+                const startLng = position.coords.longitude;
+                const startLat = position.coords.latitude;
+
+                // Get route
+                const route = await getRoute(startLng, startLat, destLng, destLat);
+
+                // Store current navigation
+                currentNavigation = {
+                    destination: { lng: destLng, lat: destLat, address: destAddress },
+                    route: route
+                };
+
+                // Draw route on map
+                drawRoute(route);
+
+                // Render navigation steps
+                renderNavigationSteps(route, destAddress);
+
+                // Fit map to show entire route
+                const coordinates = route.geometry.coordinates;
+                const bounds = new mapboxgl.LngLatBounds();
+                coordinates.forEach(coord => bounds.extend(coord));
+                map.fitBounds(bounds, {
+                    padding: { top: 50, bottom: 350, left: 50, right: 50 },
+                    duration: 1000
+                });
+
+                // Start watching position for live updates
+                startPositionWatch();
+
+            } catch (error) {
+                navContent.innerHTML = `
+                    <div class="nav-loading">
+                        <div style="color: #ef4444; font-size: 48px; margin-bottom: 16px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" width="48" height="48"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        </div>
+                        <div class="nav-loading-text" style="color: #ef4444;">${error.message || 'Erro ao calcular rota'}</div>
+                    </div>
+                `;
+            }
+        }
+
+        // Start watching position for live navigation updates
+        function startPositionWatch() {
+            if (navigationWatchId) {
+                navigator.geolocation.clearWatch(navigationWatchId);
+            }
+
+            navigationWatchId = navigator.geolocation.watchPosition(
+                async (position) => {
+                    if (!currentNavigation) return;
+
+                    const { longitude, latitude } = position.coords;
+                    const dest = currentNavigation.destination;
+
+                    // Recalculate route periodically (every ~100m of movement)
+                    // For now, we'll just update the map view to follow user
+                    // Full recalculation would require more complex logic
+                },
+                (error) => {
+                    // Silently handle position errors during navigation
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 2000
+                }
+            );
+        }
+
+        // Stop navigation
+        function stopNavigation() {
+            // Clear position watch
+            if (navigationWatchId) {
+                navigator.geolocation.clearWatch(navigationWatchId);
+                navigationWatchId = null;
+            }
+
+            // Remove route from map
+            removeRoute();
+
+            // Clear navigation state
+            currentNavigation = null;
+
+            // Hide panel
+            navPanel.classList.remove('active');
+
+            // Reset header info
+            navDistanceEl.querySelector('span:last-child').textContent = '--';
+            navDurationEl.querySelector('span:last-child').textContent = '--';
+        }
+
+        // Close navigation panel event
+        navPanelClose.addEventListener('click', stopNavigation);
+
+        // ==================== END NAVIGATION SYSTEM ====================
 
         // Re-center map on GPS when returning to the app (after screen off, tab switch, etc.)
         function recenterOnGPS() {
