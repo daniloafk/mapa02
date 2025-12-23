@@ -934,9 +934,10 @@
 
         .route-popup-actions {
             display: flex;
-            gap: 8px;
-            margin-top: 12px;
-            padding-top: 12px;
+            flex-wrap: nowrap;
+            gap: 4px;
+            margin-top: 10px;
+            padding-top: 10px;
             border-top: 1px solid #e2e8f0;
         }
 
@@ -945,21 +946,23 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            padding: 8px 10px;
+            gap: 2px;
+            padding: 6px 6px;
             border: none;
-            border-radius: 8px;
-            font-size: 12px;
+            border-radius: 6px;
+            font-size: 10px;
             font-weight: 600;
             cursor: pointer;
             background: #e2e8f0;
             color: #475569;
             transition: all 0.2s ease;
+            white-space: nowrap;
         }
 
         .route-popup-btn svg {
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
+            flex-shrink: 0;
         }
 
         .route-popup-btn:hover {
@@ -991,9 +994,6 @@
         .route-popup-btn.navigate {
             background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
             color: white;
-            flex: none;
-            width: 100%;
-            margin-top: 8px;
         }
 
         .route-popup-btn.navigate:hover {
