@@ -3486,7 +3486,6 @@
 
         let qrStream = null;
         let qrAnimationFrame = null;
-        let lastScannedCode = null;
 
         // Open QR Scanner
         cadastrarBtn.addEventListener('click', () => {
@@ -3639,7 +3638,6 @@
             }
 
             qrVideo.srcObject = null;
-            lastScannedCode = null;
         }
 
         function startScanning() {
@@ -3676,10 +3674,8 @@
                     });
 
                     if (code && code.data) {
-                        // QR Code found! Search in database immediately
-                        lastScannedCode = code.data;
                         searchAndShowResult(code.data);
-                        return; // Stop scanning
+                        return;
                     }
                 }
 
@@ -3760,48 +3756,6 @@
                 latitude: center.lat,
                 longitude: center.lng
             };
-        }
-
-        // Save client location with current GPS (for Save button - quick success)
-        async function saveClientLocationWithGPS() {
-            if (!currentRecord) return;
-
-            try {
-                // Get current GPS position
-                const position = await new Promise((resolve, reject) => {
-                    navigator.geolocation.getCurrentPosition(resolve, reject, {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    });
-                });
-
-                const { error } = await db
-                    .from('clients')
-                    .insert({
-                        address: currentRecord.destination_address,
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude
-                    });
-
-                if (error) throw error;
-
-                // Show quick success icon
-                showQuickSuccess();
-
-                // Refresh clients list
-                loadClientes();
-
-                // Reset current record
-                currentRecord = null;
-
-            } catch (error) {
-                if (error.code === 1) {
-                    showErrorModal('Não foi possível obter sua localização. Verifique as permissões do GPS.');
-                } else {
-                    showErrorModal('Erro ao salvar o endereço. Tente novamente.');
-                }
-            }
         }
 
         // Enter adjust mode - show fixed center pin, start at GPS position
