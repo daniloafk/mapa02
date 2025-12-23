@@ -2308,18 +2308,26 @@
             }
         }
 
+        let geolocateControl = null;
+
         function initializeMapControls() {
             map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-            const geolocate = new mapboxgl.GeolocateControl({
+            geolocateControl = new mapboxgl.GeolocateControl({
                 positionOptions: {
                     enableHighAccuracy: true
                 },
                 trackUserLocation: true,
-                showUserHeading: true
+                showUserHeading: true,
+                showAccuracyCircle: false
             });
 
-            map.addControl(geolocate, 'top-right');
+            map.addControl(geolocateControl, 'top-right');
+
+            // Auto-trigger geolocation on load
+            map.once('load', () => {
+                geolocateControl.trigger();
+            });
         }
 
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
@@ -4135,9 +4143,7 @@
         // ==================== NAVIGATION SYSTEM ====================
         const endNavBtn = document.getElementById('endNavBtn');
         let currentNavigation = null;
-        let navigationWatchId = null;
-        let lastPosition = null;
-        let isFollowingUser = true;
+        let navigationGeolocateHandler = null;
 
         // Get route from Mapbox Directions API
         async function getRoute(startLng, startLat, endLng, endLat) {
@@ -4229,109 +4235,40 @@
             }
         }
 
-        // Calculate bearing between two points
-        function calculateBearing(lat1, lng1, lat2, lng2) {
-            const toRad = (deg) => deg * Math.PI / 180;
-            const toDeg = (rad) => rad * 180 / Math.PI;
+        // Handler for geolocate events during navigation
+        function onNavigationGeolocate(e) {
+            if (!currentNavigation) return;
 
-            const dLng = toRad(lng2 - lng1);
-            const y = Math.sin(dLng) * Math.cos(toRad(lat2));
-            const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-                      Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
-
-            return (toDeg(Math.atan2(y, x)) + 360) % 360;
+            // Smoothly update map view with navigation perspective
+            map.easeTo({
+                center: [e.coords.longitude, e.coords.latitude],
+                zoom: 17,
+                pitch: 50,
+                duration: 800,
+                easing: (t) => t * (2 - t)
+            });
         }
 
-        // Start watching user position for navigation
-        function startPositionTracking() {
-            if (navigationWatchId !== null) {
-                navigator.geolocation.clearWatch(navigationWatchId);
-            }
+        // Start navigation tracking using Mapbox GeolocateControl
+        function startNavigationTracking() {
+            if (!geolocateControl) return;
 
-            isFollowingUser = true;
-            lastPosition = null;
+            // Add geolocate event handler for smooth map following
+            navigationGeolocateHandler = onNavigationGeolocate;
+            geolocateControl.on('geolocate', navigationGeolocateHandler);
 
-            navigationWatchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    const lng = position.coords.longitude;
-                    const lat = position.coords.latitude;
-                    const accuracy = position.coords.accuracy;
-                    let heading = position.coords.heading;
-
-                    // Calculate heading from last position if not provided
-                    if ((heading === null || isNaN(heading)) && lastPosition) {
-                        const distance = Math.sqrt(
-                            Math.pow(lng - lastPosition.lng, 2) +
-                            Math.pow(lat - lastPosition.lat, 2)
-                        );
-                        // Only calculate bearing if moved enough (avoid jitter)
-                        if (distance > 0.00005) {
-                            heading = calculateBearing(lastPosition.lat, lastPosition.lng, lat, lng);
-                        }
-                    }
-
-                    // Center map on user with smooth animation (only if following)
-                    if (isFollowingUser && currentNavigation) {
-                        map.easeTo({
-                            center: [lng, lat],
-                            zoom: 17,
-                            bearing: heading || map.getBearing(),
-                            pitch: 45,
-                            duration: 1000,
-                            easing: (t) => t * (2 - t) // Ease out quad
-                        });
-                    }
-
-                    // Store last position
-                    lastPosition = { lng, lat, heading };
-                },
-                (error) => {
-                    console.log('GPS tracking error:', error.message);
-                },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 5000,
-                    maximumAge: 0
-                }
-            );
-
-            // Detect when user manually moves the map - pause auto-following
-            map.on('dragstart', onUserInteraction);
-            map.on('zoomstart', onUserInteraction);
+            // Trigger tracking mode
+            geolocateControl.trigger();
         }
 
-        // Handle user interaction with map during navigation
-        function onUserInteraction() {
-            if (currentNavigation) {
-                isFollowingUser = false;
-                // Resume following after 5 seconds of no interaction
-                clearTimeout(window.resumeFollowTimeout);
-                window.resumeFollowTimeout = setTimeout(() => {
-                    if (currentNavigation) {
-                        isFollowingUser = true;
-                    }
-                }, 5000);
-            }
-        }
-
-        // Stop position tracking
-        function stopPositionTracking() {
-            if (navigationWatchId !== null) {
-                navigator.geolocation.clearWatch(navigationWatchId);
-                navigationWatchId = null;
+        // Stop navigation tracking
+        function stopNavigationTracking() {
+            if (geolocateControl && navigationGeolocateHandler) {
+                geolocateControl.off('geolocate', navigationGeolocateHandler);
+                navigationGeolocateHandler = null;
             }
 
-            lastPosition = null;
-            isFollowingUser = true;
-
-            // Remove map interaction listeners
-            map.off('dragstart', onUserInteraction);
-            map.off('zoomstart', onUserInteraction);
-
-            // Clear resume timeout
-            clearTimeout(window.resumeFollowTimeout);
-
-            // Reset map orientation
+            // Reset map orientation smoothly
             map.easeTo({
                 pitch: 0,
                 bearing: 0,
@@ -4341,7 +4278,7 @@
 
         // Stop navigation
         function stopNavigation() {
-            stopPositionTracking();
+            stopNavigationTracking();
             removeRoute();
             currentNavigation = null;
             endNavBtn.classList.remove('active');
@@ -4389,9 +4326,9 @@
                     duration: 1500
                 });
 
-                // After showing route overview, start tracking and zoom to user
+                // After showing route overview, start tracking with GeolocateControl
                 setTimeout(() => {
-                    startPositionTracking();
+                    startNavigationTracking();
                 }, 2000);
 
             } catch (error) {
