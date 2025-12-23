@@ -1655,6 +1655,16 @@
             height: 180px;
             border-radius: 12px;
             overflow: hidden;
+            transition: height 0.3s ease;
+        }
+
+        .qr-address-list-container.expanded {
+            height: 420px;
+            margin-top: 0;
+        }
+
+        .qr-scanner-container.hidden {
+            display: none;
         }
 
         .qr-address-list {
@@ -3723,22 +3733,43 @@
         let isScrolling = false;
         let scrollEndTimer = null;
         let lastRenderedRange = { start: -1, end: -1 };
+        let isListExpanded = false;
+        const qrScannerContainer = document.querySelector('.qr-scanner-container');
+        const qrAddressListContainer = document.getElementById('qrAddressListContainer');
+
+        function expandList() {
+            if (isListExpanded) return;
+            isListExpanded = true;
+
+            // Hide QR scanner and expand list
+            qrScannerContainer.classList.add('hidden');
+            qrAddressListContainer.classList.add('expanded');
+
+            // Pause scanner
+            pauseScanner();
+
+            // Re-render with new height
+            setTimeout(renderVisibleItems, 50);
+        }
+
+        // Expand list on touch/click
+        qrAddressList.addEventListener('touchstart', expandList, { passive: true });
+        qrAddressList.addEventListener('mousedown', expandList);
 
         function onVirtualScroll() {
-            // Pause QR scanner while scrolling
-            if (!isScrolling) {
-                isScrolling = true;
-                pauseScanner();
-            }
+            // Expand list on scroll
+            expandList();
 
             // Clear previous timer
             if (scrollEndTimer) clearTimeout(scrollEndTimer);
 
-            // Resume scanner after scroll ends
             scrollEndTimer = setTimeout(() => {
                 isScrolling = false;
-                resumeScanner();
             }, 200);
+
+            if (!isScrolling) {
+                isScrolling = true;
+            }
 
             renderVisibleItems();
         }
@@ -3751,6 +3782,8 @@
         }
 
         function resumeScanner() {
+            // Only resume if list is not expanded
+            if (isListExpanded) return;
             if (qrStream && qrModal.classList.contains('active') && !qrAnimationFrame) {
                 startScanning();
             }
@@ -3804,7 +3837,7 @@
 
             // Stop scanning
             if (qrAnimationFrame) {
-                cancelAnimationFrame(qrAnimationFrame);
+                clearTimeout(qrAnimationFrame);
                 qrAnimationFrame = null;
             }
 
@@ -3816,6 +3849,12 @@
 
             qrVideo.srcObject = null;
             lastScannedCode = null;
+
+            // Reset list expansion state
+            isListExpanded = false;
+            qrScannerContainer.classList.remove('hidden');
+            qrAddressListContainer.classList.remove('expanded');
+            lastRenderedRange = { start: -1, end: -1 };
         }
 
         function startScanning() {
