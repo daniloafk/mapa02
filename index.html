@@ -2911,19 +2911,30 @@
 
         // Update delivery status in Supabase
         async function updateDeliveryStatus(ids, status) {
-            if (!ids || ids.length === 0) return false;
+            if (!ids || ids.length === 0) {
+                console.error('IDs vazios');
+                return false;
+            }
 
             try {
+                console.log(`Atualizando status para ${status} dos IDs:`, ids);
+
                 const { data, error } = await db
                     .from('planilha')
                     .update({ delivery_status: status })
                     .in('id', ids)
                     .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Erro do Supabase:', error);
+                    throw error;
+                }
+
+                console.log('Status atualizado com sucesso:', data);
                 return data && data.length > 0;
             } catch (error) {
-                showErrorModal('Erro ao atualizar status de entrega.');
+                console.error('Erro ao atualizar status:', error);
+                showErrorModal(`Erro ao atualizar status de entrega: ${error.message || error}`);
                 return false;
             }
         }
