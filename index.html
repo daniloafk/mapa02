@@ -922,6 +922,56 @@
             color: #1e293b;
         }
 
+        /* Navigation User Marker - smooth animated */
+        .nav-user-marker {
+            width: 28px;
+            height: 28px;
+            position: relative;
+            transition: transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .nav-user-dot {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            border: 4px solid white;
+            border-radius: 50%;
+            box-shadow: 0 3px 12px rgba(59, 130, 246, 0.6);
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .nav-user-arrow {
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 20px solid #3b82f6;
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
+            transition: transform 0.3s ease;
+        }
+
+        .nav-user-pulse {
+            width: 28px;
+            height: 28px;
+            background: rgba(59, 130, 246, 0.4);
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            animation: navPulse 2s ease-out infinite;
+        }
+
+        @keyframes navPulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
         .route-popup-content {
             font-size: 13px;
             max-width: 220px;
@@ -4250,6 +4300,7 @@
 
         // Last navigation position for bearing calculation
         let lastNavPosition = null;
+        let navUserMarker = null;
 
         // Calculate bearing between two points
         function calculateBearing(lat1, lng1, lat2, lng2) {
@@ -4262,6 +4313,65 @@
                       Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
 
             return (toDeg(Math.atan2(y, x)) + 360) % 360;
+        }
+
+        // Create smooth navigation marker
+        function createNavUserMarker(lng, lat) {
+            if (navUserMarker) {
+                navUserMarker.remove();
+            }
+
+            const el = document.createElement('div');
+            el.className = 'nav-user-marker';
+            el.innerHTML = `
+                <div class="nav-user-pulse"></div>
+                <div class="nav-user-dot"></div>
+                <div class="nav-user-arrow"></div>
+            `;
+
+            navUserMarker = new mapboxgl.Marker({
+                element: el,
+                anchor: 'center',
+                rotationAlignment: 'map',
+                pitchAlignment: 'map'
+            })
+            .setLngLat([lng, lat])
+            .addTo(map);
+
+            return navUserMarker;
+        }
+
+        // Update navigation marker position smoothly
+        function updateNavUserMarker(lng, lat, heading) {
+            if (!navUserMarker) {
+                createNavUserMarker(lng, lat);
+            } else {
+                navUserMarker.setLngLat([lng, lat]);
+            }
+
+            // Update arrow direction
+            if (heading !== null && heading !== undefined && !isNaN(heading)) {
+                const arrow = navUserMarker.getElement().querySelector('.nav-user-arrow');
+                if (arrow) {
+                    arrow.style.transform = `translateX(-50%) rotate(${heading}deg)`;
+                }
+            }
+        }
+
+        // Remove navigation marker
+        function removeNavUserMarker() {
+            if (navUserMarker) {
+                navUserMarker.remove();
+                navUserMarker = null;
+            }
+        }
+
+        // Hide/show default geolocate marker
+        function setGeolocateMarkerVisible(visible) {
+            const geoMarker = document.querySelector('.mapboxgl-user-location');
+            if (geoMarker) {
+                geoMarker.style.display = visible ? '' : 'none';
+            }
         }
 
         // Handler for geolocate events during navigation
@@ -4290,6 +4400,9 @@
             // Store current position for next calculation
             lastNavPosition = { lng, lat, heading };
 
+            // Update custom marker (smooth via CSS transition)
+            updateNavUserMarker(lng, lat, heading);
+
             // Smoothly update map view with navigation perspective and bearing
             map.easeTo({
                 center: [lng, lat],
@@ -4308,6 +4421,9 @@
             // Reset last position
             lastNavPosition = null;
 
+            // Hide default geolocate marker
+            setGeolocateMarkerVisible(false);
+
             // Add geolocate event handler for smooth map following
             navigationGeolocateHandler = onNavigationGeolocate;
             geolocateControl.on('geolocate', navigationGeolocateHandler);
@@ -4325,6 +4441,12 @@
 
             // Reset last position
             lastNavPosition = null;
+
+            // Remove custom navigation marker
+            removeNavUserMarker();
+
+            // Show default geolocate marker again
+            setGeolocateMarkerVisible(true);
 
             // Reset map orientation smoothly
             map.easeTo({
