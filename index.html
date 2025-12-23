@@ -3743,8 +3743,15 @@
             qrScannerContainer.classList.add('hidden');
             qrAddressListContainer.classList.add('expanded');
 
-            // Pause scanner
+            // Stop scanner completely
             pauseScanner();
+
+            // Stop camera completely to free up resources
+            if (qrStream) {
+                qrStream.getTracks().forEach(track => track.stop());
+                qrStream = null;
+            }
+            qrVideo.srcObject = null;
 
             // Re-render with new height
             setTimeout(renderVisibleItems, 50);
