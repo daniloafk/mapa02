@@ -2789,6 +2789,7 @@
             if (!ids || ids.length === 0) return false;
 
             try {
+                console.log('[DEBUG] Atualizando status para:', status, 'IDs:', JSON.stringify(ids));
                 const { data, error } = await db
                     .from('planilha')
                     .update({ delivery_status: status })
@@ -2796,6 +2797,7 @@
                     .select();
 
                 if (error) throw error;
+                console.log('[DEBUG] Status atualizado com sucesso:', JSON.stringify(data));
                 return true;
             } catch (error) {
                 console.error('Erro ao atualizar status:', JSON.stringify(error));
@@ -3157,6 +3159,15 @@
 
                 const stops = mergedGroups;
 
+                // Debug: log delivery statuses found
+                const statusCounts = { delivered: 0, not_delivered: 0, pending: 0 };
+                stops.forEach(s => {
+                    if (s.deliveryStatus === 'delivered') statusCounts.delivered++;
+                    else if (s.deliveryStatus === 'not_delivered') statusCounts.not_delivered++;
+                    else statusCounts.pending++;
+                });
+                console.log('[DEBUG] Status dos marcadores:', JSON.stringify(statusCounts));
+
                 // Determine icon color based on delivery status
                 function getIconColor(stop) {
                     if (stop.deliveryStatus === 'delivered') return 'gray';
@@ -3171,6 +3182,7 @@
                     const color = getIconColor(stop);
                     iconConfigs.add(`${packageCount}-${color}`);
                 });
+                console.log('[DEBUG] Ícones necessários:', Array.from(iconConfigs));
 
                 const iconPromises = Array.from(iconConfigs).map(config => {
                     return new Promise((resolve) => {
