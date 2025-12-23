@@ -937,6 +937,12 @@
             color: white;
         }
 
+        .route-popup-btn:disabled {
+            opacity: 0.6;
+            cursor: wait;
+            pointer-events: none;
+        }
+
         /* Upload Modal */
         .upload-modal {
             position: fixed;
@@ -2780,17 +2786,21 @@
 
         // Update delivery status in Supabase
         async function updateDeliveryStatus(ids, status) {
-            if (!ids || ids.length === 0) return;
+            if (!ids || ids.length === 0) return false;
 
             try {
-                const { error } = await db
+                const { data, error } = await db
                     .from('planilha')
                     .update({ delivery_status: status })
-                    .in('id', ids);
+                    .in('id', ids)
+                    .select();
 
                 if (error) throw error;
+                return true;
             } catch (error) {
-                showErrorModal('Erro ao atualizar status de entrega.');
+                console.error('Erro ao atualizar status:', JSON.stringify(error));
+                showErrorModal('Erro ao atualizar status de entrega. Verifique se a coluna delivery_status existe na tabela planilha.');
+                return false;
             }
         }
 
@@ -2877,7 +2887,7 @@
             return { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
         }
 
-        async function loadRouteMarkers() {
+        async function loadRouteMarkers(skipFitBounds = false) {
             try {
                 // Fetch all data from planilha table including delivery_status
                 const { data, error } = await db
@@ -3169,17 +3179,23 @@
                         const count = config.substring(0, firstDash);
                         const color = config.substring(firstDash + 1);
                         const iconName = `pin-${color}-${count}`;
-                        if (!map.hasImage(iconName)) {
-                            const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
-                            const img = new Image();
-                            img.onload = () => {
-                                map.addImage(iconName, img, { pixelRatio: pixelRatio });
-                                resolve();
-                            };
-                            img.src = dataUrl;
-                        } else {
+
+                        // Only create if icon doesn't exist
+                        if (map.hasImage(iconName)) {
                             resolve();
+                            return;
                         }
+
+                        const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
+                        const img = new Image();
+                        img.onload = () => {
+                            if (!map.hasImage(iconName)) {
+                                map.addImage(iconName, img, { pixelRatio: pixelRatio });
+                            }
+                            resolve();
+                        };
+                        img.onerror = () => resolve();
+                        img.src = dataUrl;
                     });
                 });
 
@@ -3218,6 +3234,9 @@
                 // Add or update source
                 if (map.getSource('route-stops')) {
                     map.getSource('route-stops').setData(geojson);
+                    // Force Mapbox to re-render the layer by toggling visibility
+                    map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
+                    map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
                 } else {
                     map.addSource('route-stops', {
                         type: 'geojson',
@@ -3298,12 +3317,24 @@
                         popupContent.querySelectorAll('.route-popup-btn').forEach(btn => {
                             btn.addEventListener('click', async (evt) => {
                                 evt.stopPropagation();
+                                evt.preventDefault();
+
+                                // Disable buttons while processing
+                                const buttons = popupContent.querySelectorAll('.route-popup-btn');
+                                buttons.forEach(b => b.disabled = true);
+
                                 const status = btn.dataset.status;
                                 const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
-                                await updateDeliveryStatus(ids, status);
-                                routePopup.remove();
-                                // Reload markers to reflect new status
-                                await loadRouteMarkers();
+                                const success = await updateDeliveryStatus(ids, status);
+
+                                if (success) {
+                                    routePopup.remove();
+                                    // Reload markers to reflect new status (skip fitBounds)
+                                    await loadRouteMarkers(true);
+                                } else {
+                                    // Re-enable buttons on failure
+                                    buttons.forEach(b => b.disabled = false);
+                                }
                             });
                         });
 
@@ -3350,8 +3381,8 @@
                 routeMarkersVisible = true;
                 routeMarkersBtn.classList.add('active');
 
-                // Fit map to show all markers
-                if (features.length > 0) {
+                // Fit map to show all markers (only on first load, not on status updates)
+                if (features.length > 0 && !skipFitBounds) {
                     const bounds = new mapboxgl.LngLatBounds();
                     features.forEach(f => bounds.extend(f.geometry.coordinates));
                     map.fitBounds(bounds, { padding: 50, duration: 1500 });
