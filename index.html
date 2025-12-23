@@ -4154,17 +4154,6 @@
             }
         }
 
-        // Find the first symbol layer to insert route below labels
-        function getFirstSymbolLayerId() {
-            const layers = map.getStyle().layers;
-            for (const layer of layers) {
-                if (layer.type === 'symbol') {
-                    return layer.id;
-                }
-            }
-            return undefined;
-        }
-
         // Draw route on map
         function drawRoute(route) {
             // Remove existing route first
@@ -4175,16 +4164,23 @@
                 geometry: route.geometry
             };
 
-            // Find first symbol layer to insert below labels
-            const firstSymbolId = getFirstSymbolLayerId();
-
             // Add route source
             map.addSource('navigation-route', {
                 type: 'geojson',
                 data: geojson
             });
 
-            // Add route outline layer (for border effect) - below labels
+            // Find a label layer to insert route below it
+            let labelLayerId;
+            const layers = map.getStyle().layers;
+            for (const layer of layers) {
+                if (layer.type === 'symbol' && layer.layout && layer.layout['text-field']) {
+                    labelLayerId = layer.id;
+                    break;
+                }
+            }
+
+            // Add route outline layer (for border effect)
             map.addLayer({
                 id: 'navigation-route-outline',
                 type: 'line',
@@ -4198,9 +4194,9 @@
                     'line-width': 10,
                     'line-opacity': 0.4
                 }
-            }, firstSymbolId);
+            }, labelLayerId);
 
-            // Add route line layer - below labels
+            // Add route line layer
             map.addLayer({
                 id: 'navigation-route',
                 type: 'line',
@@ -4214,7 +4210,7 @@
                     'line-width': 6,
                     'line-opacity': 0.9
                 }
-            }, firstSymbolId);
+            }, labelLayerId);
         }
 
         // Remove route from map
