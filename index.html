@@ -943,17 +943,7 @@
         }
 
         .nav-user-arrow {
-            width: 0;
-            height: 0;
-            border-left: 10px solid transparent;
-            border-right: 10px solid transparent;
-            border-bottom: 20px solid #3b82f6;
-            position: absolute;
-            top: -22px;
-            left: 50%;
-            transform: translateX(-50%);
-            filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3));
-            transition: transform 0.3s ease;
+            display: none;
         }
 
         .nav-user-pulse {
@@ -4326,7 +4316,6 @@
             el.innerHTML = `
                 <div class="nav-user-pulse"></div>
                 <div class="nav-user-dot"></div>
-                <div class="nav-user-arrow"></div>
             `;
 
             navUserMarker = new mapboxgl.Marker({
@@ -4349,13 +4338,7 @@
                 navUserMarker.setLngLat([lng, lat]);
             }
 
-            // Update arrow direction
-            if (heading !== null && heading !== undefined && !isNaN(heading)) {
-                const arrow = navUserMarker.getElement().querySelector('.nav-user-arrow');
-                if (arrow) {
-                    arrow.style.transform = `translateX(-50%) rotate(${heading}deg)`;
-                }
-            }
+            // Arrow direction removed
         }
 
         // Remove navigation marker
