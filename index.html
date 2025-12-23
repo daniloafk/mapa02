@@ -3720,40 +3720,8 @@
             qrAddressList.addEventListener('scroll', onVirtualScroll, { passive: true });
         }
 
-        let isScrolling = false;
-        let scrollEndTimer = null;
-        let lastRenderedRange = { start: -1, end: -1 };
-
         function onVirtualScroll() {
-            // Pause QR scanner while scrolling
-            if (!isScrolling) {
-                isScrolling = true;
-                pauseScanner();
-            }
-
-            // Clear previous timer
-            if (scrollEndTimer) clearTimeout(scrollEndTimer);
-
-            // Resume scanner after scroll ends
-            scrollEndTimer = setTimeout(() => {
-                isScrolling = false;
-                resumeScanner();
-            }, 200);
-
-            renderVisibleItems();
-        }
-
-        function pauseScanner() {
-            if (qrAnimationFrame) {
-                clearTimeout(qrAnimationFrame);
-                qrAnimationFrame = null;
-            }
-        }
-
-        function resumeScanner() {
-            if (qrStream && qrModal.classList.contains('active') && !qrAnimationFrame) {
-                startScanning();
-            }
+            requestAnimationFrame(renderVisibleItems);
         }
 
         function renderVisibleItems() {
@@ -3765,15 +3733,11 @@
             const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_ITEMS);
             const endIdx = Math.min(planilhaAddressData.length - 1, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER_ITEMS);
 
-            // Skip re-render if range unchanged
-            if (startIdx === lastRenderedRange.start && endIdx === lastRenderedRange.end) return;
-            lastRenderedRange = { start: startIdx, end: endIdx };
-
             let html = '';
             for (let i = startIdx; i <= endIdx; i++) {
                 const addr = planilhaAddressData[i];
                 const top = i * ITEM_HEIGHT;
-                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div><div class="qr-address-order">${addr.sequence || '-'}</div></div>`;
+                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-order">${addr.sequence || '-'}</div><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div></div>`;
             }
             virtualViewport.innerHTML = html;
         }
@@ -3804,7 +3768,7 @@
 
             // Stop scanning
             if (qrAnimationFrame) {
-                clearTimeout(qrAnimationFrame);
+                cancelAnimationFrame(qrAnimationFrame);
                 qrAnimationFrame = null;
             }
 
@@ -3821,17 +3785,12 @@
         function startScanning() {
             if (!qrStream) return;
 
-            // Scan interval in ms (lower = faster detection, higher = better scroll performance)
-            const SCAN_INTERVAL = 150;
-
             function tick() {
-                if (!qrModal.classList.contains('active')) {
-                    qrAnimationFrame = null;
-                    return;
-                }
+                if (!qrModal.classList.contains('active')) return;
 
                 if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
-                    const processWidth = 480;
+                    // Solução 1: Reduzir resolução de processamento (640x480)
+                    const processWidth = 640;
                     const processHeight = Math.floor((qrVideo.videoHeight / qrVideo.videoWidth) * processWidth);
 
                     qrCanvas.width = processWidth;
@@ -3839,7 +3798,8 @@
 
                     qrCanvasContext.drawImage(qrVideo, 0, 0, processWidth, processHeight);
 
-                    const scanSize = 240;
+                    // Solução 2: Limitar área de leitura (ROI - Region of Interest)
+                    const scanSize = 300;
                     const centerX = Math.floor(processWidth / 2);
                     const centerY = Math.floor(processHeight / 2);
                     const startX = Math.max(0, centerX - Math.floor(scanSize / 2));
@@ -3847,24 +3807,26 @@
                     const actualWidth = Math.min(scanSize, processWidth - startX);
                     const actualHeight = Math.min(scanSize, processHeight - startY);
 
+                    // Captura apenas o centro da imagem
                     const imageData = qrCanvasContext.getImageData(startX, startY, actualWidth, actualHeight);
 
+                    // Solução 3: Permitir leitura invertida (attemptBoth)
                     const code = jsQR(imageData.data, actualWidth, actualHeight, {
-                        inversionAttempts: 'dontInvert'
+                        inversionAttempts: 'attemptBoth'
                     });
 
                     if (code && code.data) {
+                        // QR Code found! Search in database immediately
                         lastScannedCode = code.data;
                         searchAndShowResult(code.data);
-                        qrAnimationFrame = null;
-                        return;
+                        return; // Stop scanning
                     }
                 }
 
-                qrAnimationFrame = setTimeout(tick, SCAN_INTERVAL);
+                qrAnimationFrame = requestAnimationFrame(tick);
             }
 
-            qrAnimationFrame = setTimeout(tick, SCAN_INTERVAL);
+            qrAnimationFrame = requestAnimationFrame(tick);
         }
 
         // Store current record for navigation
