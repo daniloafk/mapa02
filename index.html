@@ -757,60 +757,6 @@
             height: 20px;
         }
 
-        /* User Position Marker for Navigation */
-        .user-position-marker {
-            width: 24px;
-            height: 24px;
-            position: relative;
-        }
-
-        .user-position-dot {
-            width: 24px;
-            height: 24px;
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            border: 3px solid white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.5);
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-
-        .user-position-pulse {
-            width: 24px;
-            height: 24px;
-            background: rgba(59, 130, 246, 0.3);
-            border-radius: 50%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            animation: userPulse 2s ease-out infinite;
-        }
-
-        @keyframes userPulse {
-            0% {
-                transform: scale(1);
-                opacity: 0.6;
-            }
-            100% {
-                transform: scale(3);
-                opacity: 0;
-            }
-        }
-
-        .user-direction-arrow {
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 16px solid #3b82f6;
-            position: absolute;
-            top: -18px;
-            left: 50%;
-            transform: translateX(-50%);
-            filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
-        }
-
         /* Cadastrar Button */
         .cadastrar-btn {
             position: fixed;
@@ -4190,7 +4136,6 @@
         const endNavBtn = document.getElementById('endNavBtn');
         let currentNavigation = null;
         let navigationWatchId = null;
-        let userPositionMarker = null;
         let lastPosition = null;
         let isFollowingUser = true;
 
@@ -4284,50 +4229,6 @@
             }
         }
 
-        // Create user position marker
-        function createUserPositionMarker(lng, lat) {
-            if (userPositionMarker) {
-                userPositionMarker.remove();
-            }
-
-            const markerEl = document.createElement('div');
-            markerEl.className = 'user-position-marker';
-            markerEl.innerHTML = `
-                <div class="user-position-pulse"></div>
-                <div class="user-position-dot"></div>
-                <div class="user-direction-arrow" style="display: none;"></div>
-            `;
-
-            userPositionMarker = new mapboxgl.Marker({
-                element: markerEl,
-                anchor: 'center',
-                rotationAlignment: 'map',
-                pitchAlignment: 'map'
-            })
-            .setLngLat([lng, lat])
-            .addTo(map);
-
-            return userPositionMarker;
-        }
-
-        // Update user position marker with smooth animation
-        function updateUserPosition(lng, lat, heading) {
-            if (!userPositionMarker) {
-                createUserPositionMarker(lng, lat);
-                return;
-            }
-
-            // Smooth marker movement using setLngLat (Mapbox handles interpolation)
-            userPositionMarker.setLngLat([lng, lat]);
-
-            // Update direction arrow if heading is available
-            const arrowEl = userPositionMarker.getElement().querySelector('.user-direction-arrow');
-            if (heading !== null && heading !== undefined && !isNaN(heading)) {
-                arrowEl.style.display = 'block';
-                arrowEl.style.transform = `translateX(-50%) rotate(${heading}deg)`;
-            }
-        }
-
         // Calculate bearing between two points
         function calculateBearing(lat1, lng1, lat2, lng2) {
             const toRad = (deg) => deg * Math.PI / 180;
@@ -4368,9 +4269,6 @@
                             heading = calculateBearing(lastPosition.lat, lastPosition.lng, lat, lng);
                         }
                     }
-
-                    // Update marker position
-                    updateUserPosition(lng, lat, heading);
 
                     // Center map on user with smooth animation (only if following)
                     if (isFollowingUser && currentNavigation) {
@@ -4421,11 +4319,6 @@
             if (navigationWatchId !== null) {
                 navigator.geolocation.clearWatch(navigationWatchId);
                 navigationWatchId = null;
-            }
-
-            if (userPositionMarker) {
-                userPositionMarker.remove();
-                userPositionMarker = null;
             }
 
             lastPosition = null;
@@ -4483,9 +4376,6 @@
 
                 // Draw route on map
                 drawRoute(route);
-
-                // Create initial user position marker
-                createUserPositionMarker(startLng, startLat);
 
                 // Show end navigation button
                 endNavBtn.classList.add('active');
