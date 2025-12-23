@@ -3737,7 +3737,7 @@
             for (let i = startIdx; i <= endIdx; i++) {
                 const addr = planilhaAddressData[i];
                 const top = i * ITEM_HEIGHT;
-                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-order">${addr.sequence || '-'}</div><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div></div>`;
+                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div><div class="qr-address-order">${addr.sequence || '-'}</div></div>`;
             }
             virtualViewport.innerHTML = html;
         }
