@@ -2296,9 +2296,6 @@
             map.on('load', () => {
                 loadClientes();
                 setupMapClickHandler();
-                // Trigger geolocate after map is fully loaded
-                const geolocateControl = document.querySelector('.mapboxgl-ctrl-geolocate');
-                if (geolocateControl) geolocateControl.click();
             });
         }
 
@@ -2345,9 +2342,14 @@
             map.addControl(geolocateControl, 'top-right');
 
             // Auto-trigger geolocation on load
-            map.once('load', () => {
-                geolocateControl.trigger();
-            });
+            if (map.loaded()) {
+                // Map already loaded, trigger immediately
+                setTimeout(() => geolocateControl.trigger(), 100);
+            } else {
+                map.once('load', () => {
+                    setTimeout(() => geolocateControl.trigger(), 100);
+                });
+            }
         }
 
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
