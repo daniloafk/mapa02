@@ -3720,8 +3720,40 @@
             qrAddressList.addEventListener('scroll', onVirtualScroll, { passive: true });
         }
 
+        let isScrolling = false;
+        let scrollEndTimer = null;
+        let lastRenderedRange = { start: -1, end: -1 };
+
         function onVirtualScroll() {
-            requestAnimationFrame(renderVisibleItems);
+            // Pause QR scanner while scrolling
+            if (!isScrolling) {
+                isScrolling = true;
+                pauseScanner();
+            }
+
+            // Clear previous timer
+            if (scrollEndTimer) clearTimeout(scrollEndTimer);
+
+            // Resume scanner after scroll ends
+            scrollEndTimer = setTimeout(() => {
+                isScrolling = false;
+                resumeScanner();
+            }, 200);
+
+            renderVisibleItems();
+        }
+
+        function pauseScanner() {
+            if (qrAnimationFrame) {
+                clearTimeout(qrAnimationFrame);
+                qrAnimationFrame = null;
+            }
+        }
+
+        function resumeScanner() {
+            if (qrStream && qrModal.classList.contains('active') && !qrAnimationFrame) {
+                startScanning();
+            }
         }
 
         function renderVisibleItems() {
@@ -3732,6 +3764,10 @@
 
             const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_ITEMS);
             const endIdx = Math.min(planilhaAddressData.length - 1, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER_ITEMS);
+
+            // Skip re-render if range unchanged
+            if (startIdx === lastRenderedRange.start && endIdx === lastRenderedRange.end) return;
+            lastRenderedRange = { start: startIdx, end: endIdx };
 
             let html = '';
             for (let i = startIdx; i <= endIdx; i++) {
