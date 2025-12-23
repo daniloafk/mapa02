@@ -3768,7 +3768,7 @@
 
             // Stop scanning
             if (qrAnimationFrame) {
-                cancelAnimationFrame(qrAnimationFrame);
+                clearTimeout(qrAnimationFrame);
                 qrAnimationFrame = null;
             }
 
@@ -3785,12 +3785,17 @@
         function startScanning() {
             if (!qrStream) return;
 
+            // Scan interval in ms (lower = faster detection, higher = better scroll performance)
+            const SCAN_INTERVAL = 150;
+
             function tick() {
-                if (!qrModal.classList.contains('active')) return;
+                if (!qrModal.classList.contains('active')) {
+                    qrAnimationFrame = null;
+                    return;
+                }
 
                 if (qrVideo.readyState === qrVideo.HAVE_ENOUGH_DATA) {
-                    // Solução 1: Reduzir resolução de processamento (640x480)
-                    const processWidth = 640;
+                    const processWidth = 480;
                     const processHeight = Math.floor((qrVideo.videoHeight / qrVideo.videoWidth) * processWidth);
 
                     qrCanvas.width = processWidth;
@@ -3798,8 +3803,7 @@
 
                     qrCanvasContext.drawImage(qrVideo, 0, 0, processWidth, processHeight);
 
-                    // Solução 2: Limitar área de leitura (ROI - Region of Interest)
-                    const scanSize = 300;
+                    const scanSize = 240;
                     const centerX = Math.floor(processWidth / 2);
                     const centerY = Math.floor(processHeight / 2);
                     const startX = Math.max(0, centerX - Math.floor(scanSize / 2));
@@ -3807,26 +3811,24 @@
                     const actualWidth = Math.min(scanSize, processWidth - startX);
                     const actualHeight = Math.min(scanSize, processHeight - startY);
 
-                    // Captura apenas o centro da imagem
                     const imageData = qrCanvasContext.getImageData(startX, startY, actualWidth, actualHeight);
 
-                    // Solução 3: Permitir leitura invertida (attemptBoth)
                     const code = jsQR(imageData.data, actualWidth, actualHeight, {
-                        inversionAttempts: 'attemptBoth'
+                        inversionAttempts: 'dontInvert'
                     });
 
                     if (code && code.data) {
-                        // QR Code found! Search in database immediately
                         lastScannedCode = code.data;
                         searchAndShowResult(code.data);
-                        return; // Stop scanning
+                        qrAnimationFrame = null;
+                        return;
                     }
                 }
 
-                qrAnimationFrame = requestAnimationFrame(tick);
+                qrAnimationFrame = setTimeout(tick, SCAN_INTERVAL);
             }
 
-            qrAnimationFrame = requestAnimationFrame(tick);
+            qrAnimationFrame = setTimeout(tick, SCAN_INTERVAL);
         }
 
         // Store current record for navigation
