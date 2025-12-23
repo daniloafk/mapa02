@@ -2790,6 +2790,7 @@
 
             try {
                 console.log('[DEBUG] Atualizando status para:', status, 'IDs:', JSON.stringify(ids));
+
                 const { data, error } = await db
                     .from('planilha')
                     .update({ delivery_status: status })
@@ -2797,11 +2798,31 @@
                     .select();
 
                 if (error) throw error;
-                console.log('[DEBUG] Status atualizado com sucesso:', JSON.stringify(data));
+
+                console.log('[DEBUG] Registros atualizados:', data ? data.length : 0);
+
+                if (!data || data.length === 0) {
+                    console.warn('[DEBUG] Nenhum registro atualizado. Verificando se IDs existem...');
+                    // Check if IDs exist in the table
+                    const { data: checkData } = await db
+                        .from('planilha')
+                        .select('id')
+                        .in('id', ids);
+                    console.log('[DEBUG] IDs encontrados no banco:', checkData ? JSON.stringify(checkData) : 'nenhum');
+
+                    // Check RLS policy - if select works but update doesn't, it's an RLS issue
+                    if (checkData && checkData.length > 0) {
+                        showErrorModal('Erro: O update não funcionou. Verifique as políticas RLS (UPDATE) no Supabase.');
+                    } else {
+                        showErrorModal('Erro: IDs não encontrados na tabela planilha.');
+                    }
+                    return false;
+                }
+
                 return true;
             } catch (error) {
                 console.error('Erro ao atualizar status:', JSON.stringify(error));
-                showErrorModal('Erro ao atualizar status de entrega. Verifique se a coluna delivery_status existe na tabela planilha.');
+                showErrorModal('Erro ao atualizar status de entrega.');
                 return false;
             }
         }
