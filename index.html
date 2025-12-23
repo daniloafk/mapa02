@@ -4246,15 +4246,54 @@
             }
         }
 
+        // Last navigation position for bearing calculation
+        let lastNavPosition = null;
+
+        // Calculate bearing between two points
+        function calculateBearing(lat1, lng1, lat2, lng2) {
+            const toRad = (deg) => deg * Math.PI / 180;
+            const toDeg = (rad) => rad * 180 / Math.PI;
+
+            const dLng = toRad(lng2 - lng1);
+            const y = Math.sin(dLng) * Math.cos(toRad(lat2));
+            const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                      Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLng);
+
+            return (toDeg(Math.atan2(y, x)) + 360) % 360;
+        }
+
         // Handler for geolocate events during navigation
         function onNavigationGeolocate(e) {
             if (!currentNavigation) return;
 
-            // Smoothly update map view with navigation perspective
+            const lng = e.coords.longitude;
+            const lat = e.coords.latitude;
+            let heading = e.coords.heading;
+
+            // Calculate heading from movement if GPS doesn't provide it
+            if ((heading === null || heading === undefined || isNaN(heading)) && lastNavPosition) {
+                const distance = Math.sqrt(
+                    Math.pow(lng - lastNavPosition.lng, 2) +
+                    Math.pow(lat - lastNavPosition.lat, 2)
+                );
+                // Only calculate bearing if moved enough (avoid jitter)
+                if (distance > 0.00003) {
+                    heading = calculateBearing(lastNavPosition.lat, lastNavPosition.lng, lat, lng);
+                } else {
+                    // Use last known heading if not moved enough
+                    heading = lastNavPosition.heading || map.getBearing();
+                }
+            }
+
+            // Store current position for next calculation
+            lastNavPosition = { lng, lat, heading };
+
+            // Smoothly update map view with navigation perspective and bearing
             map.easeTo({
-                center: [e.coords.longitude, e.coords.latitude],
+                center: [lng, lat],
                 zoom: 17,
                 pitch: 50,
+                bearing: heading || map.getBearing(),
                 duration: 800,
                 easing: (t) => t * (2 - t)
             });
@@ -4263,6 +4302,9 @@
         // Start navigation tracking using Mapbox GeolocateControl
         function startNavigationTracking() {
             if (!geolocateControl) return;
+
+            // Reset last position
+            lastNavPosition = null;
 
             // Add geolocate event handler for smooth map following
             navigationGeolocateHandler = onNavigationGeolocate;
@@ -4278,6 +4320,9 @@
                 geolocateControl.off('geolocate', navigationGeolocateHandler);
                 navigationGeolocateHandler = null;
             }
+
+            // Reset last position
+            lastNavPosition = null;
 
             // Reset map orientation smoothly
             map.easeTo({
