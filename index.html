@@ -3368,6 +3368,18 @@
 
                 // Add or update source
                 if (map.getSource('route-stops')) {
+                    // Remove old images to force regeneration with new colors
+                    const layerIds = map.getStyle().layers.filter(layer => layer.id.startsWith('pin-')).map(layer => layer.id);
+                    layerIds.forEach(id => {
+                        try {
+                            if (map.hasImage(id)) {
+                                map.removeImage(id);
+                            }
+                        } catch (e) {
+                            // Image doesn't exist, continue
+                        }
+                    });
+
                     map.getSource('route-stops').setData(geojson);
                     // Force Mapbox to re-render the layer by toggling visibility
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
@@ -3474,6 +3486,7 @@
 
                                     if (success) {
                                         routePopup.remove();
+                                        // Force immediate marker update
                                         await loadRouteMarkers(true);
                                     } else {
                                         buttons.forEach(b => b.disabled = false);
@@ -3483,25 +3496,9 @@
                                     const success = await updateDeliveryStatus(ids, status);
 
                                     if (success) {
-                                        // Update button state immediately before reloading
-                                        buttons.forEach(b => {
-                                            b.classList.remove('active');
-                                            const btnText = b.querySelector('.btn-text');
-                                            if (btnText) {
-                                                btnText.textContent = b === btn ? 'Desfazer' : (b.classList.contains('not-delivered') ? 'Não entreg' : 'Entregue');
-                                            }
-                                        });
-                                        btn.classList.add('active');
-                                        const btnText = btn.querySelector('.btn-text');
-                                        if (btnText) {
-                                            btnText.textContent = 'Desfazer';
-                                        }
-
-                                        // Wait a moment then reload
-                                        setTimeout(async () => {
-                                            routePopup.remove();
-                                            await loadRouteMarkers(true);
-                                        }, 500);
+                                        routePopup.remove();
+                                        // Force immediate marker update
+                                        await loadRouteMarkers(true);
                                     } else {
                                         buttons.forEach(b => b.disabled = false);
                                     }
