@@ -2499,17 +2499,6 @@
         </div>
     </div>
 
-    <!-- Old Position Marker Template (hidden, used by JavaScript) -->
-    <div class="old-position-marker" id="oldPositionMarkerTemplate" style="display: none;">
-        <div class="old-position-marker-label">Posição Antiga</div>
-        <div class="old-position-marker-inner">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        </div>
-    </div>
-
     <!-- Adjust Mode Bar -->
     <div class="adjust-mode-bar" id="adjustModeBar">
         <div class="adjust-mode-actions">
@@ -5272,6 +5261,7 @@
 
         // Show address exists modal
         function showAddressExistsModal(address, clientRecord) {
+            console.log('Mostrando modal de endereço existente:', { address, clientRecord });
             existingClientRecord = clientRecord;
             addressExistsText.textContent = address;
             document.getElementById('overlay').classList.add('active');
@@ -5362,6 +5352,7 @@
 
         // Enter adjust mode with old position marker
         async function enterAdjustModeWithOldPosition() {
+            console.log('Entrando em modo de ajuste com posição antiga. existingClientRecord:', existingClientRecord);
             isAdjustMode = true;
 
             // Get current GPS position
@@ -5417,11 +5408,20 @@
 
             // Create and add old position marker if we have existing coordinates
             if (existingClientRecord && existingClientRecord.latitude && existingClientRecord.longitude) {
-                // Create marker element from template
-                const markerEl = document.getElementById('oldPositionMarkerTemplate').cloneNode(true);
-                markerEl.id = 'oldPositionMarkerActive';
-                markerEl.classList.add('active');
-                markerEl.style.display = 'block';
+                console.log('Criando marcador de posição antiga:', existingClientRecord);
+
+                // Create marker element directly (not using template)
+                const markerEl = document.createElement('div');
+                markerEl.className = 'old-position-marker active';
+                markerEl.innerHTML = `
+                    <div class="old-position-marker-label">Posição Antiga</div>
+                    <div class="old-position-marker-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </div>
+                `;
 
                 // Create and add marker to map
                 oldPositionMarker = new mapboxgl.Marker({
@@ -5430,6 +5430,8 @@
                 })
                 .setLngLat([existingClientRecord.longitude, existingClientRecord.latitude])
                 .addTo(map);
+
+                console.log('Marcador adicionado ao mapa nas coordenadas:', [existingClientRecord.longitude, existingClientRecord.latitude]);
             }
 
             // Show adjust mode UI
