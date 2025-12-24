@@ -2593,7 +2593,7 @@
         // Initialize IndexedDB for offline storage
         function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('MapaInterativoDB', 1);
+                const request = indexedDB.open('MapaInterativoDB', 2);
 
                 request.onerror = () => {
                     console.error('Erro ao abrir IndexedDB:', request.error);
@@ -5284,8 +5284,10 @@
         });
 
         addressExistsAdjust.addEventListener('click', () => {
-            hideAddressExistsModal();
-            // Enter adjust mode with old position marker
+            // Hide modal without resetting existingClientRecord
+            addressExistsModal.classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+            // Enter adjust mode with old position marker (will use existingClientRecord)
             enterAdjustModeWithOldPosition();
         });
 
