@@ -4995,6 +4995,10 @@
 
                         if (existingClient) {
                             console.log('Cliente encontrado em dados pendentes offline (lista manual):', existingClient);
+                            console.log('🔴 OFFLINE (lista manual) - Coordenadas do cadastro pendente:', {
+                                lat: existingClient.latitude,
+                                lng: existingClient.longitude
+                            });
                         }
 
                         // If not found in pending, check in cached clients
@@ -5006,6 +5010,10 @@
 
                             if (existingClient) {
                                 console.log('Cliente encontrado em cache offline (lista manual):', existingClient);
+                                console.log('🔴 OFFLINE (lista manual) - Coordenadas do cache:', {
+                                    lat: existingClient.latitude,
+                                    lng: existingClient.longitude
+                                });
                             }
                         }
                     } catch (err) {
@@ -5182,6 +5190,10 @@
 
                                 if (existingClient) {
                                     console.log('Cliente encontrado em dados pendentes offline:', existingClient);
+                                    console.log('🔴 OFFLINE - Coordenadas do cadastro pendente:', {
+                                        lat: existingClient.latitude,
+                                        lng: existingClient.longitude
+                                    });
                                 }
 
                                 // If not found in pending, check in cached clients
@@ -5193,6 +5205,10 @@
 
                                     if (existingClient) {
                                         console.log('Cliente encontrado em cache offline:', existingClient);
+                                        console.log('🔴 OFFLINE - Coordenadas do cache:', {
+                                            lat: existingClient.latitude,
+                                            lng: existingClient.longitude
+                                        });
                                     }
                                 }
                             } catch (err) {
