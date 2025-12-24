@@ -2698,6 +2698,28 @@
             updateOfflineIndicator();
         });
 
+        // Get all data from IndexedDB store (for offline reading)
+        function getAllFromOfflineDB(storeName) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    reject(new Error('IndexedDB não inicializado'));
+                    return;
+                }
+
+                const transaction = offlineDB.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+
+                request.onsuccess = () => {
+                    resolve(request.result || []);
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        }
+
         // Initialize offline system
         initOfflineDB().then(() => {
             updateOfflineIndicator();
@@ -4383,23 +4405,55 @@
             qrAddressList.innerHTML = '<div class="qr-address-list-empty">Carregando...</div>';
 
             try {
-                const { data, error } = await db
-                    .from('planilha')
-                    .select('id, sequence, destination_address, bairro, city, latitude, longitude')
-                    .not('destination_address', 'is', null)
-                    .order('sequence', { ascending: true });
+                let addressData = [];
 
-                if (error) throw error;
+                // Try online first if available
+                if (isOnline) {
+                    const { data, error } = await db
+                        .from('planilha')
+                        .select('id, sequence, destination_address, bairro, city, latitude, longitude, spx_tn')
+                        .not('destination_address', 'is', null)
+                        .order('sequence', { ascending: true });
 
-                if (!data || data.length === 0) {
-                    qrAddressList.innerHTML = '<div class="qr-address-list-empty">Nenhum endereço na planilha</div>';
+                    if (!error && data && data.length > 0) {
+                        addressData = data;
+                    }
+                }
+
+                // If offline or no data online, load from IndexedDB
+                if (addressData.length === 0) {
+                    console.log('Carregando endereços do IndexedDB offline...');
+                    const offlineData = await getAllFromOfflineDB('pendingPlanilha');
+
+                    addressData = offlineData
+                        .filter(item => item.destination_address)
+                        .map(item => ({
+                            localId: item.localId,
+                            sequence: item.sequence,
+                            destination_address: item.destination_address,
+                            bairro: item.bairro,
+                            city: item.city,
+                            latitude: item.latitude,
+                            longitude: item.longitude,
+                            spx_tn: item.spx_tn
+                        }))
+                        .sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+
+                    if (addressData.length > 0) {
+                        console.log(`${addressData.length} endereços carregados do IndexedDB`);
+                    }
+                }
+
+                if (!addressData || addressData.length === 0) {
+                    qrAddressList.innerHTML = '<div class="qr-address-list-empty">Nenhum endereço na planilha' + (!isOnline ? ' (offline)' : '') + '</div>';
                     return;
                 }
 
-                planilhaAddressData = data;
-                renderAddressList(data);
+                planilhaAddressData = addressData;
+                renderAddressList(addressData);
 
             } catch (error) {
+                console.error('Erro ao carregar endereços:', error);
                 qrAddressList.innerHTML = '<div class="qr-address-list-empty">Erro ao carregar</div>';
             }
         }
@@ -4539,26 +4593,47 @@
             qrLoading.classList.add('active');
             document.querySelector('.qr-loading-text').textContent = 'Buscando endereço...';
 
-            try {
-                // Search for the QR code in the planilha table (spx_tn column)
-                const { data, error } = await db
-                    .from('planilha')
-                    .select('*')
-                    .eq('spx_tn', qrData)
-                    .limit(1);
+            let foundRecord = null;
 
-                if (error) throw error;
+            try {
+                // Try online first if available
+                if (isOnline) {
+                    const { data, error } = await db
+                        .from('planilha')
+                        .select('*')
+                        .eq('spx_tn', qrData)
+                        .limit(1);
+
+                    if (!error && data && data.length > 0) {
+                        foundRecord = data[0];
+                    }
+                }
+
+                // If offline or not found online, search in local IndexedDB
+                if (!foundRecord) {
+                    console.log('Buscando no IndexedDB offline...');
+                    const offlineData = await getAllFromOfflineDB('pendingPlanilha');
+
+                    // Search for matching spx_tn
+                    foundRecord = offlineData.find(item =>
+                        item.spx_tn && item.spx_tn.toString() === qrData.toString()
+                    );
+
+                    if (foundRecord) {
+                        console.log('Encontrado no IndexedDB:', foundRecord);
+                    }
+                }
 
                 qrLoading.classList.remove('active');
 
-                if (data && data.length > 0) {
-                    currentRecord = data[0];
+                if (foundRecord) {
+                    currentRecord = foundRecord;
                     // Go directly to adjust mode
                     enterAdjustMode();
                 } else {
                     // Code not found - show error
                     currentRecord = null;
-                    qrStatusText.textContent = 'Código não encontrado';
+                    qrStatusText.textContent = isOnline ? 'Código não encontrado' : 'Código não encontrado (offline)';
                     // Resume scanning after 2 seconds
                     setTimeout(() => {
                         if (qrModal.classList.contains('active')) {
@@ -4569,6 +4644,7 @@
                 }
 
             } catch (error) {
+                console.error('Erro na busca:', error);
                 qrLoading.classList.remove('active');
                 currentRecord = null;
                 qrStatusText.textContent = 'Erro na busca';
