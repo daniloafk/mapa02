@@ -2538,47 +2538,78 @@
 
         // Sync pending clients to Supabase
         async function syncPendingClients() {
-            const pendingClients = await getPendingFromOfflineDB('pendingClients');
+            try {
+                const pendingClients = await getPendingFromOfflineDB('pendingClients');
 
-            for (const client of pendingClients) {
-                try {
-                    const { error } = await db
-                        .from('clients')
-                        .insert({
-                            address: client.address,
-                            latitude: client.latitude,
-                            longitude: client.longitude
-                        });
+                console.log(`Sincronizando ${pendingClients.length} clientes pendentes...`);
 
-                    if (!error) {
-                        await deleteSyncedFromOfflineDB('pendingClients', client.localId);
-                        console.log('Cliente sincronizado:', client.address);
-                    } else {
-                        console.error('Erro ao sincronizar cliente:', error);
-                    }
-                } catch (err) {
-                    console.error('Erro na sincronização de cliente:', err);
+                if (pendingClients.length === 0) {
+                    console.log('Nenhum cliente pendente para sincronizar');
+                    return;
                 }
+
+                let syncedCount = 0;
+                let errorCount = 0;
+
+                for (const client of pendingClients) {
+                    try {
+                        console.log('Sincronizando cliente:', client);
+
+                        const { error } = await db
+                            .from('clients')
+                            .insert({
+                                address: client.address,
+                                latitude: client.latitude,
+                                longitude: client.longitude
+                            });
+
+                        if (!error) {
+                            await deleteSyncedFromOfflineDB('pendingClients', client.localId);
+                            syncedCount++;
+                            console.log(`✅ Cliente sincronizado (${syncedCount}/${pendingClients.length}):`, client.address);
+                        } else {
+                            errorCount++;
+                            console.error(`❌ Erro ao sincronizar cliente:`, error);
+                        }
+                    } catch (err) {
+                        errorCount++;
+                        console.error(`❌ Erro na sincronização de cliente:`, err);
+                    }
+                }
+
+                console.log(`Sincronização de clientes concluída: ${syncedCount} sucesso, ${errorCount} erros`);
+            } catch (err) {
+                console.error('Erro ao obter clientes pendentes:', err);
             }
         }
 
         // Sync pending planilha data to Supabase
         async function syncPendingPlanilha() {
-            const pendingPlanilha = await getPendingFromOfflineDB('pendingPlanilha');
-
-            if (pendingPlanilha.length === 0) return;
-
-            // Group by batch for efficiency
-            const batchData = pendingPlanilha.map(item => ({
-                destination_address: item.destination_address,
-                latitude: item.latitude,
-                longitude: item.longitude,
-                sequence: item.sequence,
-                stop: item.stop,
-                delivery_status: item.delivery_status || 'pending'
-            }));
-
             try {
+                const pendingPlanilha = await getPendingFromOfflineDB('pendingPlanilha');
+
+                console.log(`Sincronizando ${pendingPlanilha.length} registros de planilha pendentes...`);
+
+                if (pendingPlanilha.length === 0) {
+                    console.log('Nenhum registro de planilha pendente para sincronizar');
+                    return;
+                }
+
+                // Group by batch for efficiency
+                const batchData = pendingPlanilha.map(item => ({
+                    destination_address: item.destination_address,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                    sequence: item.sequence,
+                    stop: item.stop,
+                    delivery_status: item.delivery_status || 'pending',
+                    spx_tn: item.spx_tn,
+                    bairro: item.bairro,
+                    city: item.city
+                }));
+
+                console.log('Dados a sincronizar:', batchData);
+
                 const { error } = await db
                     .from('planilha')
                     .insert(batchData);
@@ -2587,53 +2618,88 @@
                     for (const item of pendingPlanilha) {
                         await deleteSyncedFromOfflineDB('pendingPlanilha', item.localId);
                     }
-                    console.log(`${pendingPlanilha.length} registros de planilha sincronizados`);
+                    console.log(`✅ ${pendingPlanilha.length} registros de planilha sincronizados com sucesso`);
                 } else {
-                    console.error('Erro ao sincronizar planilha:', error);
+                    console.error('❌ Erro ao sincronizar planilha:', error);
                 }
             } catch (err) {
-                console.error('Erro na sincronização de planilha:', err);
+                console.error('❌ Erro na sincronização de planilha:', err);
             }
         }
 
         // Sync pending delivery status updates to Supabase
         async function syncPendingDeliveryStatus() {
-            const pendingStatus = await getPendingFromOfflineDB('pendingDeliveryStatus');
+            try {
+                const pendingStatus = await getPendingFromOfflineDB('pendingDeliveryStatus');
 
-            for (const item of pendingStatus) {
-                try {
-                    const { error } = await db
-                        .from('planilha')
-                        .update({ delivery_status: item.status })
-                        .in('id', item.ids);
+                console.log(`Sincronizando ${pendingStatus.length} atualizações de status pendentes...`);
 
-                    if (!error) {
-                        await deleteSyncedFromOfflineDB('pendingDeliveryStatus', item.localId);
-                        console.log('Status de entrega sincronizado:', item.ids);
-                    } else {
-                        console.error('Erro ao sincronizar status:', error);
-                    }
-                } catch (err) {
-                    console.error('Erro na sincronização de status:', err);
+                if (pendingStatus.length === 0) {
+                    console.log('Nenhuma atualização de status pendente para sincronizar');
+                    return;
                 }
+
+                let syncedCount = 0;
+                let errorCount = 0;
+
+                for (const item of pendingStatus) {
+                    try {
+                        console.log('Sincronizando status:', item);
+
+                        const { error } = await db
+                            .from('planilha')
+                            .update({ delivery_status: item.status })
+                            .in('id', item.ids);
+
+                        if (!error) {
+                            await deleteSyncedFromOfflineDB('pendingDeliveryStatus', item.localId);
+                            syncedCount++;
+                            console.log(`✅ Status sincronizado (${syncedCount}/${pendingStatus.length}):`, item.ids);
+                        } else {
+                            errorCount++;
+                            console.error(`❌ Erro ao sincronizar status:`, error);
+                        }
+                    } catch (err) {
+                        errorCount++;
+                        console.error(`❌ Erro na sincronização de status:`, err);
+                    }
+                }
+
+                console.log(`Sincronização de status concluída: ${syncedCount} sucesso, ${errorCount} erros`);
+            } catch (err) {
+                console.error('Erro ao obter status pendentes:', err);
             }
         }
 
         // Main sync function - syncs all pending data
         async function syncAllPendingData() {
-            if (!isOnline || isSyncing) return;
+            if (!isOnline) {
+                console.warn('❌ Não é possível sincronizar: offline');
+                return;
+            }
+
+            if (isSyncing) {
+                console.warn('⏳ Sincronização já em andamento...');
+                return;
+            }
 
             isSyncing = true;
             updateOfflineIndicator();
 
-            console.log('Iniciando sincronização de dados pendentes...');
+            console.log('🔄 ========================================');
+            console.log('🔄 Iniciando sincronização de dados pendentes...');
+            console.log('🔄 ========================================');
 
             try {
                 await syncPendingClients();
+                console.log('---');
                 await syncPendingPlanilha();
+                console.log('---');
                 await syncPendingDeliveryStatus();
 
-                console.log('Sincronização concluída!');
+                console.log('🔄 ========================================');
+                console.log('✅ Sincronização concluída com sucesso!');
+                console.log('🔄 ========================================');
 
                 // Refresh data after sync
                 loadClientes();
@@ -2645,7 +2711,7 @@
                 updateOfflineIndicator();
 
             } catch (error) {
-                console.error('Erro durante sincronização:', error);
+                console.error('❌ Erro durante sincronização:', error);
             } finally {
                 isSyncing = false;
                 updateOfflineIndicator();
