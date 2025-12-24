@@ -5408,30 +5408,99 @@
 
             // Create and add old position marker if we have existing coordinates
             if (existingClientRecord && existingClientRecord.latitude && existingClientRecord.longitude) {
-                console.log('Criando marcador de posição antiga:', existingClientRecord);
+                console.log('🔴 Criando marcador de posição antiga:', existingClientRecord);
+                console.log('🔴 Coordenadas:', { lat: existingClientRecord.latitude, lng: existingClientRecord.longitude });
 
-                // Create marker element directly (not using template)
+                // Create marker element directly with inline styles to ensure visibility
                 const markerEl = document.createElement('div');
-                markerEl.className = 'old-position-marker active';
+                markerEl.style.width = '40px';
+                markerEl.style.height = '40px';
+                markerEl.style.display = 'block';
+                markerEl.style.position = 'relative';
+
                 markerEl.innerHTML = `
-                    <div class="old-position-marker-label">Posição Antiga</div>
-                    <div class="old-position-marker-inner">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <div style="
+                        position: absolute;
+                        top: -35px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: #ef4444;
+                        color: white;
+                        padding: 4px 10px;
+                        border-radius: 6px;
+                        font-size: 11px;
+                        font-weight: 600;
+                        white-space: nowrap;
+                        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+                        font-family: 'Plus Jakarta Sans', sans-serif;
+                        z-index: 10;
+                    ">
+                        Posição Antiga
+                        <div style="
+                            position: absolute;
+                            bottom: -4px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            width: 0;
+                            height: 0;
+                            border-left: 4px solid transparent;
+                            border-right: 4px solid transparent;
+                            border-top: 4px solid #ef4444;
+                        "></div>
+                    </div>
+                    <div style="
+                        width: 100%;
+                        height: 100%;
+                        background: #ef4444;
+                        border: 3px solid white;
+                        border-radius: 50%;
+                        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        position: relative;
+                    ">
+                        <div style="
+                            position: absolute;
+                            width: 100%;
+                            height: 100%;
+                            background: #ef4444;
+                            border-radius: 50%;
+                            opacity: 0.3;
+                            animation: oldMarkerPulse 2s ease-out infinite;
+                        "></div>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="width: 20px; height: 20px; color: white; position: relative; z-index: 1;">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                     </div>
                 `;
 
-                // Create and add marker to map
-                oldPositionMarker = new mapboxgl.Marker({
-                    element: markerEl,
-                    anchor: 'bottom'
-                })
-                .setLngLat([existingClientRecord.longitude, existingClientRecord.latitude])
-                .addTo(map);
+                console.log('🔴 Elemento do marcador criado');
+                console.log('🔴 Verificando map:', typeof map !== 'undefined' ? 'definido' : 'indefinido');
 
-                console.log('Marcador adicionado ao mapa nas coordenadas:', [existingClientRecord.longitude, existingClientRecord.latitude]);
+                try {
+                    // Create and add marker to map
+                    oldPositionMarker = new mapboxgl.Marker({
+                        element: markerEl,
+                        anchor: 'bottom'
+                    })
+                    .setLngLat([existingClientRecord.longitude, existingClientRecord.latitude])
+                    .addTo(map);
+
+                    console.log('✅ Marcador adicionado ao mapa com sucesso!');
+                    console.log('🔴 Marcador getLngLat():', oldPositionMarker.getLngLat());
+
+                    // Verificar se o marcador está no DOM
+                    setTimeout(() => {
+                        const markerInDom = document.querySelector('.mapboxgl-marker');
+                        console.log('🔴 Marcadores no DOM:', document.querySelectorAll('.mapboxgl-marker').length);
+                    }, 100);
+                } catch (error) {
+                    console.error('❌ Erro ao adicionar marcador:', error);
+                }
+            } else {
+                console.warn('⚠️ Não foi possível criar marcador. existingClientRecord:', existingClientRecord);
             }
 
             // Show adjust mode UI
