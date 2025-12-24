@@ -2055,6 +2055,207 @@
             height: 18px;
         }
 
+        /* Address Already Registered Modal */
+        .address-exists-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            z-index: 2000;
+            background: var(--surface-light);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            padding: 32px;
+            max-width: 400px;
+            width: 90%;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body.dark .address-exists-modal {
+            background: var(--surface-dark);
+        }
+
+        .address-exists-modal.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .address-exists-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+        }
+
+        .address-exists-icon svg {
+            width: 32px;
+            height: 32px;
+            color: white;
+        }
+
+        .address-exists-modal h3 {
+            font-size: 20px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .address-exists-modal p {
+            font-size: 14px;
+            color: var(--text-muted-light);
+            text-align: center;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        body.dark .address-exists-modal p {
+            color: var(--text-muted-dark);
+        }
+
+        .address-exists-address {
+            background: var(--bg-light);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            margin: 16px 0;
+            text-align: center;
+            color: var(--primary);
+        }
+
+        body.dark .address-exists-address {
+            background: var(--bg-dark);
+        }
+
+        .address-exists-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .address-exists-btn {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .address-exists-btn-cancel {
+            background: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        body.dark .address-exists-btn-cancel {
+            background: var(--bg-dark);
+            color: var(--text-dark);
+        }
+
+        .address-exists-btn-cancel:hover {
+            background: var(--border-light);
+        }
+
+        body.dark .address-exists-btn-cancel:hover {
+            background: var(--border-dark);
+        }
+
+        .address-exists-btn-adjust {
+            background: linear-gradient(135deg, var(--primary) 0%, #0284c7 100%);
+            color: white;
+        }
+
+        .address-exists-btn-adjust:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+        }
+
+        /* Old Position Marker */
+        .old-position-marker {
+            width: 40px;
+            height: 40px;
+            display: none;
+        }
+
+        .old-position-marker.active {
+            display: block;
+        }
+
+        .old-position-marker-inner {
+            width: 100%;
+            height: 100%;
+            background: #ef4444;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .old-position-marker-inner::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: #ef4444;
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: oldMarkerPulse 2s ease-out infinite;
+        }
+
+        .old-position-marker svg {
+            width: 20px;
+            height: 20px;
+            color: white;
+            position: relative;
+            z-index: 1;
+        }
+
+        @keyframes oldMarkerPulse {
+            0% { transform: scale(1); opacity: 0.5; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        .old-position-marker-label {
+            position: absolute;
+            top: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ef4444;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .old-position-marker-label::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 4px solid #ef4444;
+        }
+
         /* Responsive */
         @media (max-width: 480px) {
             .sidebar {
@@ -2183,6 +2384,23 @@
         </div>
     </div>
 
+    <!-- Address Already Registered Modal -->
+    <div class="address-exists-modal" id="addressExistsModal">
+        <div class="address-exists-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+        </div>
+        <h3>Endereço Já Cadastrado</h3>
+        <p>Este endereço já possui coordenadas registradas no sistema.</p>
+        <div class="address-exists-address" id="addressExistsText">Endereço</div>
+        <p style="font-size: 12px; margin-top: 12px;">Deseja ajustar a localização no mapa?</p>
+        <div class="address-exists-actions">
+            <button class="address-exists-btn address-exists-btn-cancel" id="addressExistsCancel">Cancelar</button>
+            <button class="address-exists-btn address-exists-btn-adjust" id="addressExistsAdjust">Ajustar no Mapa</button>
+        </div>
+    </div>
+
     <!-- Upload Modal -->
     <div class="upload-modal" id="uploadModal">
         <div class="upload-modal-content">
@@ -2278,6 +2496,17 @@
             <div class="center-pin-head"></div>
             <div class="center-pin-needle"></div>
             <div class="center-pin-shadow"></div>
+        </div>
+    </div>
+
+    <!-- Old Position Marker Template (hidden, used by JavaScript) -->
+    <div class="old-position-marker" id="oldPositionMarkerTemplate" style="display: none;">
+        <div class="old-position-marker-label">Posição Antiga</div>
+        <div class="old-position-marker-inner">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
         </div>
     </div>
 
@@ -4803,8 +5032,35 @@
 
                 if (foundRecord) {
                     currentRecord = foundRecord;
-                    // Go directly to adjust mode
-                    enterAdjustMode();
+
+                    // Check if address already exists in clients table
+                    let existingClient = null;
+                    const addressToCheck = foundRecord.destination_address;
+
+                    if (addressToCheck && isOnline) {
+                        try {
+                            const { data: clientData, error: clientError } = await db
+                                .from('clients')
+                                .select('*')
+                                .eq('address', addressToCheck)
+                                .limit(1);
+
+                            if (!clientError && clientData && clientData.length > 0) {
+                                existingClient = clientData[0];
+                            }
+                        } catch (err) {
+                            console.warn('Erro ao verificar cliente existente:', err);
+                        }
+                    }
+
+                    // If address already registered, show modal
+                    if (existingClient) {
+                        closeQrScanner();
+                        showAddressExistsModal(addressToCheck, existingClient);
+                    } else {
+                        // Go directly to adjust mode (new address)
+                        enterAdjustMode();
+                    }
                 } else {
                     // Code not found - show error
                     currentRecord = null;
@@ -4844,6 +5100,45 @@
         let adjustedCoordinates = null;
         let isAdjustMode = false;
         const centerPin = document.getElementById('centerPin');
+
+        // Address exists modal elements
+        const addressExistsModal = document.getElementById('addressExistsModal');
+        const addressExistsText = document.getElementById('addressExistsText');
+        const addressExistsCancel = document.getElementById('addressExistsCancel');
+        const addressExistsAdjust = document.getElementById('addressExistsAdjust');
+
+        // Old position tracking
+        let existingClientRecord = null;
+        let oldPositionMarker = null;
+
+        // Show address exists modal
+        function showAddressExistsModal(address, clientRecord) {
+            existingClientRecord = clientRecord;
+            addressExistsText.textContent = address;
+            document.getElementById('overlay').classList.add('active');
+            addressExistsModal.classList.add('active');
+        }
+
+        // Hide address exists modal
+        function hideAddressExistsModal() {
+            addressExistsModal.classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+            existingClientRecord = null;
+        }
+
+        // Address exists modal event listeners
+        addressExistsCancel.addEventListener('click', () => {
+            hideAddressExistsModal();
+            // Resume QR scanning
+            qrStatusText.textContent = 'Aponte para o QR Code';
+            startScanning();
+        });
+
+        addressExistsAdjust.addEventListener('click', () => {
+            hideAddressExistsModal();
+            // Enter adjust mode with old position marker
+            enterAdjustModeWithOldPosition();
+        });
 
         // Function to update coordinates from map center
         function updateAdjustedCoordinates() {
@@ -4906,6 +5201,86 @@
             document.getElementById('cadastrarBtn').style.display = 'none';
         }
 
+        // Enter adjust mode with old position marker
+        async function enterAdjustModeWithOldPosition() {
+            isAdjustMode = true;
+
+            // Get current GPS position
+            let initialLng, initialLat;
+
+            try {
+                const position = await new Promise((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+                initialLng = position.coords.longitude;
+                initialLat = position.coords.latitude;
+            } catch {
+                // Fallback to map center if GPS fails
+                const center = map.getCenter();
+                initialLng = center.lng;
+                initialLat = center.lat;
+            }
+
+            // Fly to current GPS position (midpoint between old and current)
+            if (existingClientRecord && existingClientRecord.latitude && existingClientRecord.longitude) {
+                // Calculate midpoint between old position and current GPS
+                const midLng = (existingClientRecord.longitude + initialLng) / 2;
+                const midLat = (existingClientRecord.latitude + initialLat) / 2;
+
+                map.flyTo({
+                    center: [midLng, midLat],
+                    zoom: 16,
+                    duration: 1500
+                });
+            } else {
+                map.flyTo({
+                    center: [initialLng, initialLat],
+                    zoom: 17,
+                    duration: 1500
+                });
+            }
+
+            // Show center pin
+            centerPin.classList.add('active');
+
+            // Initialize adjusted coordinates with current GPS position
+            adjustedCoordinates = {
+                latitude: initialLat,
+                longitude: initialLng
+            };
+
+            // Listen to map move to update coordinates
+            map.on('move', updateAdjustedCoordinates);
+
+            // Create and add old position marker if we have existing coordinates
+            if (existingClientRecord && existingClientRecord.latitude && existingClientRecord.longitude) {
+                // Create marker element from template
+                const markerEl = document.getElementById('oldPositionMarkerTemplate').cloneNode(true);
+                markerEl.id = 'oldPositionMarkerActive';
+                markerEl.classList.add('active');
+                markerEl.style.display = 'block';
+
+                // Create and add marker to map
+                oldPositionMarker = new mapboxgl.Marker({
+                    element: markerEl,
+                    anchor: 'bottom'
+                })
+                .setLngLat([existingClientRecord.longitude, existingClientRecord.latitude])
+                .addTo(map);
+            }
+
+            // Show adjust mode UI
+            adjustModeAddress.textContent = currentRecord.destination_address || 'Endereço';
+            adjustModeBar.classList.add('active');
+
+            // Hide other UI elements
+            document.getElementById('cadastrarBtn').style.display = 'none';
+        }
+
         // Cancel adjust mode
         adjustModeCancel.addEventListener('click', () => {
             exitAdjustMode();
@@ -4948,14 +5323,17 @@
                 longitude: coordinates.longitude
             };
 
+            const isUpdate = existingClientRecord !== null;
+
             // If offline, save locally and show success
             if (!isOnline) {
                 try {
                     await saveToOfflineDB('pendingClients', clientData);
                     showQuickSuccess();
                     updateOfflineIndicator();
-                    console.log('Cliente salvo offline:', clientData.address);
+                    console.log(isUpdate ? 'Cliente atualizado offline:' : 'Cliente salvo offline:', clientData.address);
                     currentRecord = null;
+                    existingClientRecord = null;
                     return;
                 } catch (err) {
                     console.error('Erro ao salvar offline:', err);
@@ -4964,13 +5342,29 @@
                 }
             }
 
-            // If online, try to save to Supabase
+            // If online, try to save/update in Supabase
             try {
-                const { error } = await db
-                    .from('clients')
-                    .insert(clientData);
+                if (isUpdate) {
+                    // UPDATE existing record
+                    const { error } = await db
+                        .from('clients')
+                        .update({
+                            latitude: coordinates.latitude,
+                            longitude: coordinates.longitude
+                        })
+                        .eq('address', clientData.address);
 
-                if (error) throw error;
+                    if (error) throw error;
+                    console.log('Coordenadas atualizadas:', clientData.address);
+                } else {
+                    // INSERT new record
+                    const { error } = await db
+                        .from('clients')
+                        .insert(clientData);
+
+                    if (error) throw error;
+                    console.log('Novo cliente salvo:', clientData.address);
+                }
 
                 // Show quick success icon
                 showQuickSuccess();
@@ -4980,6 +5374,7 @@
 
                 // Reset current record
                 currentRecord = null;
+                existingClientRecord = null;
 
             } catch (error) {
                 // If Supabase fails, save locally as fallback
@@ -4990,6 +5385,7 @@
                     updateOfflineIndicator();
                     console.log('Cliente salvo offline (fallback):', clientData.address);
                     currentRecord = null;
+                    existingClientRecord = null;
                 } catch (offlineErr) {
                     showErrorModal('Erro ao salvar o endereço. Tente novamente.');
                 }
@@ -5006,14 +5402,21 @@
             // Hide center pin
             centerPin.classList.remove('active');
 
+            // Remove old position marker if exists
+            if (oldPositionMarker) {
+                oldPositionMarker.remove();
+                oldPositionMarker = null;
+            }
+
             // Hide adjust mode UI
             adjustModeBar.classList.remove('active');
 
             // Show other UI elements
             document.getElementById('cadastrarBtn').style.display = 'block';
 
-            // Reset adjusted coordinates
+            // Reset adjusted coordinates and existing client record
             adjustedCoordinates = null;
+            existingClientRecord = null;
         }
 
         // ==================== NAVIGATION SYSTEM ====================
