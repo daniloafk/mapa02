@@ -5410,8 +5410,16 @@
 
             // Create and add old position marker if we have existing coordinates
             if (existingClientRecord && existingClientRecord.latitude && existingClientRecord.longitude) {
-                console.log('🔴 Criando marcador de posição antiga:', existingClientRecord);
-                console.log('🔴 Coordenadas:', { lat: existingClientRecord.latitude, lng: existingClientRecord.longitude });
+                console.log('🔴 Criando marcador de posição antiga (coordenadas CADASTRADAS em clients):', existingClientRecord);
+                console.log('🔴 Coordenadas DO CADASTRO (posição antiga):', {
+                    lat: existingClientRecord.latitude,
+                    lng: existingClientRecord.longitude
+                });
+                console.log('📍 Para comparação - currentRecord (planilha):', {
+                    address: currentRecord.destination_address,
+                    lat_planilha: currentRecord.latitude,
+                    lng_planilha: currentRecord.longitude
+                });
 
                 // Create marker element directly with inline styles to ensure visibility
                 const markerEl = document.createElement('div');
@@ -5482,16 +5490,23 @@
                 console.log('🔴 Verificando map:', typeof map !== 'undefined' ? 'definido' : 'indefinido');
 
                 try {
-                    // Create and add marker to map
+                    // Create and add marker to map using CADASTRO coordinates
+                    const oldLng = existingClientRecord.longitude;
+                    const oldLat = existingClientRecord.latitude;
+
                     oldPositionMarker = new mapboxgl.Marker({
                         element: markerEl,
                         anchor: 'bottom'
                     })
-                    .setLngLat([existingClientRecord.longitude, existingClientRecord.latitude])
+                    .setLngLat([oldLng, oldLat])
                     .addTo(map);
 
-                    console.log('✅ Marcador adicionado ao mapa com sucesso!');
-                    console.log('🔴 Marcador getLngLat():', oldPositionMarker.getLngLat());
+                    console.log('✅ Marcador VERMELHO adicionado ao mapa com sucesso!');
+                    console.log('🔴 Posição EXATA do marcador vermelho:', {
+                        lng: oldLng,
+                        lat: oldLat,
+                        getLngLat: oldPositionMarker.getLngLat()
+                    });
 
                     // Verificar se o marcador está no DOM
                     setTimeout(() => {
