@@ -148,6 +148,69 @@
             transform: translateY(-2px);
         }
 
+        /* Offline Indicator */
+        .offline-indicator {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            z-index: 1001;
+            width: 40px;
+            height: 40px;
+            border: none;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .offline-indicator svg {
+            width: 20px;
+            height: 20px;
+            color: white;
+        }
+
+        .offline-indicator.offline {
+            background: #ef4444;
+            animation: pulse-offline 2s infinite;
+        }
+
+        .offline-indicator.syncing {
+            background: #f59e0b;
+            animation: spin-sync 1s linear infinite;
+        }
+
+        @keyframes pulse-offline {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.05); }
+        }
+
+        @keyframes spin-sync {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .offline-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 5px;
+            border-radius: 9px;
+            background: #dc2626;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
         /* Menu Button */
         .menu-btn {
             position: fixed;
@@ -2016,6 +2079,14 @@
         <button class="retry-btn" id="retryBtn">Tentar novamente</button>
     </div>
 
+    <!-- Offline Indicator -->
+    <div class="offline-indicator" id="offlineIndicator" title="Online" onclick="syncAllPendingData()">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+        </svg>
+        <span class="offline-badge" id="offlineBadge">0</span>
+    </div>
+
     <!-- Menu Button -->
     <button class="menu-btn" id="menuBtn" aria-label="Abrir menu">
         <div class="hamburger">
@@ -2292,6 +2363,355 @@
         const SUPABASE_URL = 'https://wwvftlyvewetspombnky.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3dmZ0bHl2ZXdldHNwb21ibmt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNjE5NjYsImV4cCI6MjA4MTkzNzk2Nn0.qvW0QconrSPOWWtB8SNalIpfWhlO2-Oc8LzJURk4zVs';
         const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // ============================================
+        // OFFLINE SYSTEM - IndexedDB & Sync
+        // ============================================
+        let offlineDB = null;
+        let isOnline = navigator.onLine;
+        let isSyncing = false;
+
+        // Initialize IndexedDB for offline storage
+        function initOfflineDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open('MapaInterativoDB', 1);
+
+                request.onerror = () => {
+                    console.error('Erro ao abrir IndexedDB:', request.error);
+                    reject(request.error);
+                };
+
+                request.onsuccess = () => {
+                    offlineDB = request.result;
+                    console.log('IndexedDB inicializado com sucesso');
+                    resolve(offlineDB);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+
+                    // Store for pending clients (QR code/manual registration)
+                    if (!db.objectStoreNames.contains('pendingClients')) {
+                        const clientStore = db.createObjectStore('pendingClients', { keyPath: 'localId', autoIncrement: true });
+                        clientStore.createIndex('address', 'address', { unique: false });
+                        clientStore.createIndex('synced', 'synced', { unique: false });
+                    }
+
+                    // Store for pending planilha data
+                    if (!db.objectStoreNames.contains('pendingPlanilha')) {
+                        const planilhaStore = db.createObjectStore('pendingPlanilha', { keyPath: 'localId', autoIncrement: true });
+                        planilhaStore.createIndex('synced', 'synced', { unique: false });
+                    }
+
+                    // Store for pending delivery status updates
+                    if (!db.objectStoreNames.contains('pendingDeliveryStatus')) {
+                        const statusStore = db.createObjectStore('pendingDeliveryStatus', { keyPath: 'localId', autoIncrement: true });
+                        statusStore.createIndex('synced', 'synced', { unique: false });
+                    }
+
+                    console.log('IndexedDB estrutura criada');
+                };
+            });
+        }
+
+        // Save data to IndexedDB
+        function saveToOfflineDB(storeName, data) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    reject(new Error('IndexedDB não inicializado'));
+                    return;
+                }
+
+                const transaction = offlineDB.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+
+                data.synced = false;
+                data.createdAt = new Date().toISOString();
+
+                const request = store.add(data);
+
+                request.onsuccess = () => {
+                    console.log(`Dados salvos offline em ${storeName}:`, data);
+                    resolve(request.result);
+                };
+
+                request.onerror = () => {
+                    console.error('Erro ao salvar offline:', request.error);
+                    reject(request.error);
+                };
+            });
+        }
+
+        // Get all pending (unsynced) data from a store
+        function getPendingFromOfflineDB(storeName) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    reject(new Error('IndexedDB não inicializado'));
+                    return;
+                }
+
+                const transaction = offlineDB.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const index = store.index('synced');
+                const request = index.getAll(IDBKeyRange.only(false));
+
+                request.onsuccess = () => {
+                    resolve(request.result || []);
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // Mark data as synced in IndexedDB
+        function markAsSynced(storeName, localId) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    reject(new Error('IndexedDB não inicializado'));
+                    return;
+                }
+
+                const transaction = offlineDB.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const getRequest = store.get(localId);
+
+                getRequest.onsuccess = () => {
+                    const data = getRequest.result;
+                    if (data) {
+                        data.synced = true;
+                        data.syncedAt = new Date().toISOString();
+                        const updateRequest = store.put(data);
+                        updateRequest.onsuccess = () => resolve();
+                        updateRequest.onerror = () => reject(updateRequest.error);
+                    } else {
+                        resolve();
+                    }
+                };
+
+                getRequest.onerror = () => reject(getRequest.error);
+            });
+        }
+
+        // Delete synced data from IndexedDB
+        function deleteSyncedFromOfflineDB(storeName, localId) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    reject(new Error('IndexedDB não inicializado'));
+                    return;
+                }
+
+                const transaction = offlineDB.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.delete(localId);
+
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Count pending items in a store
+        function countPendingItems(storeName) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    resolve(0);
+                    return;
+                }
+
+                const transaction = offlineDB.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const index = store.index('synced');
+                const request = index.count(IDBKeyRange.only(false));
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Sync pending clients to Supabase
+        async function syncPendingClients() {
+            const pendingClients = await getPendingFromOfflineDB('pendingClients');
+
+            for (const client of pendingClients) {
+                try {
+                    const { error } = await db
+                        .from('clients')
+                        .insert({
+                            address: client.address,
+                            latitude: client.latitude,
+                            longitude: client.longitude
+                        });
+
+                    if (!error) {
+                        await deleteSyncedFromOfflineDB('pendingClients', client.localId);
+                        console.log('Cliente sincronizado:', client.address);
+                    } else {
+                        console.error('Erro ao sincronizar cliente:', error);
+                    }
+                } catch (err) {
+                    console.error('Erro na sincronização de cliente:', err);
+                }
+            }
+        }
+
+        // Sync pending planilha data to Supabase
+        async function syncPendingPlanilha() {
+            const pendingPlanilha = await getPendingFromOfflineDB('pendingPlanilha');
+
+            if (pendingPlanilha.length === 0) return;
+
+            // Group by batch for efficiency
+            const batchData = pendingPlanilha.map(item => ({
+                destination_address: item.destination_address,
+                latitude: item.latitude,
+                longitude: item.longitude,
+                sequence: item.sequence,
+                stop: item.stop,
+                delivery_status: item.delivery_status || 'pending'
+            }));
+
+            try {
+                const { error } = await db
+                    .from('planilha')
+                    .insert(batchData);
+
+                if (!error) {
+                    for (const item of pendingPlanilha) {
+                        await deleteSyncedFromOfflineDB('pendingPlanilha', item.localId);
+                    }
+                    console.log(`${pendingPlanilha.length} registros de planilha sincronizados`);
+                } else {
+                    console.error('Erro ao sincronizar planilha:', error);
+                }
+            } catch (err) {
+                console.error('Erro na sincronização de planilha:', err);
+            }
+        }
+
+        // Sync pending delivery status updates to Supabase
+        async function syncPendingDeliveryStatus() {
+            const pendingStatus = await getPendingFromOfflineDB('pendingDeliveryStatus');
+
+            for (const item of pendingStatus) {
+                try {
+                    const { error } = await db
+                        .from('planilha')
+                        .update({ delivery_status: item.status })
+                        .in('id', item.ids);
+
+                    if (!error) {
+                        await deleteSyncedFromOfflineDB('pendingDeliveryStatus', item.localId);
+                        console.log('Status de entrega sincronizado:', item.ids);
+                    } else {
+                        console.error('Erro ao sincronizar status:', error);
+                    }
+                } catch (err) {
+                    console.error('Erro na sincronização de status:', err);
+                }
+            }
+        }
+
+        // Main sync function - syncs all pending data
+        async function syncAllPendingData() {
+            if (!isOnline || isSyncing) return;
+
+            isSyncing = true;
+            updateOfflineIndicator();
+
+            console.log('Iniciando sincronização de dados pendentes...');
+
+            try {
+                await syncPendingClients();
+                await syncPendingPlanilha();
+                await syncPendingDeliveryStatus();
+
+                console.log('Sincronização concluída!');
+
+                // Refresh data after sync
+                loadClientes();
+                if (routeMarkersVisible) {
+                    loadRouteMarkers(true);
+                }
+
+                // Update pending count
+                updateOfflineIndicator();
+
+            } catch (error) {
+                console.error('Erro durante sincronização:', error);
+            } finally {
+                isSyncing = false;
+                updateOfflineIndicator();
+            }
+        }
+
+        // Update offline indicator UI
+        async function updateOfflineIndicator() {
+            const indicator = document.getElementById('offlineIndicator');
+            const badge = document.getElementById('offlineBadge');
+
+            if (!indicator) return;
+
+            try {
+                const pendingClients = await countPendingItems('pendingClients');
+                const pendingPlanilha = await countPendingItems('pendingPlanilha');
+                const pendingStatus = await countPendingItems('pendingDeliveryStatus');
+                const totalPending = pendingClients + pendingPlanilha + pendingStatus;
+
+                if (!isOnline) {
+                    indicator.classList.add('offline');
+                    indicator.classList.remove('syncing');
+                    indicator.title = `Offline - ${totalPending} item(s) pendente(s)`;
+                } else if (isSyncing) {
+                    indicator.classList.remove('offline');
+                    indicator.classList.add('syncing');
+                    indicator.title = 'Sincronizando...';
+                } else {
+                    indicator.classList.remove('offline', 'syncing');
+                    indicator.title = totalPending > 0 ? `${totalPending} item(s) para sincronizar` : 'Online';
+                }
+
+                if (badge) {
+                    badge.textContent = totalPending;
+                    badge.style.display = totalPending > 0 ? 'flex' : 'none';
+                }
+            } catch (err) {
+                console.error('Erro ao atualizar indicador:', err);
+            }
+        }
+
+        // Listen for online/offline events
+        window.addEventListener('online', () => {
+            console.log('Conexão restabelecida!');
+            isOnline = true;
+            updateOfflineIndicator();
+
+            // Auto-sync when back online
+            setTimeout(() => {
+                syncAllPendingData();
+            }, 1000);
+        });
+
+        window.addEventListener('offline', () => {
+            console.log('Conexão perdida - modo offline ativado');
+            isOnline = false;
+            updateOfflineIndicator();
+        });
+
+        // Initialize offline system
+        initOfflineDB().then(() => {
+            updateOfflineIndicator();
+            // Try to sync on startup if online
+            if (isOnline) {
+                syncAllPendingData();
+            }
+        }).catch(err => {
+            console.error('Falha ao inicializar sistema offline:', err);
+        });
+
+        // ============================================
+        // END OFFLINE SYSTEM
+        // ============================================
 
         // Dark mode detection
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -2909,16 +3329,33 @@
         let routeMarkersVisible = false;
         let routePopup = null;
 
-        // Update delivery status in Supabase
+        // Update delivery status in Supabase or offline
         async function updateDeliveryStatus(ids, status) {
             if (!ids || ids.length === 0) {
                 console.error('IDs vazios');
                 return false;
             }
 
-            try {
-                console.log(`Atualizando status para ${status} dos IDs:`, ids);
+            console.log(`Atualizando status para ${status} dos IDs:`, ids);
 
+            // If offline, save locally
+            if (!isOnline) {
+                try {
+                    await saveToOfflineDB('pendingDeliveryStatus', {
+                        ids: ids,
+                        status: status
+                    });
+                    console.log('Status salvo offline para sincronização posterior');
+                    updateOfflineIndicator();
+                    return true;
+                } catch (err) {
+                    console.error('Erro ao salvar status offline:', err);
+                    return false;
+                }
+            }
+
+            // If online, try Supabase
+            try {
                 const { data, error } = await db
                     .from('planilha')
                     .update({ delivery_status: status })
@@ -2933,9 +3370,21 @@
                 console.log('Status atualizado com sucesso:', data);
                 return data && data.length > 0;
             } catch (error) {
-                console.error('Erro ao atualizar status:', error);
-                showErrorModal(`Erro ao atualizar status de entrega: ${error.message || error}`);
-                return false;
+                // Fallback to offline if Supabase fails
+                console.warn('Falha no Supabase, salvando offline:', error);
+                try {
+                    await saveToOfflineDB('pendingDeliveryStatus', {
+                        ids: ids,
+                        status: status
+                    });
+                    console.log('Status salvo offline (fallback)');
+                    updateOfflineIndicator();
+                    return true;
+                } catch (offlineErr) {
+                    console.error('Erro ao salvar status:', offlineErr);
+                    showErrorModal(`Erro ao atualizar status de entrega: ${error.message || error}`);
+                    return false;
+                }
             }
         }
 
@@ -3770,6 +4219,38 @@
             uploadProgress.classList.add('active');
             uploadModalFooter.style.display = 'none';
 
+            // If offline, save locally
+            if (!isOnline) {
+                try {
+                    document.getElementById('progressText').textContent = 'Salvando offline...';
+
+                    // Save each record to IndexedDB
+                    for (let i = 0; i < parsedData.length; i++) {
+                        await saveToOfflineDB('pendingPlanilha', parsedData[i]);
+                        document.getElementById('progressText').textContent = `Salvando offline... ${i + 1}/${parsedData.length}`;
+                    }
+
+                    // Success
+                    uploadProgress.classList.remove('active');
+                    uploadSuccess.classList.add('active');
+                    document.getElementById('successText').textContent = `${parsedData.length} registros salvos offline. Serão sincronizados quando a internet voltar.`;
+                    updateOfflineIndicator();
+
+                    // Auto close after 2 seconds
+                    setTimeout(() => {
+                        closeUploadModal();
+                    }, 2000);
+
+                } catch (offlineErr) {
+                    uploadProgress.classList.remove('active');
+                    uploadModalFooter.style.display = 'flex';
+                    uploadPreview.classList.add('active');
+                    showErrorModal('Erro ao salvar offline. Tente novamente.');
+                }
+                return;
+            }
+
+            // If online, try Supabase
             try {
                 // Step 1: Delete all existing data
                 document.getElementById('progressText').textContent = 'Removendo dados anteriores...';
@@ -3807,10 +4288,31 @@
                 }, 2000);
 
             } catch (error) {
-                uploadProgress.classList.remove('active');
-                uploadModalFooter.style.display = 'flex';
-                uploadPreview.classList.add('active');
-                showErrorModal('Erro ao salvar os dados. Tente novamente.');
+                // Fallback to offline if Supabase fails
+                console.warn('Falha no Supabase, salvando offline:', error);
+                try {
+                    document.getElementById('progressText').textContent = 'Salvando offline (fallback)...';
+
+                    for (let i = 0; i < parsedData.length; i++) {
+                        await saveToOfflineDB('pendingPlanilha', parsedData[i]);
+                        document.getElementById('progressText').textContent = `Salvando offline... ${i + 1}/${parsedData.length}`;
+                    }
+
+                    uploadProgress.classList.remove('active');
+                    uploadSuccess.classList.add('active');
+                    document.getElementById('successText').textContent = `${parsedData.length} registros salvos offline. Serão sincronizados quando a internet voltar.`;
+                    updateOfflineIndicator();
+
+                    setTimeout(() => {
+                        closeUploadModal();
+                    }, 2000);
+
+                } catch (offlineErr) {
+                    uploadProgress.classList.remove('active');
+                    uploadModalFooter.style.display = 'flex';
+                    uploadPreview.classList.add('active');
+                    showErrorModal('Erro ao salvar os dados. Tente novamente.');
+                }
             }
         });
 
@@ -4189,14 +4691,33 @@
         async function saveClientLocationQuick(coordinates) {
             if (!currentRecord) return;
 
+            const clientData = {
+                address: currentRecord.destination_address,
+                latitude: coordinates.latitude,
+                longitude: coordinates.longitude
+            };
+
+            // If offline, save locally and show success
+            if (!isOnline) {
+                try {
+                    await saveToOfflineDB('pendingClients', clientData);
+                    showQuickSuccess();
+                    updateOfflineIndicator();
+                    console.log('Cliente salvo offline:', clientData.address);
+                    currentRecord = null;
+                    return;
+                } catch (err) {
+                    console.error('Erro ao salvar offline:', err);
+                    showErrorModal('Erro ao salvar offline.');
+                    return;
+                }
+            }
+
+            // If online, try to save to Supabase
             try {
                 const { error } = await db
                     .from('clients')
-                    .insert({
-                        address: currentRecord.destination_address,
-                        latitude: coordinates.latitude,
-                        longitude: coordinates.longitude
-                    });
+                    .insert(clientData);
 
                 if (error) throw error;
 
@@ -4210,7 +4731,17 @@
                 currentRecord = null;
 
             } catch (error) {
-                showErrorModal('Erro ao salvar o endereço. Tente novamente.');
+                // If Supabase fails, save locally as fallback
+                console.warn('Falha no Supabase, salvando offline:', error);
+                try {
+                    await saveToOfflineDB('pendingClients', clientData);
+                    showQuickSuccess();
+                    updateOfflineIndicator();
+                    console.log('Cliente salvo offline (fallback):', clientData.address);
+                    currentRecord = null;
+                } catch (offlineErr) {
+                    showErrorModal('Erro ao salvar o endereço. Tente novamente.');
+                }
             }
         }
 
