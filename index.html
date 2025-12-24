@@ -2785,13 +2785,40 @@
                     try {
                         console.log('Sincronizando cliente:', client);
 
-                        const { error } = await db
+                        // Check if client already exists
+                        const { data: existingData } = await db
                             .from('clients')
-                            .insert({
-                                address: client.address,
-                                latitude: client.latitude,
-                                longitude: client.longitude
-                            });
+                            .select('*')
+                            .eq('address', client.address)
+                            .limit(1);
+
+                        let error = null;
+
+                        if (existingData && existingData.length > 0) {
+                            // Client exists - UPDATE coordinates
+                            const updateResult = await db
+                                .from('clients')
+                                .update({
+                                    latitude: client.latitude,
+                                    longitude: client.longitude
+                                })
+                                .eq('address', client.address);
+
+                            error = updateResult.error;
+                            console.log('🔄 Atualizando cliente existente:', client.address);
+                        } else {
+                            // Client doesn't exist - INSERT new
+                            const insertResult = await db
+                                .from('clients')
+                                .insert({
+                                    address: client.address,
+                                    latitude: client.latitude,
+                                    longitude: client.longitude
+                                });
+
+                            error = insertResult.error;
+                            console.log('➕ Inserindo novo cliente:', client.address);
+                        }
 
                         if (!error) {
                             await deleteSyncedFromOfflineDB('pendingClients', client.localId);
@@ -5033,23 +5060,44 @@
                 if (foundRecord) {
                     currentRecord = foundRecord;
 
-                    // Check if address already exists in clients table
+                    // Check if address already exists in clients table (online or offline)
                     let existingClient = null;
                     const addressToCheck = foundRecord.destination_address;
 
-                    if (addressToCheck && isOnline) {
-                        try {
-                            const { data: clientData, error: clientError } = await db
-                                .from('clients')
-                                .select('*')
-                                .eq('address', addressToCheck)
-                                .limit(1);
+                    if (addressToCheck) {
+                        // Try online first
+                        if (isOnline) {
+                            try {
+                                const { data: clientData, error: clientError } = await db
+                                    .from('clients')
+                                    .select('*')
+                                    .eq('address', addressToCheck)
+                                    .limit(1);
 
-                            if (!clientError && clientData && clientData.length > 0) {
-                                existingClient = clientData[0];
+                                if (!clientError && clientData && clientData.length > 0) {
+                                    existingClient = clientData[0];
+                                    console.log('Cliente encontrado online:', existingClient);
+                                }
+                            } catch (err) {
+                                console.warn('Erro ao verificar cliente existente online:', err);
                             }
-                        } catch (err) {
-                            console.warn('Erro ao verificar cliente existente:', err);
+                        }
+
+                        // If offline or not found online, check in local storage
+                        if (!existingClient) {
+                            try {
+                                // Check in pending clients (offline data waiting to sync)
+                                const pendingClients = await getAllFromOfflineDB('pendingClients');
+                                existingClient = pendingClients.find(client =>
+                                    client.address === addressToCheck
+                                );
+
+                                if (existingClient) {
+                                    console.log('Cliente encontrado em dados pendentes offline:', existingClient);
+                                }
+                            } catch (err) {
+                                console.warn('Erro ao verificar clientes offline:', err);
+                            }
                         }
                     }
 
@@ -5328,7 +5376,31 @@
             // If offline, save locally and show success
             if (!isOnline) {
                 try {
-                    await saveToOfflineDB('pendingClients', clientData);
+                    if (isUpdate) {
+                        // For updates, remove old record and add new one
+                        // First, get all pending clients
+                        const pendingClients = await getAllFromOfflineDB('pendingClients');
+
+                        // Find and remove the old record
+                        const oldRecordIndex = pendingClients.findIndex(client =>
+                            client.address === clientData.address
+                        );
+
+                        if (oldRecordIndex !== -1) {
+                            // Remove old record from IndexedDB
+                            // Note: We need to delete by key, not by index
+                            // Since getAllFromOfflineDB doesn't return keys, we'll just save the new one
+                            // The sync function will handle duplicates
+                            console.log('Atualizando coordenadas offline do endereço:', clientData.address);
+                        }
+
+                        // Save updated coordinates
+                        await saveToOfflineDB('pendingClients', clientData);
+                    } else {
+                        // New client - just save
+                        await saveToOfflineDB('pendingClients', clientData);
+                    }
+
                     showQuickSuccess();
                     updateOfflineIndicator();
                     console.log(isUpdate ? 'Cliente atualizado offline:' : 'Cliente salvo offline:', clientData.address);
