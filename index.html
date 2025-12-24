@@ -5278,6 +5278,13 @@
         // Show address exists modal
         function showAddressExistsModal(address, clientRecord) {
             console.log('Mostrando modal de endereço existente:', { address, clientRecord });
+            console.log('⚠️ IMPORTANTE - Coordenadas no clientRecord:', {
+                fonte: clientRecord.id ? 'Supabase/Cache' : 'Pending',
+                latitude: clientRecord.latitude,
+                longitude: clientRecord.longitude,
+                tem_id: !!clientRecord.id,
+                tem_localId: !!clientRecord.localId
+            });
             existingClientRecord = clientRecord;
             addressExistsText.textContent = address;
             document.getElementById('overlay').classList.add('active');
