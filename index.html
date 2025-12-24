@@ -2646,6 +2646,12 @@
                         cacheStore.createIndex('spx_tn', 'spx_tn', { unique: false });
                     }
 
+                    // Store for cached clients data (for offline reading)
+                    if (!db.objectStoreNames.contains('cachedClients')) {
+                        const clientsCacheStore = db.createObjectStore('cachedClients', { keyPath: 'id', autoIncrement: true });
+                        clientsCacheStore.createIndex('address', 'address', { unique: false });
+                    }
+
                     console.log('IndexedDB estrutura criada');
                 };
             });
@@ -3269,14 +3275,14 @@
             }
         });
 
-        // Load clientes from Supabase with in-memory caching
+        // Load clientes from Supabase with persistent caching
         async function loadClientes() {
             loadingState.style.display = 'block';
             emptyState.style.display = 'none';
             clienteList.style.display = 'none';
 
             try {
-                // Use cache if less than 5 minutes old
+                // Use in-memory cache if less than 5 minutes old
                 if (clientesCache.data && Date.now() - clientesCache.timestamp < 300000) {
                     allClientes = clientesCache.data;
                     renderClientes(clientesCache.data);
@@ -3285,35 +3291,68 @@
                     }
                 }
 
-                // Fetch fresh data
-                const { data, error } = await db
-                    .from('clients')
-                    .select('*')
-                    .order('id', { ascending: false });
+                // Try to fetch fresh data if online
+                if (isOnline) {
+                    const { data, error } = await db
+                        .from('clients')
+                        .select('*')
+                        .order('id', { ascending: false });
 
-                if (error) throw error;
+                    if (!error && data) {
+                        // Update in-memory cache
+                        clientesCache = {
+                            data: data || [],
+                            timestamp: Date.now()
+                        };
 
-                // Update cache
-                clientesCache = {
-                    data: data || [],
-                    timestamp: Date.now()
-                };
+                        // Save to IndexedDB cache for offline use
+                        await saveCacheToDB('cachedClients', data);
 
-                allClientes = data || [];
-                renderClientes(data);
+                        allClientes = data || [];
+                        renderClientes(data);
 
-                // Only add markers if they are currently visible
-                if (markersVisible) {
-                    addMarkersToMap(data);
+                        // Only add markers if they are currently visible
+                        if (markersVisible) {
+                            addMarkersToMap(data);
+                        }
+                        return;
+                    }
                 }
-            } catch (error) {
-                clienteCount.textContent = 'Erro ao carregar';
 
-                // If we have cached data, use it as fallback
-                if (clientesCache.data) {
+                // If offline or fetch failed, use IndexedDB cache
+                console.log('Carregando clientes do cache offline...');
+                const cachedClients = await getAllFromOfflineDB('cachedClients');
+
+                if (cachedClients && cachedClients.length > 0) {
+                    allClientes = cachedClients;
+                    renderClientes(cachedClients);
+                    if (markersVisible) {
+                        addMarkersToMap(cachedClients);
+                    }
+                    clienteCount.textContent = `${cachedClients.length} cliente${cachedClients.length > 1 ? 's' : ''} (offline)`;
+                    console.log('Clientes carregados do cache:', cachedClients.length);
+                } else if (clientesCache.data) {
+                    // Fallback to in-memory cache if available
                     allClientes = clientesCache.data;
                     renderClientes(clientesCache.data);
                     clienteCount.textContent = `${clientesCache.data.length} cliente${clientesCache.data.length > 1 ? 's' : ''} (cache)`;
+                } else {
+                    clienteCount.textContent = 'Nenhum cliente';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar clientes:', error);
+                clienteCount.textContent = 'Erro ao carregar';
+
+                // Try IndexedDB cache as fallback
+                try {
+                    const cachedClients = await getAllFromOfflineDB('cachedClients');
+                    if (cachedClients && cachedClients.length > 0) {
+                        allClientes = cachedClients;
+                        renderClientes(cachedClients);
+                        clienteCount.textContent = `${cachedClients.length} cliente${cachedClients.length > 1 ? 's' : ''} (offline)`;
+                    }
+                } catch (cacheError) {
+                    console.error('Erro ao carregar cache:', cacheError);
                 }
             }
         }
@@ -4968,6 +5007,18 @@
                         if (existingClient) {
                             console.log('Cliente encontrado em dados pendentes offline (lista manual):', existingClient);
                         }
+
+                        // If not found in pending, check in cached clients
+                        if (!existingClient) {
+                            const cachedClients = await getAllFromOfflineDB('cachedClients');
+                            existingClient = cachedClients.find(client =>
+                                client.address === addressToCheck
+                            );
+
+                            if (existingClient) {
+                                console.log('Cliente encontrado em cache offline (lista manual):', existingClient);
+                            }
+                        }
                     } catch (err) {
                         console.warn('Erro ao verificar clientes offline (lista manual):', err);
                     }
@@ -5142,6 +5193,18 @@
 
                                 if (existingClient) {
                                     console.log('Cliente encontrado em dados pendentes offline:', existingClient);
+                                }
+
+                                // If not found in pending, check in cached clients
+                                if (!existingClient) {
+                                    const cachedClients = await getAllFromOfflineDB('cachedClients');
+                                    existingClient = cachedClients.find(client =>
+                                        client.address === addressToCheck
+                                    );
+
+                                    if (existingClient) {
+                                        console.log('Cliente encontrado em cache offline:', existingClient);
+                                    }
                                 }
                             } catch (err) {
                                 console.warn('Erro ao verificar clientes offline:', err);
