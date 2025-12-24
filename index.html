@@ -2409,6 +2409,13 @@
                         statusStore.createIndex('synced', 'synced', { unique: false });
                     }
 
+                    // Store for cached planilha data (for offline reading)
+                    if (!db.objectStoreNames.contains('cachedPlanilha')) {
+                        const cacheStore = db.createObjectStore('cachedPlanilha', { keyPath: 'id' });
+                        cacheStore.createIndex('sequence', 'sequence', { unique: false });
+                        cacheStore.createIndex('spx_tn', 'spx_tn', { unique: false });
+                    }
+
                     console.log('IndexedDB estrutura criada');
                 };
             });
@@ -2712,6 +2719,59 @@
 
                 request.onsuccess = () => {
                     resolve(request.result || []);
+                };
+
+                request.onerror = () => {
+                    reject(request.error);
+                };
+            });
+        }
+
+        // Save cache to IndexedDB (replaces all data in cache)
+        async function saveCacheToDB(storeName, dataArray) {
+            if (!offlineDB) return;
+
+            try {
+                const transaction = offlineDB.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+
+                // Clear old cache first
+                await new Promise((resolve, reject) => {
+                    const clearRequest = store.clear();
+                    clearRequest.onsuccess = () => resolve();
+                    clearRequest.onerror = () => reject(clearRequest.error);
+                });
+
+                // Add all new data
+                for (const item of dataArray) {
+                    await new Promise((resolve, reject) => {
+                        const addRequest = store.add(item);
+                        addRequest.onsuccess = () => resolve();
+                        addRequest.onerror = () => reject(addRequest.error);
+                    });
+                }
+
+                console.log(`Cache atualizado: ${dataArray.length} registros em ${storeName}`);
+            } catch (error) {
+                console.error('Erro ao salvar cache:', error);
+            }
+        }
+
+        // Get data from cache by index
+        function getFromCacheByIndex(storeName, indexName, value) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    reject(new Error('IndexedDB não inicializado'));
+                    return;
+                }
+
+                const transaction = offlineDB.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const index = store.index(indexName);
+                const request = index.get(value);
+
+                request.onsuccess = () => {
+                    resolve(request.result || null);
                 };
 
                 request.onerror = () => {
@@ -4288,16 +4348,26 @@
                 document.getElementById('progressText').textContent = 'Inserindo novos dados...';
 
                 const batchSize = 50;
+                let allInsertedData = [];
                 for (let i = 0; i < parsedData.length; i += batchSize) {
                     const batch = parsedData.slice(i, i + batchSize);
-                    const { error: insertError } = await db
+                    const { data: insertedData, error: insertError } = await db
                         .from('planilha')
-                        .insert(batch);
+                        .insert(batch)
+                        .select();
 
                     if (insertError) throw insertError;
 
+                    if (insertedData) {
+                        allInsertedData = allInsertedData.concat(insertedData);
+                    }
+
                     document.getElementById('progressText').textContent = `Inserindo dados... ${Math.min(i + batchSize, parsedData.length)}/${parsedData.length}`;
                 }
+
+                // Step 3: Save to cache for offline use
+                document.getElementById('progressText').textContent = 'Salvando cache local...';
+                await saveCacheToDB('cachedPlanilha', allInsertedData.length > 0 ? allInsertedData : parsedData);
 
                 // Success
                 uploadProgress.classList.remove('active');
@@ -4406,41 +4476,58 @@
 
             try {
                 let addressData = [];
+                let fromCache = false;
 
                 // Try online first if available
                 if (isOnline) {
-                    const { data, error } = await db
-                        .from('planilha')
-                        .select('id, sequence, destination_address, bairro, city, latitude, longitude, spx_tn')
-                        .not('destination_address', 'is', null)
-                        .order('sequence', { ascending: true });
+                    try {
+                        const { data, error } = await db
+                            .from('planilha')
+                            .select('id, sequence, destination_address, bairro, city, latitude, longitude, spx_tn')
+                            .not('destination_address', 'is', null)
+                            .order('sequence', { ascending: true });
 
-                    if (!error && data && data.length > 0) {
-                        addressData = data;
+                        if (!error && data && data.length > 0) {
+                            addressData = data;
+                            // Save to cache for offline use
+                            await saveCacheToDB('cachedPlanilha', data);
+                            console.log(`${data.length} endereços carregados do Supabase e salvos no cache`);
+                        }
+                    } catch (supabaseError) {
+                        console.warn('Falha ao carregar do Supabase, usando cache:', supabaseError);
                     }
                 }
 
-                // If offline or no data online, load from IndexedDB
+                // If offline or Supabase failed, load from cache
                 if (addressData.length === 0) {
-                    console.log('Carregando endereços do IndexedDB offline...');
-                    const offlineData = await getAllFromOfflineDB('pendingPlanilha');
+                    console.log('Carregando endereços do cache offline...');
+                    const cachedData = await getAllFromOfflineDB('cachedPlanilha');
 
-                    addressData = offlineData
-                        .filter(item => item.destination_address)
-                        .map(item => ({
-                            localId: item.localId,
-                            sequence: item.sequence,
-                            destination_address: item.destination_address,
-                            bairro: item.bairro,
-                            city: item.city,
-                            latitude: item.latitude,
-                            longitude: item.longitude,
-                            spx_tn: item.spx_tn
-                        }))
-                        .sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
+                    if (cachedData && cachedData.length > 0) {
+                        addressData = cachedData;
+                        fromCache = true;
+                        console.log(`${addressData.length} endereços carregados do cache`);
+                    } else {
+                        // Fallback to pending data if no cache
+                        const offlineData = await getAllFromOfflineDB('pendingPlanilha');
+                        addressData = offlineData
+                            .filter(item => item.destination_address)
+                            .map(item => ({
+                                localId: item.localId,
+                                sequence: item.sequence,
+                                destination_address: item.destination_address,
+                                bairro: item.bairro,
+                                city: item.city,
+                                latitude: item.latitude,
+                                longitude: item.longitude,
+                                spx_tn: item.spx_tn
+                            }))
+                            .sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
 
-                    if (addressData.length > 0) {
-                        console.log(`${addressData.length} endereços carregados do IndexedDB`);
+                        if (addressData.length > 0) {
+                            fromCache = true;
+                            console.log(`${addressData.length} endereços carregados de dados pendentes`);
+                        }
                     }
                 }
 
@@ -4451,6 +4538,11 @@
 
                 planilhaAddressData = addressData;
                 renderAddressList(addressData);
+
+                // Show indicator if using cache
+                if (fromCache && !isOnline) {
+                    console.log('Usando dados em cache (offline)');
+                }
 
             } catch (error) {
                 console.error('Erro ao carregar endereços:', error);
@@ -4598,29 +4690,45 @@
             try {
                 // Try online first if available
                 if (isOnline) {
-                    const { data, error } = await db
-                        .from('planilha')
-                        .select('*')
-                        .eq('spx_tn', qrData)
-                        .limit(1);
+                    try {
+                        const { data, error } = await db
+                            .from('planilha')
+                            .select('*')
+                            .eq('spx_tn', qrData)
+                            .limit(1);
 
-                    if (!error && data && data.length > 0) {
-                        foundRecord = data[0];
+                        if (!error && data && data.length > 0) {
+                            foundRecord = data[0];
+                        }
+                    } catch (supabaseError) {
+                        console.warn('Falha ao buscar no Supabase, usando cache:', supabaseError);
                     }
                 }
 
-                // If offline or not found online, search in local IndexedDB
+                // If offline or not found online, search in cache
                 if (!foundRecord) {
-                    console.log('Buscando no IndexedDB offline...');
-                    const offlineData = await getAllFromOfflineDB('pendingPlanilha');
+                    console.log('Buscando no cache offline...');
 
-                    // Search for matching spx_tn
-                    foundRecord = offlineData.find(item =>
-                        item.spx_tn && item.spx_tn.toString() === qrData.toString()
-                    );
+                    // Try cache first (from Supabase sync)
+                    try {
+                        foundRecord = await getFromCacheByIndex('cachedPlanilha', 'spx_tn', qrData);
+                        if (foundRecord) {
+                            console.log('Encontrado no cache:', foundRecord);
+                        }
+                    } catch (err) {
+                        console.log('Erro ao buscar no cache:', err);
+                    }
 
-                    if (foundRecord) {
-                        console.log('Encontrado no IndexedDB:', foundRecord);
+                    // Fallback to pending data
+                    if (!foundRecord) {
+                        const offlineData = await getAllFromOfflineDB('pendingPlanilha');
+                        foundRecord = offlineData.find(item =>
+                            item.spx_tn && item.spx_tn.toString() === qrData.toString()
+                        );
+
+                        if (foundRecord) {
+                            console.log('Encontrado em dados pendentes:', foundRecord);
+                        }
                     }
                 }
 
