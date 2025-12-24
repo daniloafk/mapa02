@@ -4916,7 +4916,7 @@
         }
 
         // Handle address item click
-        qrAddressList.addEventListener('click', (e) => {
+        qrAddressList.addEventListener('click', async (e) => {
             const item = e.target.closest('.qr-address-item');
             if (!item || item.dataset.idx === undefined) return;
 
@@ -4933,7 +4933,55 @@
                 sequence: addr.sequence
             };
 
-            enterAdjustMode();
+            // Check if address already exists in clients table (online or offline)
+            let existingClient = null;
+            const addressToCheck = currentRecord.destination_address;
+
+            if (addressToCheck) {
+                // Try online first
+                if (isOnline) {
+                    try {
+                        const { data: clientData, error: clientError } = await db
+                            .from('clients')
+                            .select('*')
+                            .eq('address', addressToCheck)
+                            .limit(1);
+
+                        if (!clientError && clientData && clientData.length > 0) {
+                            existingClient = clientData[0];
+                            console.log('Cliente encontrado online (lista manual):', existingClient);
+                        }
+                    } catch (err) {
+                        console.warn('Erro ao verificar cliente existente online (lista manual):', err);
+                    }
+                }
+
+                // If offline or not found online, check in local storage
+                if (!existingClient) {
+                    try {
+                        // Check in pending clients (offline data waiting to sync)
+                        const pendingClients = await getAllFromOfflineDB('pendingClients');
+                        existingClient = pendingClients.find(client =>
+                            client.address === addressToCheck
+                        );
+
+                        if (existingClient) {
+                            console.log('Cliente encontrado em dados pendentes offline (lista manual):', existingClient);
+                        }
+                    } catch (err) {
+                        console.warn('Erro ao verificar clientes offline (lista manual):', err);
+                    }
+                }
+            }
+
+            // If address already registered, show modal
+            if (existingClient) {
+                closeQrScanner();
+                showAddressExistsModal(addressToCheck, existingClient);
+            } else {
+                // Go directly to adjust mode (new address)
+                enterAdjustMode();
+            }
         });
 
         function closeQrScanner() {
