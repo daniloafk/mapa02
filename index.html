@@ -2432,7 +2432,7 @@
                 const transaction = offlineDB.transaction([storeName], 'readwrite');
                 const store = transaction.objectStore(storeName);
 
-                data.synced = false;
+                data.synced = 0; // 0 = false, 1 = true (IndexedDB não aceita boolean como chave)
                 data.createdAt = new Date().toISOString();
 
                 const request = store.add(data);
@@ -2460,7 +2460,7 @@
                 const transaction = offlineDB.transaction([storeName], 'readonly');
                 const store = transaction.objectStore(storeName);
                 const index = store.index('synced');
-                const request = index.getAll(IDBKeyRange.only(false));
+                const request = index.getAll(IDBKeyRange.only(0)); // 0 = false (não sincronizado)
 
                 request.onsuccess = () => {
                     resolve(request.result || []);
@@ -2487,7 +2487,7 @@
                 getRequest.onsuccess = () => {
                     const data = getRequest.result;
                     if (data) {
-                        data.synced = true;
+                        data.synced = 1; // 1 = true (sincronizado)
                         data.syncedAt = new Date().toISOString();
                         const updateRequest = store.put(data);
                         updateRequest.onsuccess = () => resolve();
@@ -2529,7 +2529,7 @@
                 const transaction = offlineDB.transaction([storeName], 'readonly');
                 const store = transaction.objectStore(storeName);
                 const index = store.index('synced');
-                const request = index.count(IDBKeyRange.only(false));
+                const request = index.count(IDBKeyRange.only(0)); // 0 = false (não sincronizado)
 
                 request.onsuccess = () => resolve(request.result);
                 request.onerror = () => reject(request.error);
