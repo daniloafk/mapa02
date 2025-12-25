@@ -4016,7 +4016,7 @@
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
                                 // Same house number - use relaxed threshold (consistent with shouldMergeAddresses)
-                                if (similarity >= 0.2) {
+                                if (similarity >= 0.15) {
                                     return client;
                                 }
                             }
@@ -4057,8 +4057,8 @@
                         // Same house number - check if street name is similar (very relaxed threshold)
                         const similarity = textSimilarity(normalized1, normalized2);
                         if (isPalma) console.log(`   Similaridade: ${(similarity * 100).toFixed(1)}%`);
-                        // Lower threshold to 20% when house numbers match (catches "Rua palma muniz 465" variations)
-                        const result = similarity >= 0.2;
+                        // Lower threshold to 15% when house numbers match (catches "Rua palma muniz 465" variations)
+                        const result = similarity >= 0.15;
                         if (isPalma) console.log(`   Resultado: ${result ? '✅ MESCLAR' : '❌ NÃO MESCLAR'}`);
                         return result;
                     }
