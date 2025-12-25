@@ -4033,17 +4033,18 @@
 
                 // Check if two addresses should be merged (same street AND same house number)
                 function shouldMergeAddresses(addr1, addr2, normalized1, normalized2) {
-                    // First check text similarity
-                    const similarity = textSimilarity(normalized1, normalized2);
-                    if (similarity < 0.5) return false;
-
-                    // Extract house numbers
+                    // Extract house numbers first
                     const houseNum1 = extractHouseNumber(addr1);
                     const houseNum2 = extractHouseNumber(addr2);
 
-                    // If both have house numbers, they must match
+                    // If both have house numbers, they MUST match to merge
                     if (houseNum1 && houseNum2) {
-                        return houseNum1 === houseNum2;
+                        if (houseNum1 !== houseNum2) {
+                            return false; // Different house numbers = different addresses
+                        }
+                        // Same house number - check if street name is similar (relaxed threshold)
+                        const similarity = textSimilarity(normalized1, normalized2);
+                        return similarity >= 0.3; // Lower threshold if house numbers match
                     }
 
                     // If only one has house number, don't merge (ambiguous)
@@ -4051,7 +4052,8 @@
                         return false;
                     }
 
-                    // Neither has house number - merge if very similar text
+                    // Neither has house number - merge only if very similar text
+                    const similarity = textSimilarity(normalized1, normalized2);
                     return similarity >= 0.7;
                 }
 
@@ -4139,6 +4141,7 @@
                     const sequences = [];
                     const stopsList = [];
                     const ids = [];
+                    const allAddresses = []; // Store all unique addresses in this group
                     let deliveryStatus = null;
                     mergedItems.forEach(item => {
                         if (item.sequence && !sequences.includes(item.sequence)) {
@@ -4150,6 +4153,10 @@
                         if (item.id) {
                             ids.push(item.id);
                         }
+                        // Collect all unique addresses
+                        if (item.destination_address && !allAddresses.includes(item.destination_address)) {
+                            allAddresses.push(item.destination_address);
+                        }
                         // Use the first non-null delivery_status found
                         if (!deliveryStatus && item.delivery_status) {
                             deliveryStatus = item.delivery_status;
@@ -4160,7 +4167,8 @@
                     const registeredClient = findRegisteredClient(group1.originalAddress);
 
                     mergedGroups.push({
-                        address: group1.originalAddress,
+                        address: group1.originalAddress, // Main address for display
+                        allAddresses: allAddresses, // All addresses in this group
                         latitude: registeredClient ? registeredClient.latitude : bestCluster.lat,
                         longitude: registeredClient ? registeredClient.longitude : bestCluster.lng,
                         sequences: sequences,
@@ -4234,6 +4242,7 @@
                             allStops: stop.stops.join(', '),
                             icon: `pin-${color}-${packageCount}`,
                             address: stop.address || 'Endereço não disponível',
+                            allAddresses: stop.allAddresses ? stop.allAddresses.join('|||') : '', // Store all addresses separated by |||
                             sequences: stop.sequences.join(', '),
                             isRegistered: stop.isRegistered,
                             ids: stop.ids.join(','),
@@ -4307,6 +4316,23 @@
                             `<span class="route-popup-order">${seq}</span>`
                         ).join('');
 
+                        // Check if there are multiple addresses in this stop
+                        const allAddressesArr = props.allAddresses ? props.allAddresses.split('|||') : [props.address];
+                        const hasMultipleAddresses = allAddressesArr.length > 1;
+
+                        // Build address display
+                        let addressDisplay = '';
+                        if (hasMultipleAddresses) {
+                            addressDisplay = `
+                                <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${allAddressesArr.length} pacotes nesta parada:</div>
+                                <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
+                                    ${allAddressesArr.map(addr => `<div style="margin-bottom: 3px;">• ${addr}</div>`).join('')}
+                                </div>
+                            `;
+                        } else {
+                            addressDisplay = `<div class="route-popup-address">${props.address}</div>`;
+                        }
+
                         // Determine current status for button styling
                         const currentStatus = props.deliveryStatus || 'pending';
                         const isDelivered = currentStatus === 'delivered';
@@ -4318,12 +4344,12 @@
                             offset: [0, -50],
                             closeButton: true,
                             closeOnClick: true,
-                            maxWidth: '280px'
+                            maxWidth: '300px'
                         })
                             .setLngLat(coords)
                             .setHTML(`
                                 <div class="route-popup-content">
-                                    <div class="route-popup-address">${props.address}</div>
+                                    ${addressDisplay}
                                     <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Ordem:</div>
                                     <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
                                     <div class="route-popup-actions">
