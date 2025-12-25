@@ -4132,7 +4132,7 @@
                                     client2.latitude, client2.longitude
                                 );
 
-                                if (distance > 0.2) { // More than 200 meters apart
+                                if (distance > 0.1) { // More than 100 meters apart
                                     console.log(`  🚫 NÃO MESCLANDO (ambos cadastrados mas distantes ${(distance * 1000).toFixed(0)}m):`);
                                     console.log(`     Grupo 1: "${group1.originalAddress.substring(0, 60)}..."`);
                                     console.log(`     Grupo 2: "${group2.originalAddress.substring(0, 60)}..."`);
