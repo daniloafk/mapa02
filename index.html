@@ -4163,8 +4163,15 @@
                         }
                     });
 
-                    // Check if this address has a registered client
-                    const registeredClient = findRegisteredClient(group1.originalAddress);
+                    // Check if ANY address in this group has a registered client (Option 1: at least one)
+                    let registeredClient = null;
+                    for (const addr of allAddresses) {
+                        const client = findRegisteredClient(addr);
+                        if (client) {
+                            registeredClient = client;
+                            break; // Found at least one, that's enough for green marker
+                        }
+                    }
 
                     mergedGroups.push({
                         address: group1.originalAddress, // Main address for display
@@ -4175,7 +4182,7 @@
                         stops: stopsList,
                         ids: ids,
                         deliveryStatus: deliveryStatus,
-                        isRegistered: !!registeredClient
+                        isRegistered: !!registeredClient // GREEN if at least one address is registered
                     });
                 });
 
