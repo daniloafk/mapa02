@@ -3922,7 +3922,7 @@
                 // Fetch active clients from clients table to check registered addresses
                 const { data: clientsData, error: clientsError } = await db
                     .from('clients')
-                    .select('address, latitude, longitude')
+                    .select('id, address, latitude, longitude')
                     .not('latitude', 'is', null)
                     .not('longitude', 'is', null);
 
