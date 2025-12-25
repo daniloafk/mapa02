@@ -4174,6 +4174,7 @@
                     const stopsList = [];
                     const ids = [];
                     const allAddresses = []; // Store all unique addresses in this group
+                    const addressSequencePairs = []; // Store address+sequence pairs
                     let deliveryStatus = null;
                     mergedItems.forEach(item => {
                         if (item.sequence && !sequences.includes(item.sequence)) {
@@ -4188,6 +4189,13 @@
                         // Collect all unique addresses
                         if (item.destination_address && !allAddresses.includes(item.destination_address)) {
                             allAddresses.push(item.destination_address);
+                        }
+                        // Store address+sequence pairs for popup display
+                        if (item.destination_address && item.sequence) {
+                            addressSequencePairs.push({
+                                address: item.destination_address,
+                                sequence: item.sequence
+                            });
                         }
                         // Use the first non-null delivery_status found
                         if (!deliveryStatus && item.delivery_status) {
@@ -4220,6 +4228,7 @@
                     mergedGroups.push({
                         address: group1.originalAddress, // Main address for display
                         allAddresses: allAddresses, // All addresses in this group
+                        addressSequencePairs: addressSequencePairs, // Address+sequence pairs for popup
                         latitude: finalLat,
                         longitude: finalLng,
                         sequences: sequences,
@@ -4294,6 +4303,7 @@
                             icon: `pin-${color}-${packageCount}`,
                             address: stop.address || 'Endereço não disponível',
                             allAddresses: stop.allAddresses ? stop.allAddresses.join('|||') : '', // Store all addresses separated by |||
+                            addressSequencePairs: stop.addressSequencePairs ? JSON.stringify(stop.addressSequencePairs) : '', // Store address+sequence pairs
                             sequences: stop.sequences.join(', '),
                             isRegistered: stop.isRegistered,
                             ids: stop.ids.join(','),
@@ -4368,18 +4378,20 @@
                         ).join('');
 
                         // Check if there are multiple addresses in this stop
-                        const allAddressesArr = props.allAddresses ? props.allAddresses.split('|||') : [props.address];
-                        const hasMultipleAddresses = allAddressesArr.length > 1;
+                        const addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
+                        const hasMultipleAddresses = addressSequencePairs.length > 1;
 
                         // Build address display
                         let addressDisplay = '';
                         if (hasMultipleAddresses) {
                             addressDisplay = `
-                                <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${allAddressesArr.length} pacotes nesta parada:</div>
+                                <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
                                 <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
-                                    ${allAddressesArr.map(addr => `<div style="margin-bottom: 3px;">• ${addr}</div>`).join('')}
+                                    ${addressSequencePairs.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}
                                 </div>
                             `;
+                        } else if (addressSequencePairs.length === 1) {
+                            addressDisplay = `<div class="route-popup-address">${addressSequencePairs[0].address}</div>`;
                         } else {
                             addressDisplay = `<div class="route-popup-address">${props.address}</div>`;
                         }
@@ -4391,6 +4403,12 @@
 
                         if (routePopup) routePopup.remove();
 
+                        // Only show order section at bottom if single address (multiple addresses show order inline)
+                        const orderSection = hasMultipleAddresses ? '' : `
+                            <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Ordem:</div>
+                            <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                        `;
+
                         routePopup = new mapboxgl.Popup({
                             offset: [0, -50],
                             closeButton: true,
@@ -4401,8 +4419,7 @@
                             .setHTML(`
                                 <div class="route-popup-content">
                                     ${addressDisplay}
-                                    <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Ordem:</div>
-                                    <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                                    ${orderSection}
                                     <div class="route-popup-actions">
                                         <button class="route-popup-btn ${isDelivered ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}" data-current-status="${currentStatus}">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
