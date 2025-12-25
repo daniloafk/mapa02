@@ -4165,25 +4165,37 @@
                     });
 
                     // Check if ANY address in this group has a registered client (Option 1: at least one)
-                    let registeredClient = null;
+                    // Collect ALL registered clients for this group, then cluster their coordinates
+                    const registeredClients = [];
                     for (const addr of allAddresses) {
                         const client = findRegisteredClient(addr);
                         if (client) {
-                            registeredClient = client;
-                            break; // Found at least one, that's enough for green marker
+                            registeredClients.push(client);
                         }
+                    }
+
+                    // Determine final coordinates
+                    let finalLat, finalLng;
+                    if (registeredClients.length > 0) {
+                        // Use average of all registered clients' coordinates (cluster them)
+                        finalLat = registeredClients.reduce((sum, c) => sum + c.latitude, 0) / registeredClients.length;
+                        finalLng = registeredClients.reduce((sum, c) => sum + c.longitude, 0) / registeredClients.length;
+                    } else {
+                        // No registered clients - use planilha coordinates cluster
+                        finalLat = bestCluster.lat;
+                        finalLng = bestCluster.lng;
                     }
 
                     mergedGroups.push({
                         address: group1.originalAddress, // Main address for display
                         allAddresses: allAddresses, // All addresses in this group
-                        latitude: registeredClient ? registeredClient.latitude : bestCluster.lat,
-                        longitude: registeredClient ? registeredClient.longitude : bestCluster.lng,
+                        latitude: finalLat,
+                        longitude: finalLng,
                         sequences: sequences,
                         stops: stopsList,
                         ids: ids,
                         deliveryStatus: deliveryStatus,
-                        isRegistered: !!registeredClient // GREEN if at least one address is registered
+                        isRegistered: registeredClients.length > 0 // GREEN if at least one address is registered
                     });
                 });
 
