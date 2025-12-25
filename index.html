@@ -4007,6 +4007,9 @@
                     const normalizedAddr = normalizeAddress(addr);
                     const addrHouseNum = extractHouseNumber(addr);
 
+                    let bestMatch = null;
+                    let bestSimilarity = 0;
+
                     for (const client of registeredClients) {
                         const normalizedClient = normalizeAddress(client.address);
                         const clientHouseNum = extractHouseNumber(client.address);
@@ -4016,19 +4019,21 @@
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
                                 // Same house number - use relaxed threshold (consistent with shouldMergeAddresses)
-                                if (similarity >= 0.15) {
-                                    return client;
+                                if (similarity >= 0.15 && similarity > bestSimilarity) {
+                                    bestMatch = client;
+                                    bestSimilarity = similarity;
                                 }
                             }
                         } else if (!addrHouseNum && !clientHouseNum) {
                             // Neither has house number, use higher similarity
-                            if (similarity >= 0.8) {
-                                return client;
+                            if (similarity >= 0.8 && similarity > bestSimilarity) {
+                                bestMatch = client;
+                                bestSimilarity = similarity;
                             }
                         }
                     }
 
-                    return null;
+                    return bestMatch;
                 }
 
                 // Check if two addresses should be merged (same street AND same house number)
@@ -4129,6 +4134,14 @@
                             const client1 = findRegisteredClient(group1.originalAddress);
                             const client2 = findRegisteredClient(group2.originalAddress);
 
+                            // Special log for sequences 4, 5, 51
+                            const hasTargetSeq = [4, 5, 51].some(s => seq1.includes(s) || seq2.includes(s));
+                            if (hasTargetSeq) {
+                                console.log(`  🔍🔍🔍 ORDENS 4/5/51 DETECTADAS:`);
+                                console.log(`     Seq 1: [${seq1}] - Endereço: "${group1.originalAddress}"`);
+                                console.log(`     Seq 2: [${seq2}] - Endereço: "${group2.originalAddress}"`);
+                            }
+
                             console.log(`  🔍 Verificando clientes cadastrados:`);
                             console.log(`     Seq 1: [${seq1}] - Cliente: ${client1 ? `ID ${client1.id} (${client1.latitude.toFixed(6)}, ${client1.longitude.toFixed(6)})` : 'NÃO ENCONTRADO'}`);
                             console.log(`     Seq 2: [${seq2}] - Cliente: ${client2 ? `ID ${client2.id} (${client2.latitude.toFixed(6)}, ${client2.longitude.toFixed(6)})` : 'NÃO ENCONTRADO'}`);
@@ -4149,6 +4162,8 @@
                                         console.log(`     Seq [${seq1}]: "${group1.originalAddress.substring(0, 60)}..."`);
                                         console.log(`     Seq [${seq2}]: "${group2.originalAddress.substring(0, 60)}..."`);
                                         return; // Don't merge - keep as separate markers
+                                    } else {
+                                        console.log(`     ✅ Clientes diferentes mas PRÓXIMOS (${(distance * 1000).toFixed(0)}m) - pode mesclar`);
                                     }
                                 } else {
                                     console.log(`     ✅ Mesmo cliente cadastrado - pode mesclar`);
