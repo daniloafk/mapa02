@@ -4037,24 +4037,41 @@
                     const houseNum1 = extractHouseNumber(addr1);
                     const houseNum2 = extractHouseNumber(addr2);
 
+                    // Debug log for specific addresses
+                    const isPalma = (addr1.toLowerCase().includes('palma') && addr2.toLowerCase().includes('palma'));
+                    if (isPalma) {
+                        console.log(`🔍 Comparando Palma Muniz:`);
+                        console.log(`   Addr1: "${addr1.substring(0, 50)}..."`);
+                        console.log(`   Addr2: "${addr2.substring(0, 50)}..."`);
+                        console.log(`   Num1: ${houseNum1}, Num2: ${houseNum2}`);
+                        console.log(`   Norm1: "${normalized1.substring(0, 40)}..."`);
+                        console.log(`   Norm2: "${normalized2.substring(0, 40)}..."`);
+                    }
+
                     // If both have house numbers, they MUST match to merge
                     if (houseNum1 && houseNum2) {
                         if (houseNum1 !== houseNum2) {
+                            if (isPalma) console.log(`   ❌ Números diferentes`);
                             return false; // Different house numbers = different addresses
                         }
                         // Same house number - check if street name is similar (very relaxed threshold)
                         const similarity = textSimilarity(normalized1, normalized2);
+                        if (isPalma) console.log(`   Similaridade: ${(similarity * 100).toFixed(1)}%`);
                         // Lower threshold to 20% when house numbers match (catches "Rua palma muniz 465" variations)
-                        return similarity >= 0.2;
+                        const result = similarity >= 0.2;
+                        if (isPalma) console.log(`   Resultado: ${result ? '✅ MESCLAR' : '❌ NÃO MESCLAR'}`);
+                        return result;
                     }
 
                     // If only one has house number, don't merge (ambiguous)
                     if (houseNum1 || houseNum2) {
+                        if (isPalma) console.log(`   ❌ Apenas um tem número`);
                         return false;
                     }
 
                     // Neither has house number - merge only if very similar text
                     const similarity = textSimilarity(normalized1, normalized2);
+                    if (isPalma) console.log(`   Sem números, similaridade: ${(similarity * 100).toFixed(1)}%, threshold: 70%`);
                     return similarity >= 0.7;
                 }
 
@@ -4078,12 +4095,16 @@
                 const mergedGroups = [];
                 const processedKeys = new Set();
 
+                console.log('🔍 SEGUNDO PASSO - Mesclando endereços similares...');
+
                 Object.keys(initialGroups).forEach(key1 => {
                     if (processedKeys.has(key1)) return;
 
                     const group1 = initialGroups[key1];
                     const mergedItems = [...group1.items];
                     processedKeys.add(key1);
+
+                    let mergeCount = 0;
 
                     // Find similar addresses to merge (must have same house number)
                     Object.keys(initialGroups).forEach(key2 => {
@@ -4092,16 +4113,26 @@
 
                         const group2 = initialGroups[key2];
                         // Check if addresses should be merged (similar text AND same house number)
-                        if (shouldMergeAddresses(
+                        const shouldMerge = shouldMergeAddresses(
                             group1.originalAddress,
                             group2.originalAddress,
                             key1,
                             key2
-                        )) {
+                        );
+
+                        if (shouldMerge) {
+                            console.log(`  ✅ MESCLANDO:`);
+                            console.log(`     Grupo 1: "${group1.originalAddress.substring(0, 60)}..."`);
+                            console.log(`     Grupo 2: "${group2.originalAddress.substring(0, 60)}..."`);
                             mergedItems.push(...group2.items);
                             processedKeys.add(key2);
+                            mergeCount++;
                         }
                     });
+
+                    if (mergeCount > 0) {
+                        console.log(`  📦 Grupo final: ${mergedItems.length} itens (mesclou ${mergeCount} grupos)`);
+                    }
 
                     // Use clustering to find the correct coordinates
                     // Group coordinates that are close together, pick the largest cluster
