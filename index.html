@@ -4042,9 +4042,10 @@
                         if (houseNum1 !== houseNum2) {
                             return false; // Different house numbers = different addresses
                         }
-                        // Same house number - check if street name is similar (relaxed threshold)
+                        // Same house number - check if street name is similar (very relaxed threshold)
                         const similarity = textSimilarity(normalized1, normalized2);
-                        return similarity >= 0.3; // Lower threshold if house numbers match
+                        // Lower threshold to 20% when house numbers match (catches "Rua palma muniz 465" variations)
+                        return similarity >= 0.2;
                     }
 
                     // If only one has house number, don't merge (ambiguous)
