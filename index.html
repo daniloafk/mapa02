@@ -4121,13 +4121,17 @@
                         );
 
                         if (shouldMerge) {
+                            // Get sequences for debugging
+                            const seq1 = group1.items.map(i => i.sequence).join(',');
+                            const seq2 = group2.items.map(i => i.sequence).join(',');
+
                             // Check if both have registered clients with distant coordinates
                             const client1 = findRegisteredClient(group1.originalAddress);
                             const client2 = findRegisteredClient(group2.originalAddress);
 
                             console.log(`  🔍 Verificando clientes cadastrados:`);
-                            console.log(`     Cliente 1: ${client1 ? `ENCONTRADO (ID: ${client1.id})` : 'NÃO ENCONTRADO'}`);
-                            console.log(`     Cliente 2: ${client2 ? `ENCONTRADO (ID: ${client2.id})` : 'NÃO ENCONTRADO'}`);
+                            console.log(`     Seq 1: [${seq1}] - Cliente: ${client1 ? `ID ${client1.id} (${client1.latitude.toFixed(6)}, ${client1.longitude.toFixed(6)})` : 'NÃO ENCONTRADO'}`);
+                            console.log(`     Seq 2: [${seq2}] - Cliente: ${client2 ? `ID ${client2.id} (${client2.latitude.toFixed(6)}, ${client2.longitude.toFixed(6)})` : 'NÃO ENCONTRADO'}`);
 
                             if (client1 && client2) {
                                 // Check if they are DIFFERENT clients
@@ -4142,8 +4146,8 @@
 
                                     if (distance > 0.1) { // More than 100 meters apart
                                         console.log(`  🚫 NÃO MESCLANDO (clientes diferentes e distantes ${(distance * 1000).toFixed(0)}m):`);
-                                        console.log(`     Grupo 1: "${group1.originalAddress.substring(0, 60)}..."`);
-                                        console.log(`     Grupo 2: "${group2.originalAddress.substring(0, 60)}..."`);
+                                        console.log(`     Seq [${seq1}]: "${group1.originalAddress.substring(0, 60)}..."`);
+                                        console.log(`     Seq [${seq2}]: "${group2.originalAddress.substring(0, 60)}..."`);
                                         return; // Don't merge - keep as separate markers
                                     }
                                 } else {
