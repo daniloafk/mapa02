@@ -2256,11 +2256,215 @@
         }
 
         /* Responsive */
+        /* ========================================
+           RESPONSIVE DESIGN
+           ======================================== */
+
+        /* Mobile Devices (Portrait) - até 480px */
         @media (max-width: 480px) {
             .sidebar {
                 width: 100%;
                 max-width: 100%;
             }
+
+            .menu-btn, .toggle-markers-btn {
+                width: 44px;
+                height: 44px;
+            }
+
+            .offline-indicator {
+                width: 36px;
+                height: 36px;
+                top: 128px;
+            }
+
+            .offline-indicator svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .route-popup-content {
+                font-size: 12px;
+                max-width: 180px;
+            }
+
+            .route-popup-btn {
+                font-size: 11px;
+                padding: 6px 8px;
+            }
+
+            .route-popup-btn svg {
+                width: 10px;
+                height: 10px;
+            }
+
+            .location-error {
+                padding: 24px;
+                max-width: 90%;
+            }
+        }
+
+        /* Mobile Devices (Landscape) & Small Tablets - 481px a 768px */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .sidebar {
+                width: 360px;
+                max-width: 80vw;
+            }
+
+            .route-popup-content {
+                font-size: 13px;
+                max-width: 200px;
+            }
+        }
+
+        /* Tablets & Small Laptops - 769px a 1024px */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .sidebar {
+                width: 380px;
+            }
+        }
+
+        /* Multimídia Veicular (Landscape) - típico 800x480 a 1280x720 */
+        @media (min-width: 600px) and (max-width: 1280px) and (orientation: landscape) {
+            /* Botões maiores para toque em telas de carro */
+            .menu-btn, .toggle-markers-btn {
+                width: 56px;
+                height: 56px;
+            }
+
+            .menu-btn {
+                top: 20px;
+                left: 20px;
+            }
+
+            .toggle-markers-btn {
+                top: 88px;
+                left: 20px;
+            }
+
+            .offline-indicator {
+                top: 156px;
+                left: 20px;
+                width: 48px;
+                height: 48px;
+            }
+
+            .offline-indicator svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            /* Popups maiores para melhor legibilidade */
+            .route-popup-content {
+                font-size: 14px;
+                max-width: 280px;
+            }
+
+            .route-popup-btn {
+                font-size: 13px;
+                padding: 10px 12px;
+                min-height: 44px; /* Tamanho mínimo para toque confortável */
+            }
+
+            .route-popup-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            /* Sidebar otimizada para landscape */
+            .sidebar {
+                width: 420px;
+                max-width: 50vw;
+            }
+
+            .sidebar-header {
+                padding: 20px;
+            }
+
+            .sidebar-content {
+                padding: 20px;
+            }
+
+            /* Formulários com campos maiores */
+            input[type="text"],
+            input[type="file"],
+            select,
+            textarea {
+                min-height: 48px;
+                font-size: 15px;
+            }
+
+            button {
+                min-height: 48px;
+                font-size: 15px;
+            }
+        }
+
+        /* Desktop - 1025px em diante */
+        @media (min-width: 1025px) {
+            .sidebar {
+                width: 400px;
+            }
+
+            .route-popup-content {
+                max-width: 240px;
+            }
+        }
+
+        /* Large Desktop - 1440px em diante */
+        @media (min-width: 1440px) {
+            .sidebar {
+                width: 450px;
+            }
+
+            .route-popup-content {
+                font-size: 14px;
+                max-width: 260px;
+            }
+        }
+
+        /* Extra Large Desktop - 1920px em diante */
+        @media (min-width: 1920px) {
+            .sidebar {
+                width: 500px;
+            }
+
+            .menu-btn, .toggle-markers-btn {
+                width: 52px;
+                height: 52px;
+            }
+
+            .offline-indicator {
+                width: 44px;
+                height: 44px;
+            }
+
+            .route-popup-content {
+                font-size: 15px;
+                max-width: 300px;
+            }
+        }
+
+        /* Touch devices - área de toque maior */
+        @media (hover: none) and (pointer: coarse) {
+            .menu-btn, .toggle-markers-btn {
+                min-width: 48px;
+                min-height: 48px;
+            }
+
+            button {
+                min-height: 44px;
+            }
+
+            .route-popup-btn {
+                min-height: 44px;
+                padding: 10px 12px;
+            }
+        }
+
+        /* High DPI Screens (Retina, etc) */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            /* Ajustes para telas de alta resolução se necessário */
         }
     </style>
 </head>
