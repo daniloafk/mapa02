@@ -1864,6 +1864,24 @@
             font-size: 10px;
         }
 
+        /* Grouped address styles */
+        .qr-address-item.grouped {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1));
+            border-left: 3px solid var(--primary);
+        }
+
+        .qr-address-badge {
+            background: linear-gradient(135deg, var(--primary), #6366f1);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 12px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(139, 92, 246, 0.3);
+        }
+
         .qr-address-list-empty {
             padding: 20px;
             text-align: center;
@@ -4900,9 +4918,108 @@
             }
         }
 
+        // ========================================
+        // Address Grouping Functions
+        // ========================================
+
+        // Normalize address for comparison (global version)
+        function normalizeAddressGlobal(addr) {
+            if (!addr) return '';
+            let cleanAddr = addr.split(/bairro:/i)[0];
+            return cleanAddr
+                .toLowerCase()
+                .trim()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[.,;:\-\/\\()]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/\b(rua|r|av|avenida|travessa|tv|alameda|al|praca|pca|largo|lg|rod|rodovia|est|estrada)\b/gi, '')
+                .replace(/\b(apt|apto|apartamento|bloco|bl|casa|cs|lote|lt|qd|quadra|conj|conjunto)\b/gi, '')
+                .replace(/\b(belem|mosqueiro|para|pa)\b/gi, '')
+                .replace(/\d{5}\s*\-?\s*\d{3}/g, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // Extract house number (global version)
+        function extractHouseNumberGlobal(addr) {
+            if (!addr) return null;
+            let cleanAddr = addr
+                .replace(/\d{5}\s*[-]?\s*\d{3}/g, '')
+                .replace(/\b\d{8}\b/g, '');
+            cleanAddr = cleanAddr.split(/bairro:/i)[0];
+            const patterns = [
+                /[,\s](\d+\s*[a-zA-Z]?)(?:\s|$|,|-)/,
+                /n[º°]?\s*(\d+\s*[a-zA-Z]?)/i,
+                /numero\s*(\d+\s*[a-zA-Z]?)/i,
+                /^.*?[a-z]\s+(\d+\s*[a-zA-Z]?)(?:\s|$|,)/i
+            ];
+            for (const pattern of patterns) {
+                const match = cleanAddr.match(pattern);
+                if (match && match[1]) {
+                    return match[1].replace(/\s+/g, '').toLowerCase();
+                }
+            }
+            return null;
+        }
+
+        // Calculate text similarity (Jaccard index)
+        function textSimilarityGlobal(text1, text2) {
+            const words1 = new Set(text1.split(' ').filter(w => w.length > 2));
+            const words2 = new Set(text2.split(' ').filter(w => w.length > 2));
+            if (words1.size === 0 || words2.size === 0) return 0;
+            const intersection = new Set([...words1].filter(x => words2.has(x)));
+            const union = new Set([...words1, ...words2]);
+            return intersection.size / union.size;
+        }
+
+        // Group addresses by similarity and house number
+        function groupAddressesByStop(addresses) {
+            const groups = [];
+            const processed = new Set();
+
+            addresses.forEach((addr, idx) => {
+                if (processed.has(idx)) return;
+
+                const normalized1 = normalizeAddressGlobal(addr.destination_address);
+                const houseNum1 = extractHouseNumberGlobal(addr.destination_address);
+
+                const group = {
+                    mainAddress: addr,
+                    items: [addr],
+                    indices: [idx],
+                    houseNumber: houseNum1
+                };
+
+                // Find similar addresses
+                addresses.forEach((other, otherIdx) => {
+                    if (idx === otherIdx || processed.has(otherIdx)) return;
+
+                    const normalized2 = normalizeAddressGlobal(other.destination_address);
+                    const houseNum2 = extractHouseNumberGlobal(other.destination_address);
+
+                    // Check similarity
+                    const similarity = textSimilarityGlobal(normalized1, normalized2);
+
+                    // Must have same house number and high text similarity
+                    if (houseNum1 && houseNum2 && houseNum1 === houseNum2 && similarity >= 0.4) {
+                        group.items.push(other);
+                        group.indices.push(otherIdx);
+                        processed.add(otherIdx);
+                    }
+                });
+
+                processed.add(idx);
+                groups.push(group);
+            });
+
+            return groups;
+        }
+
         // Virtualized list - only renders visible items
         let planilhaAddressData = [];
+        let groupedAddressData = [];
         const ITEM_HEIGHT = 52;
+        const GROUP_ITEM_HEIGHT = 70; // Taller for groups
         const BUFFER_ITEMS = 2;
         let virtualViewport = null;
 
@@ -4912,7 +5029,12 @@
                 return;
             }
 
-            const totalHeight = addresses.length * ITEM_HEIGHT;
+            // Group addresses by similarity
+            groupedAddressData = groupAddressesByStop(addresses);
+            console.log(`📦 Endereços agrupados: ${addresses.length} → ${groupedAddressData.length} grupos`);
+
+            // Calculate total height based on groups
+            const totalHeight = groupedAddressData.length * GROUP_ITEM_HEIGHT;
             qrAddressList.innerHTML = `<div class="qr-address-viewport" style="height:${totalHeight}px"></div>`;
             virtualViewport = qrAddressList.querySelector('.qr-address-viewport');
 
@@ -4925,30 +5047,54 @@
         }
 
         function renderVisibleItems() {
-            if (!virtualViewport || !planilhaAddressData.length) return;
+            if (!virtualViewport || !groupedAddressData.length) return;
 
             const scrollTop = qrAddressList.scrollTop;
             const containerHeight = qrAddressList.clientHeight;
 
-            const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - BUFFER_ITEMS);
-            const endIdx = Math.min(planilhaAddressData.length - 1, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + BUFFER_ITEMS);
+            const startIdx = Math.max(0, Math.floor(scrollTop / GROUP_ITEM_HEIGHT) - BUFFER_ITEMS);
+            const endIdx = Math.min(groupedAddressData.length - 1, Math.ceil((scrollTop + containerHeight) / GROUP_ITEM_HEIGHT) + BUFFER_ITEMS);
 
             let html = '';
             for (let i = startIdx; i <= endIdx; i++) {
-                const addr = planilhaAddressData[i];
-                const top = i * ITEM_HEIGHT;
-                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div><div class="qr-address-order">${addr.sequence || '-'}</div></div>`;
+                const group = groupedAddressData[i];
+                const top = i * GROUP_ITEM_HEIGHT;
+                const mainAddr = group.mainAddress;
+                const itemCount = group.items.length;
+                const sequences = group.items.map(item => item.sequence).sort((a, b) => a - b).join(', ');
+
+                // Badge for multiple packages
+                const badge = itemCount > 1
+                    ? `<div class="qr-address-badge">${itemCount} pacotes</div>`
+                    : '';
+
+                // Show all sequences for grouped items
+                const seqDisplay = itemCount > 1 ? sequences : (mainAddr.sequence || '-');
+
+                html += `<div class="qr-address-item ${itemCount > 1 ? 'grouped' : ''}" data-group-idx="${i}" style="top:${top}px;height:${GROUP_ITEM_HEIGHT - 4}px">
+                    <div class="qr-address-text">
+                        <p>${mainAddr.destination_address || 'Endereço não disponível'}</p>
+                        <span>${mainAddr.bairro || ''}${mainAddr.city ? ' - ' + mainAddr.city : ''}</span>
+                        ${badge}
+                    </div>
+                    <div class="qr-address-order">${seqDisplay}</div>
+                </div>`;
             }
             virtualViewport.innerHTML = html;
         }
 
-        // Handle address item click
+        // Handle address item click (now works with grouped data)
         qrAddressList.addEventListener('click', async (e) => {
             const item = e.target.closest('.qr-address-item');
-            if (!item || item.dataset.idx === undefined) return;
+            if (!item || item.dataset.groupIdx === undefined) return;
 
-            const addr = planilhaAddressData[parseInt(item.dataset.idx)];
-            if (!addr) return;
+            const groupIdx = parseInt(item.dataset.groupIdx);
+            const group = groupedAddressData[groupIdx];
+            if (!group) return;
+
+            // Store the entire group for batch processing
+            currentGroup = group;
+            const addr = group.mainAddress;
 
             currentRecord = {
                 id: addr.id,
@@ -4957,7 +5103,8 @@
                 city: addr.city,
                 latitude: addr.latitude || null,
                 longitude: addr.longitude || null,
-                sequence: addr.sequence
+                sequence: addr.sequence,
+                groupItems: group.items // Include all items in the group
             };
 
             // Check if address already exists in clients table (online or offline)
@@ -5096,6 +5243,7 @@
 
         // Store current record for navigation
         let currentRecord = null;
+        let currentGroup = null; // Store current group for batch processing
 
         // Search in database and show result with address
         async function searchAndShowResult(qrData) {
@@ -5366,8 +5514,12 @@
             // Listen to map move to update coordinates
             map.on('move', updateAdjustedCoordinates);
 
-            // Show adjust mode UI
-            adjustModeAddress.textContent = currentRecord.destination_address || 'Endereço';
+            // Show adjust mode UI - include package count if group
+            let displayText = currentRecord.destination_address || 'Endereço';
+            if (currentGroup && currentGroup.items && currentGroup.items.length > 1) {
+                displayText += ` (${currentGroup.items.length} pacotes)`;
+            }
+            adjustModeAddress.textContent = displayText;
             adjustModeBar.classList.add('active');
 
             // Hide other UI elements
@@ -5542,8 +5694,12 @@
                 console.warn('⚠️ Não foi possível criar marcador. existingClientRecord:', existingClientRecord);
             }
 
-            // Show adjust mode UI
-            adjustModeAddress.textContent = currentRecord.destination_address || 'Endereço';
+            // Show adjust mode UI - include package count if group
+            let displayTextWithOld = currentRecord.destination_address || 'Endereço';
+            if (currentGroup && currentGroup.items && currentGroup.items.length > 1) {
+                displayTextWithOld += ` (${currentGroup.items.length} pacotes)`;
+            }
+            adjustModeAddress.textContent = displayTextWithOld;
             adjustModeBar.classList.add('active');
 
             // Hide other UI elements
@@ -5583,49 +5739,49 @@
         }
 
         // Save client location quickly (for adjust mode - no loading modal)
+        // Now handles grouped addresses - saves all items in the group with the same coordinates
         async function saveClientLocationQuick(coordinates) {
             if (!currentRecord) return;
 
-            const clientData = {
-                address: currentRecord.destination_address,
-                latitude: coordinates.latitude,
-                longitude: coordinates.longitude
-            };
+            // Get all addresses to save (from group or single record)
+            const addressesToSave = [];
+
+            if (currentGroup && currentGroup.items && currentGroup.items.length > 1) {
+                // Multiple addresses in group - save all with same coordinates
+                currentGroup.items.forEach(item => {
+                    addressesToSave.push({
+                        address: item.destination_address,
+                        latitude: coordinates.latitude,
+                        longitude: coordinates.longitude
+                    });
+                });
+                console.log(`📦 Salvando grupo com ${addressesToSave.length} endereços:`, addressesToSave.map(a => a.address));
+            } else {
+                // Single address
+                addressesToSave.push({
+                    address: currentRecord.destination_address,
+                    latitude: coordinates.latitude,
+                    longitude: coordinates.longitude
+                });
+            }
 
             const isUpdate = existingClientRecord !== null;
 
             // If offline, save locally and show success
             if (!isOnline) {
                 try {
-                    if (isUpdate) {
-                        // For updates, remove old record and add new one
-                        // First, get all pending clients
-                        const pendingClients = await getAllFromOfflineDB('pendingClients');
-
-                        // Find and remove the old record
-                        const oldRecordIndex = pendingClients.findIndex(client =>
-                            client.address === clientData.address
-                        );
-
-                        if (oldRecordIndex !== -1) {
-                            // Remove old record from IndexedDB
-                            // Note: We need to delete by key, not by index
-                            // Since getAllFromOfflineDB doesn't return keys, we'll just save the new one
-                            // The sync function will handle duplicates
+                    for (const clientData of addressesToSave) {
+                        if (isUpdate) {
                             console.log('Atualizando coordenadas offline do endereço:', clientData.address);
                         }
-
-                        // Save updated coordinates
                         await saveToOfflineDB('pendingClients', clientData);
-                    } else {
-                        // New client - just save
-                        await saveToOfflineDB('pendingClients', clientData);
+                        console.log(isUpdate ? 'Cliente atualizado offline:' : 'Cliente salvo offline:', clientData.address);
                     }
 
                     showQuickSuccess();
                     updateOfflineIndicator();
-                    console.log(isUpdate ? 'Cliente atualizado offline:' : 'Cliente salvo offline:', clientData.address);
                     currentRecord = null;
+                    currentGroup = null;
                     existingClientRecord = null;
                     return;
                 } catch (err) {
@@ -5637,26 +5793,37 @@
 
             // If online, try to save/update in Supabase
             try {
-                if (isUpdate) {
-                    // UPDATE existing record
-                    const { error } = await db
+                for (const clientData of addressesToSave) {
+                    // Check if this specific address already exists
+                    const { data: existingData } = await db
                         .from('clients')
-                        .update({
-                            latitude: coordinates.latitude,
-                            longitude: coordinates.longitude
-                        })
-                        .eq('address', clientData.address);
+                        .select('id')
+                        .eq('address', clientData.address)
+                        .limit(1);
 
-                    if (error) throw error;
-                    console.log('Coordenadas atualizadas:', clientData.address);
-                } else {
-                    // INSERT new record
-                    const { error } = await db
-                        .from('clients')
-                        .insert(clientData);
+                    const addressExists = existingData && existingData.length > 0;
 
-                    if (error) throw error;
-                    console.log('Novo cliente salvo:', clientData.address);
+                    if (addressExists) {
+                        // UPDATE existing record
+                        const { error } = await db
+                            .from('clients')
+                            .update({
+                                latitude: coordinates.latitude,
+                                longitude: coordinates.longitude
+                            })
+                            .eq('address', clientData.address);
+
+                        if (error) throw error;
+                        console.log('Coordenadas atualizadas:', clientData.address);
+                    } else {
+                        // INSERT new record
+                        const { error } = await db
+                            .from('clients')
+                            .insert(clientData);
+
+                        if (error) throw error;
+                        console.log('Novo cliente salvo:', clientData.address);
+                    }
                 }
 
                 // Show quick success icon
@@ -5665,19 +5832,23 @@
                 // Refresh clients list
                 loadClientes();
 
-                // Reset current record
+                // Reset current record and group
                 currentRecord = null;
+                currentGroup = null;
                 existingClientRecord = null;
 
             } catch (error) {
                 // If Supabase fails, save locally as fallback
                 console.warn('Falha no Supabase, salvando offline:', error);
                 try {
-                    await saveToOfflineDB('pendingClients', clientData);
+                    for (const clientData of addressesToSave) {
+                        await saveToOfflineDB('pendingClients', clientData);
+                        console.log('Cliente salvo offline (fallback):', clientData.address);
+                    }
                     showQuickSuccess();
                     updateOfflineIndicator();
-                    console.log('Cliente salvo offline (fallback):', clientData.address);
                     currentRecord = null;
+                    currentGroup = null;
                     existingClientRecord = null;
                 } catch (offlineErr) {
                     showErrorModal('Erro ao salvar o endereço. Tente novamente.');
@@ -5707,9 +5878,10 @@
             // Show other UI elements
             document.getElementById('cadastrarBtn').style.display = 'block';
 
-            // Reset adjusted coordinates and existing client record
+            // Reset adjusted coordinates, existing client record and current group
             adjustedCoordinates = null;
             existingClientRecord = null;
+            currentGroup = null;
         }
 
         // ==================== NAVIGATION SYSTEM ====================
