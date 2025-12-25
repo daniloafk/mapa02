@@ -4012,18 +4012,18 @@
                         const clientHouseNum = extractHouseNumber(client.address);
                         const similarity = textSimilarity(normalizedAddr, normalizedClient);
 
-                        // High similarity threshold for matching
-                        if (similarity >= 0.6) {
-                            // If both have house numbers, they must match
-                            if (addrHouseNum && clientHouseNum) {
-                                if (addrHouseNum === clientHouseNum) {
+                        // If both have house numbers, they must match
+                        if (addrHouseNum && clientHouseNum) {
+                            if (addrHouseNum === clientHouseNum) {
+                                // Same house number - use relaxed threshold (consistent with shouldMergeAddresses)
+                                if (similarity >= 0.2) {
                                     return client;
                                 }
-                            } else if (!addrHouseNum && !clientHouseNum) {
-                                // Neither has house number, use higher similarity
-                                if (similarity >= 0.8) {
-                                    return client;
-                                }
+                            }
+                        } else if (!addrHouseNum && !clientHouseNum) {
+                            // Neither has house number, use higher similarity
+                            if (similarity >= 0.8) {
+                                return client;
                             }
                         }
                     }
