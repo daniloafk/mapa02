@@ -628,6 +628,29 @@
             background: var(--bg-dark);
         }
 
+        /* Grouped client item styles */
+        .cliente-item.grouped {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(59, 130, 246, 0.05));
+            border-left: 3px solid var(--primary);
+        }
+
+        body.dark .cliente-item.grouped {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(59, 130, 246, 0.1));
+        }
+
+        .cliente-group-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--primary), #6366f1);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-left: 8px;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
         .cliente-item:hover {
             border-color: var(--primary);
             transform: translateX(4px);
@@ -3382,6 +3405,9 @@
         });
 
         // Render clientes list
+        // Store grouped clients for reference
+        let groupedClientesData = [];
+
         function renderClientes(clientes) {
             loadingState.style.display = 'none';
 
@@ -3389,37 +3415,64 @@
                 emptyState.style.display = 'flex';
                 clienteList.style.display = 'none';
                 clienteCount.textContent = searchInput.value ? 'Nenhum resultado' : 'Nenhum cliente';
+                groupedClientesData = [];
                 return;
             }
 
-            const total = clientes.length;
+            // Group clients by similarity
+            groupedClientesData = groupClientsByStop(clientes);
+
+            const totalClientes = clientes.length;
+            const totalParadas = groupedClientesData.length;
             const totalGeral = allClientes.length;
 
             if (searchInput.value) {
-                clienteCount.textContent = `${total} de ${totalGeral} cliente${totalGeral > 1 ? 's' : ''}`;
+                clienteCount.textContent = `${totalClientes} cliente${totalClientes > 1 ? 's' : ''} em ${totalParadas} parada${totalParadas > 1 ? 's' : ''}`;
             } else {
-                clienteCount.textContent = `${total} cliente${total > 1 ? 's' : ''}`;
+                clienteCount.textContent = `${totalClientes} cliente${totalClientes > 1 ? 's' : ''} em ${totalParadas} parada${totalParadas > 1 ? 's' : ''}`;
             }
 
             emptyState.style.display = 'none';
             clienteList.style.display = 'flex';
 
-            // Build HTML string for better performance
-            const html = clientes.map(cliente => `
-                <div class="cliente-item" data-id="${cliente.id}" data-lat="${cliente.latitude || 0}" data-lng="${cliente.longitude || 0}" data-address="${cliente.address}">
+            // Build HTML string for better performance - now with groups
+            const html = groupedClientesData.map((group, groupIdx) => {
+                const mainClient = group.mainClient;
+                const itemCount = group.items.length;
+                const isGrouped = itemCount > 1;
+
+                // Badge for multiple packages
+                const badge = isGrouped
+                    ? `<span class="cliente-group-badge">${itemCount} pacotes</span>`
+                    : '';
+
+                // Show all addresses in group as tooltip
+                const allAddresses = group.items.map(c => c.address).join('\n');
+
+                return `
+                <div class="cliente-item ${isGrouped ? 'grouped' : ''}"
+                     data-group-idx="${groupIdx}"
+                     data-id="${mainClient.id}"
+                     data-lat="${mainClient.latitude || 0}"
+                     data-lng="${mainClient.longitude || 0}"
+                     data-address="${mainClient.address}"
+                     title="${isGrouped ? allAddresses : mainClient.address}">
                     <div class="cliente-item-header">
-                        <div class="cliente-item-title">${cliente.address}</div>
+                        <div class="cliente-item-title">
+                            ${mainClient.address}
+                            ${badge}
+                        </div>
                         <div class="cliente-item-actions">
-                            <button class="cliente-item-btn delete" title="Excluir">
+                            <button class="cliente-item-btn delete" title="Excluir${isGrouped ? ' todos do grupo' : ''}">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                             </button>
                         </div>
                     </div>
-                    <div class="cliente-item-coords">📍 ${cliente.latitude ? cliente.latitude.toFixed(6) : '0.000000'}, ${cliente.longitude ? cliente.longitude.toFixed(6) : '0.000000'}</div>
+                    <div class="cliente-item-coords">📍 ${mainClient.latitude ? mainClient.latitude.toFixed(6) : '0.000000'}, ${mainClient.longitude ? mainClient.longitude.toFixed(6) : '0.000000'}</div>
                 </div>
-            `).join('');
+            `}).join('');
 
             clienteList.innerHTML = html;
         }
@@ -3520,12 +3573,61 @@
             });
         }
 
+        // Show view marker for group (multiple addresses at same location)
+        function showViewMarkerGroup(lat, lng, addressesHtml, count) {
+            // Remove existing marker if any
+            removeViewMarker();
+
+            // Create marker element with group style
+            const markerEl = document.createElement('div');
+            markerEl.className = 'view-marker group-marker';
+            markerEl.innerHTML = `
+                <div class="view-marker-pin" style="background: linear-gradient(135deg, var(--primary), #6366f1);">
+                    <span style="color: white; font-size: 11px; font-weight: 700;">${count}</span>
+                </div>
+                <div class="view-marker-pulse" style="background: var(--primary);"></div>
+            `;
+
+            // Create popup with all addresses
+            viewPopup = new mapboxgl.Popup({
+                offset: 25,
+                closeButton: true,
+                closeOnClick: true,
+                maxWidth: '280px'
+            }).setHTML(`
+                <div style="font-size: 12px; font-weight: 600; color: var(--primary); margin-bottom: 8px;">
+                    📦 ${count} pacotes nesta parada
+                </div>
+                <div style="font-size: 12px; line-height: 1.5; max-height: 150px; overflow-y: auto; padding-right: 8px;">
+                    ${addressesHtml}
+                </div>
+            `);
+
+            // Create marker with popup attached
+            viewMarker = new mapboxgl.Marker({
+                element: markerEl,
+                anchor: 'bottom'
+            })
+                .setLngLat([lng, lat])
+                .setPopup(viewPopup)
+                .addTo(map);
+
+            // Show popup after map finishes flying
+            map.once('moveend', () => {
+                if (viewMarker) {
+                    viewMarker.togglePopup();
+                }
+            });
+        }
+
         // Event delegation for cliente list actions
         clienteList.addEventListener('click', (e) => {
             const item = e.target.closest('.cliente-item');
             if (!item) return;
 
-            const id = parseInt(item.dataset.id);
+            const groupIdx = item.dataset.groupIdx !== undefined ? parseInt(item.dataset.groupIdx) : null;
+            const group = groupIdx !== null ? groupedClientesData[groupIdx] : null;
+
             const lat = parseFloat(item.dataset.lat);
             const lng = parseFloat(item.dataset.lng);
             const address = item.dataset.address;
@@ -3534,10 +3636,23 @@
             const btn = e.target.closest('.cliente-item-btn');
 
             if (btn && btn.classList.contains('delete')) {
-                showDeleteConfirm(id, address);
+                if (group && group.items.length > 1) {
+                    // Delete all items in the group
+                    showDeleteConfirmGroup(group);
+                } else {
+                    // Single item delete
+                    const id = parseInt(item.dataset.id);
+                    showDeleteConfirm(id, address);
+                }
             } else if (!btn) {
                 // Clicked on the item itself - show on map
-                showViewMarker(lat, lng, address);
+                if (group && group.items.length > 1) {
+                    // Show all addresses in popup for group
+                    const allAddresses = group.items.map(c => c.address).join('<br>');
+                    showViewMarkerGroup(lat, lng, allAddresses, group.items.length);
+                } else {
+                    showViewMarker(lat, lng, address);
+                }
                 map.flyTo({
                     center: [lng, lat],
                     zoom: 16,
@@ -3571,8 +3686,40 @@
             });
         }
 
+        // Delete confirmation modal for group
+        function showDeleteConfirmGroup(group) {
+            const itemCount = group.items.length;
+            const addressList = group.items.map(c => `• ${c.address}`).join('<br>');
+
+            const modal = document.createElement('div');
+            modal.style.cssText = 'position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 10000;';
+            modal.innerHTML = `
+                <div style="background: var(--surface-light); padding: 24px; border-radius: 16px; box-shadow: var(--shadow); max-width: 450px; width: 90%; margin: 0 16px; max-height: 80vh; overflow-y: auto;">
+                    <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 16px; color: var(--text-light);">Excluir grupo (${itemCount} pacotes)</h3>
+                    <p style="font-size: 14px; color: var(--text-muted-light); margin-bottom: 12px;">Tem certeza que deseja excluir todos os endereços deste grupo?</p>
+                    <div style="font-size: 13px; color: var(--text-light); background: var(--bg-light); padding: 12px; border-radius: 8px; max-height: 150px; overflow-y: auto;">${addressList}</div>
+                    <div style="display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end;">
+                        <button id="confirmCancel" style="padding: 10px 20px; border: 2px solid var(--border-light); background: transparent; border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--text-light); transition: all 0.2s ease;">Cancelar</button>
+                        <button id="confirmDelete" style="padding: 10px 20px; border: none; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); border-radius: 10px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; color: white; transition: all 0.2s ease;">Excluir Todos</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            modal.querySelector('#confirmCancel').addEventListener('click', () => modal.remove());
+            modal.querySelector('#confirmDelete').addEventListener('click', async () => {
+                modal.remove();
+                // Delete all items in group
+                for (const client of group.items) {
+                    await deleteCliente(client.id, false); // false = don't reload after each delete
+                }
+                showQuickSuccess();
+                await loadClientes();
+            });
+        }
+
         // Delete cliente
-        async function deleteCliente(id) {
+        async function deleteCliente(id, reload = true) {
             try {
                 const { error } = await db
                     .from('clients')
@@ -3581,10 +3728,14 @@
 
                 if (error) throw error;
 
-                showQuickSuccess();
-                await loadClientes();
+                if (reload) {
+                    showQuickSuccess();
+                    await loadClientes();
+                }
             } catch (error) {
-                showErrorModal('Erro ao excluir cliente.');
+                if (reload) {
+                    showErrorModal('Erro ao excluir cliente.');
+                }
             }
         }
 
@@ -3615,6 +3766,7 @@
 
             if (map.getLayer('clusters')) map.removeLayer('clusters');
             if (map.getLayer('cluster-count')) map.removeLayer('cluster-count');
+            if (map.getLayer('package-count')) map.removeLayer('package-count');
             if (map.getLayer('unclustered-point')) map.removeLayer('unclustered-point');
             if (map.getSource('clientes')) map.removeSource('clientes');
         }
@@ -3631,20 +3783,26 @@
             // Filter out clientes without coordinates
             const validClientes = clientes.filter(c => c.latitude && c.longitude);
 
-            // Convert to GeoJSON
+            // Group clients by address similarity first
+            const groups = groupClientsByStop(validClientes);
+
+            // Convert grouped data to GeoJSON - one feature per group
             const geojson = {
                 type: 'FeatureCollection',
-                features: validClientes.map(cliente => ({
+                features: groups.map(group => ({
                     type: 'Feature',
                     geometry: {
                         type: 'Point',
-                        coordinates: [cliente.longitude, cliente.latitude]
+                        coordinates: [group.longitude, group.latitude]
                     },
                     properties: {
-                        id: cliente.id,
-                        address: cliente.address,
-                        latitude: cliente.latitude,
-                        longitude: cliente.longitude
+                        id: group.mainClient.id,
+                        address: group.mainClient.address,
+                        latitude: group.latitude,
+                        longitude: group.longitude,
+                        packageCount: group.items.length,
+                        allAddresses: group.items.map(c => c.address).join('|||'),
+                        isGroup: group.items.length > 1
                     }
                 }))
             };
@@ -3702,17 +3860,47 @@
                 }
             });
 
-            // Individual points
+            // Individual points - different color for groups
             map.addLayer({
                 id: 'unclustered-point',
                 type: 'circle',
                 source: 'clientes',
                 filter: ['!', ['has', 'point_count']],
                 paint: {
-                    'circle-color': '#0ea5e9',
-                    'circle-radius': 8,
+                    'circle-color': [
+                        'case',
+                        ['get', 'isGroup'],
+                        '#8b5cf6', // Purple for groups
+                        '#0ea5e9'  // Blue for single
+                    ],
+                    'circle-radius': [
+                        'case',
+                        ['get', 'isGroup'],
+                        12, // Larger for groups
+                        8   // Normal for single
+                    ],
                     'circle-stroke-width': 2,
                     'circle-stroke-color': '#fff'
+                }
+            });
+
+            // Add package count label for groups
+            map.addLayer({
+                id: 'package-count',
+                type: 'symbol',
+                source: 'clientes',
+                filter: ['all',
+                    ['!', ['has', 'point_count']],
+                    ['get', 'isGroup']
+                ],
+                layout: {
+                    'text-field': ['get', 'packageCount'],
+                    'text-font': ['DIN Offc Pro Bold', 'Arial Unicode MS Bold'],
+                    'text-size': 10,
+                    'text-allow-overlap': true
+                },
+                paint: {
+                    'text-color': '#ffffff'
                 }
             });
 
@@ -3745,15 +3933,34 @@
             // Show popup on individual point click
             map.on('click', 'unclustered-point', (e) => {
                 const coordinates = e.features[0].geometry.coordinates.slice();
-                const { address, latitude, longitude } = e.features[0].properties;
+                const { address, latitude, longitude, packageCount, allAddresses, isGroup } = e.features[0].properties;
 
                 while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
                     coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
                 }
 
-                new mapboxgl.Popup()
+                let popupContent;
+                if (isGroup && packageCount > 1) {
+                    // Show all addresses in group
+                    const addressList = allAddresses.split('|||').map(a => `• ${a}`).join('<br>');
+                    popupContent = `
+                        <div style="font-size: 12px; font-weight: 600; color: #8b5cf6; margin-bottom: 8px;">
+                            📦 ${packageCount} pacotes nesta parada
+                        </div>
+                        <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto;">
+                            ${addressList}
+                        </div>
+                        <div style="font-size: 10px; color: #888; margin-top: 8px;">
+                            📍 ${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}
+                        </div>
+                    `;
+                } else {
+                    popupContent = `<strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small>`;
+                }
+
+                new mapboxgl.Popup({ maxWidth: '280px' })
                     .setLngLat(coordinates)
-                    .setHTML(`<strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small>`)
+                    .setHTML(popupContent)
                     .addTo(map);
             });
 
@@ -4996,6 +5203,52 @@
 
                     const normalized2 = normalizeAddressGlobal(other.destination_address);
                     const houseNum2 = extractHouseNumberGlobal(other.destination_address);
+
+                    // Check similarity
+                    const similarity = textSimilarityGlobal(normalized1, normalized2);
+
+                    // Must have same house number and high text similarity
+                    if (houseNum1 && houseNum2 && houseNum1 === houseNum2 && similarity >= 0.4) {
+                        group.items.push(other);
+                        group.indices.push(otherIdx);
+                        processed.add(otherIdx);
+                    }
+                });
+
+                processed.add(idx);
+                groups.push(group);
+            });
+
+            return groups;
+        }
+
+        // Group registered clients by similarity and house number (uses 'address' field)
+        function groupClientsByStop(clients) {
+            const groups = [];
+            const processed = new Set();
+
+            clients.forEach((client, idx) => {
+                if (processed.has(idx)) return;
+
+                const normalized1 = normalizeAddressGlobal(client.address);
+                const houseNum1 = extractHouseNumberGlobal(client.address);
+
+                const group = {
+                    mainClient: client,
+                    items: [client],
+                    indices: [idx],
+                    houseNumber: houseNum1,
+                    // Use first client's coordinates as group coordinates
+                    latitude: client.latitude,
+                    longitude: client.longitude
+                };
+
+                // Find similar clients
+                clients.forEach((other, otherIdx) => {
+                    if (idx === otherIdx || processed.has(otherIdx)) return;
+
+                    const normalized2 = normalizeAddressGlobal(other.address);
+                    const houseNum2 = extractHouseNumberGlobal(other.address);
 
                     // Check similarity
                     const similarity = textSimilarityGlobal(normalized1, normalized2);
