@@ -4818,37 +4818,40 @@
                                 evt.stopPropagation();
                                 evt.preventDefault();
 
-                                // Disable buttons while processing
-                                const buttons = popupContent.querySelectorAll('.route-popup-btn:not(.navigate)');
-                                buttons.forEach(b => b.disabled = true);
-
                                 const action = btn.dataset.action; // 'delivered' or 'not_delivered'
-                                const currentStatusData = btn.dataset.currentStatus; // Current status from DB
+                                const currentStatusData = btn.dataset.currentStatus;
                                 const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
-
-                                console.log('Ação:', action, 'Status atual:', currentStatusData, 'Botão ativo?', btn.classList.contains('active'));
 
                                 let statusToSave = null;
 
                                 if (btn.classList.contains('active')) {
-                                    // Botão está ativo (mostram "Desfazer") - volta para pending
                                     statusToSave = 'pending';
-                                    console.log('Desfazendo para pending');
                                 } else {
-                                    // Botão não está ativo - marca com o novo status
                                     statusToSave = action;
-                                    console.log('Marcando com status:', action);
                                 }
 
-                                const success = await updateDeliveryStatus(ids, statusToSave);
+                                // OPTIMISTIC UPDATE - Atualiza UI imediatamente
+                                routePopup.remove();
 
-                                if (success) {
-                                    routePopup.remove();
-                                    // Force immediate marker update
-                                    await loadRouteMarkers(true);
-                                } else {
-                                    buttons.forEach(b => b.disabled = false);
+                                // Atualiza a propriedade do marcador localmente
+                                const markerFeatures = map.getSource('route-stops')._data.features;
+                                const markerFeature = markerFeatures.find(f => f.properties.ids === props.ids);
+                                if (markerFeature) {
+                                    markerFeature.properties.deliveryStatus = statusToSave;
                                 }
+
+                                // Atualiza a cor do marcador imediatamente
+                                const newColor = statusToSave === 'delivered' ? 'green-check' :
+                                               statusToSave === 'not_delivered' ? 'red-x' :
+                                               (props.isRegistered ? 'green' : 'red');
+
+                                // Re-renderiza apenas este marcador específico
+                                map.getSource('route-stops').setData(map.getSource('route-stops')._data);
+
+                                // Sincroniza em background (não bloqueia a UI)
+                                updateDeliveryStatus(ids, statusToSave).catch(err => {
+                                    console.error('Erro ao sincronizar status:', err);
+                                });
                             });
                         });
 
