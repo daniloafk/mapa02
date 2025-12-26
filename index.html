@@ -3460,11 +3460,12 @@
             });
 
             // Bloqueia o "double-tap drag zoom" mas permite arrastar o mapa
+            // Usa o container inteiro para capturar toques em popups/marcadores também
             let lastTap = 0;
             let blockingDragZoom = false;
-            const canvas = map.getCanvas();
+            const mapContainer = map.getContainer();
 
-            canvas.addEventListener('touchstart', function(e) {
+            mapContainer.addEventListener('touchstart', function(e) {
                 const now = Date.now();
                 const timeSinceLastTap = now - lastTap;
 
@@ -3479,23 +3480,23 @@
                     // dragPan continua ativo, então arrastar funciona
                 }
                 lastTap = now;
-            }, { passive: true });
+            }, { passive: true, capture: true });
 
-            canvas.addEventListener('touchmove', function(e) {
+            mapContainer.addEventListener('touchmove', function(e) {
                 // Se colocar 2 dedos durante o gesto, reabilita zoom/rotação
                 if (e.touches.length >= 2 && blockingDragZoom) {
                     blockingDragZoom = false;
                     map.touchZoomRotate.enable();
                 }
-            }, { passive: true });
+            }, { passive: true, capture: true });
 
-            canvas.addEventListener('touchend', function(e) {
+            mapContainer.addEventListener('touchend', function(e) {
                 // Quando soltar todos os dedos, reabilita
                 if (e.touches.length === 0) {
                     blockingDragZoom = false;
                     map.touchZoomRotate.enable();
                 }
-            }, { passive: true });
+            }, { passive: true, capture: true });
 
             // Add map controls (sync, doesn't need load event)
             initializeMapControls();
