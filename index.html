@@ -2285,25 +2285,53 @@
             }
 
             /* Popup de rotas */
+            .mapboxgl-popup-content {
+                padding: 12px !important;
+                max-width: 260px !important;
+            }
+
             .route-popup-content {
-                font-size: 11px;
-                max-width: 200px;
+                font-size: 11px !important;
+                max-width: 100% !important;
+            }
+
+            .route-popup-address {
+                font-size: 11px !important;
+                margin-bottom: 6px !important;
             }
 
             .route-popup-btn {
-                font-size: 10px !important;
-                padding: 8px 6px !important;
-                min-height: 36px !important;
+                font-size: 9px !important;
+                padding: 6px 4px !important;
+                min-height: 32px !important;
+                gap: 3px !important;
             }
 
             .route-popup-btn svg {
-                width: 11px;
-                height: 11px;
+                width: 10px !important;
+                height: 10px !important;
+            }
+
+            .route-popup-btn .btn-text {
+                font-size: 9px !important;
             }
 
             .route-popup-order {
-                font-size: 9px;
-                padding: 2px 5px;
+                font-size: 9px !important;
+                padding: 2px 6px !important;
+            }
+
+            .route-popup-actions {
+                gap: 3px !important;
+                margin-top: 8px !important;
+                padding-top: 8px !important;
+            }
+
+            .mapboxgl-popup-close-button {
+                width: 24px !important;
+                height: 24px !important;
+                font-size: 18px !important;
+                line-height: 24px !important;
             }
 
             /* Sidebar header */
@@ -4726,7 +4754,7 @@
                         let addressDisplay = '';
                         if (hasMultipleAddresses) {
                             addressDisplay = `
-                                <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">���� ${addressSequencePairs.length} pacotes nesta parada:</div>
+                                <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
                                 <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
                                     ${addressSequencePairs.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}
                                 </div>
@@ -4750,11 +4778,15 @@
                             <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
                         `;
 
+                        // Responsive maxWidth for popup
+                        const isMobile = window.innerWidth <= 480;
+                        const popupMaxWidth = isMobile ? '260px' : '300px';
+
                         routePopup = new mapboxgl.Popup({
                             offset: [0, -50],
                             closeButton: true,
                             closeOnClick: true,
-                            maxWidth: '300px'
+                            maxWidth: popupMaxWidth
                         })
                             .setLngLat(coords)
                             .setHTML(`
