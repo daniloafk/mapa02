@@ -3475,10 +3475,9 @@
                     // Desabilita temporariamente o touchZoomRotate para bloquear tap-drag zoom
                     map.touchZoomRotate.disable();
 
-                    // Reabilita após o gesto terminar (permite zoom com 2 dedos depois)
+                    // Reabilita após o gesto terminar (permite zoom e rotação com 2 dedos)
                     setTimeout(() => {
                         map.touchZoomRotate.enable();
-                        map.touchZoomRotate.disableRotation(); // Mantém rotação desabilitada se preferir
                     }, 400);
                 }
                 lastTap = now;
