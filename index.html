@@ -3466,8 +3466,8 @@
                     // 2+ dedos = permite zoom/rotação normal
                     blockingDragZoom = false;
                     map.touchZoomRotate.enable();
-                } else if (timeSinceLastTap < 500 && timeSinceLastTap > 0 && e.touches.length === 1) {
-                    // Double-tap com 1 dedo = bloqueia o drag zoom (500ms para capturar mais rápido)
+                } else if (timeSinceLastTap < 600 && timeSinceLastTap > 0 && e.touches.length === 1) {
+                    // Double-tap com 1 dedo = bloqueia o drag zoom
                     blockingDragZoom = true;
                     map.touchZoomRotate.disable();
                     // dragPan continua ativo, então arrastar funciona
