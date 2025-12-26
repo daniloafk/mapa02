@@ -2267,40 +2267,109 @@
                 max-width: 100%;
             }
 
+            /* Botões de navegação */
             .menu-btn, .toggle-markers-btn {
-                width: 44px;
-                height: 44px;
+                width: 40px !important;
+                height: 40px !important;
             }
 
             .offline-indicator {
-                width: 36px;
-                height: 36px;
-                top: 128px;
+                width: 34px !important;
+                height: 34px !important;
+                top: 120px;
             }
 
             .offline-indicator svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            /* Popup de rotas */
+            .route-popup-content {
+                font-size: 11px;
+                max-width: 200px;
+            }
+
+            .route-popup-btn {
+                font-size: 10px !important;
+                padding: 8px 6px !important;
+                min-height: 36px !important;
+            }
+
+            .route-popup-btn svg {
+                width: 11px;
+                height: 11px;
+            }
+
+            .route-popup-order {
+                font-size: 9px;
+                padding: 2px 5px;
+            }
+
+            /* Sidebar header */
+            .sidebar-header {
+                padding: 16px;
+            }
+
+            .sidebar-header-icon {
+                width: 36px;
+                height: 36px;
+            }
+
+            .sidebar-header-icon svg {
                 width: 18px;
                 height: 18px;
             }
 
-            .route-popup-content {
-                font-size: 12px;
-                max-width: 180px;
+            .sidebar-title {
+                font-size: 16px;
             }
 
-            .route-popup-btn {
-                font-size: 11px;
-                padding: 6px 8px;
+            /* Sidebar content */
+            .sidebar-content {
+                padding: 16px;
             }
 
-            .route-popup-btn svg {
-                width: 10px;
-                height: 10px;
+            /* Botões do sidebar */
+            .sidebar button {
+                padding: 10px 16px !important;
+                font-size: 13px !important;
+                min-height: 40px !important;
             }
 
+            /* Inputs */
+            input[type="text"],
+            input[type="file"],
+            select,
+            textarea {
+                padding: 10px !important;
+                font-size: 14px !important;
+                min-height: 40px !important;
+            }
+
+            /* Location error modal */
             .location-error {
-                padding: 24px;
-                max-width: 90%;
+                padding: 20px;
+                max-width: 85%;
+            }
+
+            .location-error h3 {
+                font-size: 16px;
+            }
+
+            .location-error p {
+                font-size: 13px;
+            }
+
+            .retry-btn {
+                padding: 10px 20px !important;
+                font-size: 13px !important;
+            }
+
+            /* Upload de arquivos */
+            .file-upload-label {
+                padding: 12px !important;
+                font-size: 13px !important;
             }
         }
 
@@ -2312,8 +2381,27 @@
             }
 
             .route-popup-content {
-                font-size: 13px;
-                max-width: 200px;
+                font-size: 12px;
+                max-width: 220px;
+            }
+
+            .route-popup-btn {
+                font-size: 11px !important;
+                padding: 8px 10px !important;
+                min-height: 38px !important;
+            }
+
+            .sidebar button {
+                min-height: 42px !important;
+                font-size: 14px !important;
+            }
+
+            input[type="text"],
+            input[type="file"],
+            select,
+            textarea {
+                min-height: 42px !important;
+                font-size: 14px !important;
             }
         }
 
@@ -2445,19 +2533,19 @@
             }
         }
 
-        /* Touch devices - área de toque maior */
-        @media (hover: none) and (pointer: coarse) {
+        /* Touch devices - área de toque maior (exceto mobile pequeno) */
+        @media (hover: none) and (pointer: coarse) and (min-width: 481px) {
             .menu-btn, .toggle-markers-btn {
                 min-width: 48px;
                 min-height: 48px;
             }
 
-            button {
+            button:not(.route-popup-btn) {
                 min-height: 44px;
             }
 
             .route-popup-btn {
-                min-height: 44px;
+                min-height: 42px;
                 padding: 10px 12px;
             }
         }
@@ -4638,7 +4726,7 @@
                         let addressDisplay = '';
                         if (hasMultipleAddresses) {
                             addressDisplay = `
-                                <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
+                                <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">���� ${addressSequencePairs.length} pacotes nesta parada:</div>
                                 <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
                                     ${addressSequencePairs.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}
                                 </div>
