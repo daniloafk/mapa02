@@ -963,15 +963,6 @@
 
         .mapboxgl-popup-content {
             touch-action: pan-x pan-y;
-            padding: 10px !important;
-            padding-top: 14px !important;
-            padding-right: 30px !important; /* Espaço mínimo para o botão X */
-        }
-
-        /* Garante que divs dentro do popup tenham espaço mínimo à direita */
-        .mapboxgl-popup-content > div {
-            padding-right: 0px !important;
-            min-height: 20px;
         }
 
         .mapboxgl-popup-close-button {
@@ -982,14 +973,12 @@
             line-height: 28px;
             text-align: center;
             padding: 0;
-            top: 8px;
-            right: 8px;
+            top: 6px;
+            right: 6px;
             background: rgba(239, 68, 68, 0.15);
             border-radius: 50%;
             color: #ef4444;
             cursor: pointer;
-            position: absolute;
-            z-index: 10;
         }
 
         .mapboxgl-popup-close-button:hover {
@@ -1051,14 +1040,14 @@
         .route-popup-content {
             font-size: 13px;
             max-width: 220px;
-            padding-right: 36px; /* Espaço para o botão X */
+            padding-right: 28px; /* Espaço para o botão X */
         }
 
         .route-popup-address {
             font-weight: 600;
             margin-bottom: 8px;
             line-height: 1.4;
-            padding-right: 8px; /* Espaço extra para o endereço não colar no X */
+            padding-right: 4px; /* Espaço extra para o endereço não colar no X */
         }
 
         .route-popup-orders {
@@ -3778,7 +3767,7 @@
                 offset: 25,
                 closeButton: true,
                 closeOnClick: true
-            }).setHTML(`<div style="font-size: 13px; font-weight: 500; max-width: 200px; line-height: 1.4;">${address}</div>`);
+            }).setHTML(`<div style="font-size: 13px; font-weight: 500; max-width: 200px; padding-right: 8px;">${address}</div>`);
 
             // Create marker with popup attached
             viewMarker = new mapboxgl.Marker({
@@ -4046,12 +4035,9 @@
                     coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
                 }
 
-                new mapboxgl.Popup({
-                    closeButton: true,
-                    closeOnClick: true
-                })
+                new mapboxgl.Popup()
                     .setLngLat(coordinates)
-                    .setHTML(`<div style="line-height: 1.4;"><strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small></div>`)
+                    .setHTML(`<strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small>`)
                     .addTo(map);
             });
 
