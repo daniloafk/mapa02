@@ -3782,24 +3782,6 @@
                 .setPopup(viewPopup)
                 .addTo(map);
 
-            // Prevent popup from interfering with map touch gestures
-            viewPopup.on('open', () => {
-                const popupEl = viewPopup.getElement();
-                if (popupEl) {
-                    popupEl.addEventListener('touchstart', (e) => {
-                        if (!e.target.closest('.mapboxgl-popup-close-button')) {
-                            e.stopPropagation();
-                        }
-                    }, { passive: true });
-                    popupEl.addEventListener('touchmove', (e) => {
-                        e.stopPropagation();
-                    }, { passive: true });
-                    popupEl.addEventListener('touchend', (e) => {
-                        e.stopPropagation();
-                    }, { passive: true });
-                }
-            });
-
             // Show popup after map finishes flying
             map.once('moveend', () => {
                 if (viewMarker) {
@@ -4677,18 +4659,6 @@
 
                     // Add click event for popup
                     map.on('click', 'route-stops-pins', (e) => {
-                        // Prevent default and stop propagation to avoid gesture interference
-                        e.originalEvent.preventDefault();
-                        e.originalEvent.stopPropagation();
-
-                        // Reset touch state by temporarily disabling/enabling touch gestures
-                        map.touchZoomRotate.disable();
-                        map.dragPan.disable();
-                        setTimeout(() => {
-                            map.touchZoomRotate.enable();
-                            map.dragPan.enable();
-                        }, 100);
-
                         const feature = e.features[0];
                         const coords = feature.geometry.coordinates.slice();
                         const props = feature.properties;
@@ -4843,32 +4813,6 @@
                             });
                         }
 
-                        // Prevent popup from interfering with map touch gestures
-                        const popupEl = routePopup.getElement();
-                        if (popupEl) {
-                            popupEl.addEventListener('touchstart', (e) => {
-                                // Only allow touch on interactive elements
-                                if (!e.target.closest('.mapboxgl-popup-close-button')) {
-                                    e.stopPropagation();
-                                }
-                            }, { passive: true });
-                            popupEl.addEventListener('touchmove', (e) => {
-                                e.stopPropagation();
-                            }, { passive: true });
-                            popupEl.addEventListener('touchend', (e) => {
-                                e.stopPropagation();
-                            }, { passive: true });
-                        }
-
-                        // Reset gestures when popup closes
-                        routePopup.on('close', () => {
-                            map.touchZoomRotate.disable();
-                            map.dragPan.disable();
-                            setTimeout(() => {
-                                map.touchZoomRotate.enable();
-                                map.dragPan.enable();
-                            }, 50);
-                        });
                     });
 
                     // Change cursor on hover
