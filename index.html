@@ -963,7 +963,7 @@
 
         .mapboxgl-popup-content {
             touch-action: pan-x pan-y;
-            padding: 12px 50px 12px 12px;
+            padding: 12px 35px 12px 12px;
             position: relative;
         }
 
@@ -4040,7 +4040,7 @@
 
                 new mapboxgl.Popup()
                     .setLngLat(coordinates)
-                    .setHTML(`<div style="margin-right: 20px;"><strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small></div>`)
+                    .setHTML(`<div style="margin-right: 6px;"><strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small></div>`)
                     .addTo(map);
             });
 
