@@ -3462,32 +3462,38 @@
 
             // Disable double-tap drag zoom but allow pan and rotation
             let lastTapTime = 0;
-            let isDoubleTap = false;
-            let zoomAtDoubleTap = null;
+            let doubleTapActive = false;
+            let lockedZoom = null;
             const mapCanvas = map.getCanvas();
 
             mapCanvas.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     const now = Date.now();
                     if (now - lastTapTime < 500) {
-                        isDoubleTap = true;
-                        zoomAtDoubleTap = map.getZoom();
-                    } else {
-                        isDoubleTap = false;
+                        doubleTapActive = true;
+                        lockedZoom = map.getZoom();
                     }
                     lastTapTime = now;
                 }
             }, { passive: true });
 
             map.on('zoom', () => {
-                if (isDoubleTap && zoomAtDoubleTap !== null) {
-                    map.setZoom(zoomAtDoubleTap);
+                if (doubleTapActive && lockedZoom !== null) {
+                    requestAnimationFrame(() => {
+                        if (doubleTapActive) {
+                            map.setZoom(lockedZoom, { duration: 0 });
+                        }
+                    });
                 }
             });
 
-            mapCanvas.addEventListener('touchend', () => {
-                isDoubleTap = false;
-                zoomAtDoubleTap = null;
+            mapCanvas.addEventListener('touchend', (e) => {
+                if (e.touches.length === 0) {
+                    setTimeout(() => {
+                        doubleTapActive = false;
+                        lockedZoom = null;
+                    }, 50);
+                }
             }, { passive: true });
 
             // Add map controls (sync, doesn't need load event)
