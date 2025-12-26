@@ -3459,6 +3459,9 @@
                 zoom: zoom,
             });
 
+            // Desativa o zoom de duplo clique para evitar zoom acidental no mobile
+            map.doubleClickZoom.disable();
+
             // Add map controls (sync, doesn't need load event)
             initializeMapControls();
 
