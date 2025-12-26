@@ -3460,17 +3460,17 @@
                 doubleClickZoom: false
             });
 
-            // Prevent double-tap zoom by intercepting rapid taps
-            let lastTap = 0;
-            map.getCanvas().addEventListener('touchend', (e) => {
-                const currentTime = new Date().getTime();
-                const tapLength = currentTime - lastTap;
-                if (tapLength < 300 && tapLength > 0) {
+            // Prevent double-tap drag zoom
+            let lastTapTime = 0;
+            const canvas = map.getCanvas();
+            canvas.addEventListener('touchstart', (e) => {
+                const now = Date.now();
+                if (now - lastTapTime < 350) {
                     e.preventDefault();
-                    e.stopPropagation();
+                    e.stopImmediatePropagation();
                 }
-                lastTap = currentTime;
-            }, { passive: false });
+                lastTapTime = now;
+            }, { passive: false, capture: true });
 
             // Add map controls (sync, doesn't need load event)
             initializeMapControls();
