@@ -3468,23 +3468,29 @@
                 const now = Date.now();
                 const timeSinceLastTap = now - lastTap;
 
+                // Detecta double-tap com 1 dedo
                 if (timeSinceLastTap < 350 && timeSinceLastTap > 0 && e.touches.length === 1) {
                     doubleTapDetected = true;
-                    // Desabilita temporariamente para bloquear o drag zoom
-                    map.touchZoomRotate.disable();
+                } else if (e.touches.length >= 2) {
+                    // Se são 2+ dedos, garante que touchZoomRotate está ativo
+                    doubleTapDetected = false;
+                    if (!map.touchZoomRotate.isEnabled()) {
+                        map.touchZoomRotate.enable();
+                    }
                 } else {
                     doubleTapDetected = false;
                 }
                 lastTap = now;
             }, { passive: true });
 
-            canvas.addEventListener('touchend', function() {
-                if (doubleTapDetected) {
-                    // Reabilita após soltar o dedo
-                    setTimeout(() => {
-                        map.touchZoomRotate.enable();
-                    }, 50);
+            canvas.addEventListener('touchmove', function(e) {
+                // Se double-tap + arrastando com 1 dedo, cancela o zoom
+                if (doubleTapDetected && e.touches.length === 1) {
+                    map.stop();
                 }
+            }, { passive: true });
+
+            canvas.addEventListener('touchend', function() {
                 doubleTapDetected = false;
             }, { passive: true });
 
