@@ -3461,37 +3461,35 @@
 
             // Bloqueia apenas o "double-tap drag zoom" (mantém double-tap zoom normal)
             let lastTap = 0;
-            let doubleTapDetected = false;
+            let initialZoom = null;
             const canvas = map.getCanvas();
 
             canvas.addEventListener('touchstart', function(e) {
                 const now = Date.now();
                 const timeSinceLastTap = now - lastTap;
 
-                // Detecta double-tap com 1 dedo
+                // Detecta double-tap com 1 dedo - salva o zoom atual
                 if (timeSinceLastTap < 350 && timeSinceLastTap > 0 && e.touches.length === 1) {
-                    doubleTapDetected = true;
-                } else if (e.touches.length >= 2) {
-                    // Se são 2+ dedos, garante que touchZoomRotate está ativo
-                    doubleTapDetected = false;
-                    if (!map.touchZoomRotate.isEnabled()) {
-                        map.touchZoomRotate.enable();
-                    }
+                    initialZoom = map.getZoom();
                 } else {
-                    doubleTapDetected = false;
+                    initialZoom = null;
                 }
                 lastTap = now;
             }, { passive: true });
 
-            canvas.addEventListener('touchmove', function(e) {
-                // Se double-tap + arrastando com 1 dedo, cancela o zoom
-                if (doubleTapDetected && e.touches.length === 1) {
-                    map.stop();
+            // Listener no mapa para reverter zoom do double-tap drag
+            map.on('zoom', function() {
+                if (initialZoom !== null) {
+                    const currentZoom = map.getZoom();
+                    // Se o zoom mudou por causa do drag (diferença gradual), reverte
+                    if (Math.abs(currentZoom - initialZoom) > 0.1 && Math.abs(currentZoom - initialZoom) < 1) {
+                        map.setZoom(initialZoom);
+                    }
                 }
-            }, { passive: true });
+            });
 
             canvas.addEventListener('touchend', function() {
-                doubleTapDetected = false;
+                initialZoom = null;
             }, { passive: true });
 
             // Add map controls (sync, doesn't need load event)
