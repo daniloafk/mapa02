@@ -3468,7 +3468,7 @@
             mapCanvas.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     const now = Date.now();
-                    if (now - lastTapTime < 300) {
+                    if (now - lastTapTime < 500) {
                         blockDrag = true;
                     } else {
                         blockDrag = false;
