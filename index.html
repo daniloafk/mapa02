@@ -2921,7 +2921,6 @@
 
                 request.onsuccess = () => {
                     offlineDB = request.result;
-                    console.log('IndexedDB inicializado com sucesso');
                     resolve(offlineDB);
                 };
 
@@ -2960,7 +2959,6 @@
                         clientsCacheStore.createIndex('address', 'address', { unique: false });
                     }
 
-                    console.log('IndexedDB estrutura criada');
                 };
             });
         }
@@ -2982,7 +2980,6 @@
                 const request = store.add(data);
 
                 request.onsuccess = () => {
-                    console.log(`Dados salvos offline em ${storeName}:`, data);
                     resolve(request.result);
                 };
 
@@ -3085,10 +3082,8 @@
             try {
                 const pendingClients = await getPendingFromOfflineDB('pendingClients');
 
-                console.log(`Sincronizando ${pendingClients.length} clientes pendentes...`);
 
                 if (pendingClients.length === 0) {
-                    console.log('Nenhum cliente pendente para sincronizar');
                     return;
                 }
 
@@ -3097,7 +3092,6 @@
 
                 for (const client of pendingClients) {
                     try {
-                        console.log('Sincronizando cliente:', client);
 
                         // Check if client already exists
                         const { data: existingData } = await db
@@ -3119,7 +3113,6 @@
                                 .eq('address', client.address);
 
                             error = updateResult.error;
-                            console.log('🔄 Atualizando cliente existente:', client.address);
                         } else {
                             // Client doesn't exist - INSERT new
                             const insertResult = await db
@@ -3131,13 +3124,11 @@
                                 });
 
                             error = insertResult.error;
-                            console.log('➕ Inserindo novo cliente:', client.address);
                         }
 
                         if (!error) {
                             await deleteSyncedFromOfflineDB('pendingClients', client.localId);
                             syncedCount++;
-                            console.log(`✅ Cliente sincronizado (${syncedCount}/${pendingClients.length}):`, client.address);
                         } else {
                             errorCount++;
                             console.error(`❌ Erro ao sincronizar cliente:`, error);
@@ -3148,7 +3139,6 @@
                     }
                 }
 
-                console.log(`Sincronização de clientes concluída: ${syncedCount} sucesso, ${errorCount} erros`);
             } catch (err) {
                 console.error('Erro ao obter clientes pendentes:', err);
             }
@@ -3159,10 +3149,8 @@
             try {
                 const pendingPlanilha = await getPendingFromOfflineDB('pendingPlanilha');
 
-                console.log(`Sincronizando ${pendingPlanilha.length} registros de planilha pendentes...`);
 
                 if (pendingPlanilha.length === 0) {
-                    console.log('Nenhum registro de planilha pendente para sincronizar');
                     return;
                 }
 
@@ -3179,7 +3167,6 @@
                     city: item.city
                 }));
 
-                console.log('Dados a sincronizar:', batchData);
 
                 const { error } = await db
                     .from('planilha')
@@ -3189,7 +3176,6 @@
                     for (const item of pendingPlanilha) {
                         await deleteSyncedFromOfflineDB('pendingPlanilha', item.localId);
                     }
-                    console.log(`✅ ${pendingPlanilha.length} registros de planilha sincronizados com sucesso`);
                 } else {
                     console.error('❌ Erro ao sincronizar planilha:', error);
                 }
@@ -3203,10 +3189,8 @@
             try {
                 const pendingStatus = await getPendingFromOfflineDB('pendingDeliveryStatus');
 
-                console.log(`Sincronizando ${pendingStatus.length} atualizações de status pendentes...`);
 
                 if (pendingStatus.length === 0) {
-                    console.log('Nenhuma atualização de status pendente para sincronizar');
                     return;
                 }
 
@@ -3215,7 +3199,6 @@
 
                 for (const item of pendingStatus) {
                     try {
-                        console.log('Sincronizando status:', item);
 
                         const { error } = await db
                             .from('planilha')
@@ -3225,7 +3208,6 @@
                         if (!error) {
                             await deleteSyncedFromOfflineDB('pendingDeliveryStatus', item.localId);
                             syncedCount++;
-                            console.log(`✅ Status sincronizado (${syncedCount}/${pendingStatus.length}):`, item.ids);
                         } else {
                             errorCount++;
                             console.error(`❌ Erro ao sincronizar status:`, error);
@@ -3236,7 +3218,6 @@
                     }
                 }
 
-                console.log(`Sincronização de status concluída: ${syncedCount} sucesso, ${errorCount} erros`);
             } catch (err) {
                 console.error('Erro ao obter status pendentes:', err);
             }
@@ -3257,20 +3238,12 @@
             isSyncing = true;
             updateOfflineIndicator();
 
-            console.log('🔄 ========================================');
-            console.log('🔄 Iniciando sincronização de dados pendentes...');
-            console.log('🔄 ========================================');
 
             try {
                 await syncPendingClients();
-                console.log('---');
                 await syncPendingPlanilha();
-                console.log('---');
                 await syncPendingDeliveryStatus();
 
-                console.log('🔄 ========================================');
-                console.log('✅ Sincronização concluída com sucesso!');
-                console.log('🔄 ========================================');
 
                 // Refresh data after sync
                 loadClientes();
@@ -3326,7 +3299,6 @@
 
         // Listen for online/offline events
         window.addEventListener('online', () => {
-            console.log('Conexão restabelecida!');
             isOnline = true;
             updateOfflineIndicator();
 
@@ -3337,7 +3309,6 @@
         });
 
         window.addEventListener('offline', () => {
-            console.log('Conexão perdida - modo offline ativado');
             isOnline = false;
             updateOfflineIndicator();
         });
@@ -3388,7 +3359,6 @@
                     });
                 }
 
-                console.log(`Cache atualizado: ${dataArray.length} registros em ${storeName}`);
             } catch (error) {
                 console.error('Erro ao salvar cache:', error);
             }
@@ -3628,7 +3598,6 @@
                 }
 
                 // If offline or fetch failed, use IndexedDB cache
-                console.log('Carregando clientes do cache offline...');
                 const cachedClients = await getAllFromOfflineDB('cachedClients');
 
                 if (cachedClients && cachedClients.length > 0) {
@@ -3638,7 +3607,6 @@
                         addMarkersToMap(cachedClients);
                     }
                     clienteCount.textContent = `${cachedClients.length} cliente${cachedClients.length > 1 ? 's' : ''} (offline)`;
-                    console.log('Clientes carregados do cache:', cachedClients.length);
                 } else if (clientesCache.data) {
                     // Fallback to in-memory cache if available
                     allClientes = clientesCache.data;
@@ -4088,7 +4056,6 @@
                 return false;
             }
 
-            console.log(`Atualizando status para ${status} dos IDs:`, ids);
 
             // If offline, save locally
             if (!isOnline) {
@@ -4097,7 +4064,6 @@
                         ids: ids,
                         status: status
                     });
-                    console.log('Status salvo offline para sincronização posterior');
                     updateOfflineIndicator();
                     return true;
                 } catch (err) {
@@ -4119,7 +4085,6 @@
                     throw error;
                 }
 
-                console.log('Status atualizado com sucesso:', data);
                 return data && data.length > 0;
             } catch (error) {
                 // Fallback to offline if Supabase fails
@@ -4362,41 +4327,25 @@
                     const houseNum1 = extractHouseNumber(addr1);
                     const houseNum2 = extractHouseNumber(addr2);
 
-                    // Debug log for specific addresses
-                    const isPalma = (addr1.toLowerCase().includes('palma') && addr2.toLowerCase().includes('palma'));
-                    if (isPalma) {
-                        console.log(`🔍 Comparando Palma Muniz:`);
-                        console.log(`   Addr1: "${addr1.substring(0, 50)}..."`);
-                        console.log(`   Addr2: "${addr2.substring(0, 50)}..."`);
-                        console.log(`   Num1: ${houseNum1}, Num2: ${houseNum2}`);
-                        console.log(`   Norm1: "${normalized1.substring(0, 40)}..."`);
-                        console.log(`   Norm2: "${normalized2.substring(0, 40)}..."`);
-                    }
-
                     // If both have house numbers, they MUST match to merge
                     if (houseNum1 && houseNum2) {
                         if (houseNum1 !== houseNum2) {
-                            if (isPalma) console.log(`   ❌ Números diferentes`);
                             return false; // Different house numbers = different addresses
                         }
                         // Same house number - check if street name is similar (very relaxed threshold)
                         const similarity = textSimilarity(normalized1, normalized2);
-                        if (isPalma) console.log(`   Similaridade: ${(similarity * 100).toFixed(1)}%`);
                         // Lower threshold to 15% when house numbers match (catches "Rua palma muniz 465" variations)
                         const result = similarity >= 0.15;
-                        if (isPalma) console.log(`   Resultado: ${result ? '✅ MESCLAR' : '❌ NÃO MESCLAR'}`);
                         return result;
                     }
 
                     // If only one has house number, don't merge (ambiguous)
                     if (houseNum1 || houseNum2) {
-                        if (isPalma) console.log(`   ❌ Apenas um tem número`);
                         return false;
                     }
 
                     // Neither has house number - merge only if very similar text
                     const similarity = textSimilarity(normalized1, normalized2);
-                    if (isPalma) console.log(`   Sem números, similaridade: ${(similarity * 100).toFixed(1)}%, threshold: 70%`);
                     return similarity >= 0.7;
                 }
 
@@ -4420,7 +4369,6 @@
                 const mergedGroups = [];
                 const processedKeys = new Set();
 
-                console.log('🔍 SEGUNDO PASSO - Mesclando endereços similares...');
 
                 Object.keys(initialGroups).forEach(key1 => {
                     if (processedKeys.has(key1)) return;
@@ -4457,14 +4405,8 @@
                             // Special log for sequences 4, 5, 51
                             const hasTargetSeq = [4, 5, 51].some(s => seq1.includes(s) || seq2.includes(s));
                             if (hasTargetSeq) {
-                                console.log(`  🔍🔍🔍 ORDENS 4/5/51 DETECTADAS:`);
-                                console.log(`     Seq 1: [${seq1}] - Endereço: "${group1.originalAddress}"`);
-                                console.log(`     Seq 2: [${seq2}] - Endereço: "${group2.originalAddress}"`);
                             }
 
-                            console.log(`  🔍 Verificando clientes cadastrados:`);
-                            console.log(`     Seq 1: [${seq1}] - Cliente: ${client1 ? `ID ${client1.id} (${client1.latitude.toFixed(6)}, ${client1.longitude.toFixed(6)})` : 'NÃO ENCONTRADO'}`);
-                            console.log(`     Seq 2: [${seq2}] - Cliente: ${client2 ? `ID ${client2.id} (${client2.latitude.toFixed(6)}, ${client2.longitude.toFixed(6)})` : 'NÃO ENCONTRADO'}`);
 
                             if (client1 && client2) {
                                 // Check if they are DIFFERENT clients
@@ -4475,24 +4417,17 @@
                                         client2.latitude, client2.longitude
                                     );
 
-                                    console.log(`     ⚠️ Clientes DIFERENTES! Distância: ${(distance * 1000).toFixed(0)}m`);
 
                                     if (distance > 0.1) { // More than 100 meters apart
-                                        console.log(`  🚫 NÃO MESCLANDO (clientes diferentes e distantes ${(distance * 1000).toFixed(0)}m):`);
                                         console.log(`     Seq [${seq1}]: "${group1.originalAddress.substring(0, 60)}..."`);
                                         console.log(`     Seq [${seq2}]: "${group2.originalAddress.substring(0, 60)}..."`);
                                         return; // Don't merge - keep as separate markers
                                     } else {
-                                        console.log(`     ✅ Clientes diferentes mas PRÓXIMOS (${(distance * 1000).toFixed(0)}m) - pode mesclar`);
                                     }
                                 } else {
-                                    console.log(`     ✅ Mesmo cliente cadastrado - pode mesclar`);
                                 }
                             }
 
-                            console.log(`  ✅ MESCLANDO:`);
-                            console.log(`     Grupo 1: "${group1.originalAddress.substring(0, 60)}..."`);
-                            console.log(`     Grupo 2: "${group2.originalAddress.substring(0, 60)}..."`);
                             mergedItems.push(...group2.items);
                             processedKeys.add(key2);
                             mergeCount++;
@@ -4500,7 +4435,6 @@
                     });
 
                     if (mergeCount > 0) {
-                        console.log(`  📦 Grupo final: ${mergedItems.length} itens (mesclou ${mergeCount} grupos)`);
                     }
 
                     // Use clustering to find the correct coordinates
@@ -4847,12 +4781,10 @@
                                     const newIconName = `pin-${newColor}-${props.packageCount}`;
                                     markerFeature.properties.icon = newIconName;
 
-                                    console.log(`✅ Marcador atualizado: status=${statusToSave}, icon=${newIconName}`);
 
                                     // Garante que o ícone existe antes de atualizar
                                     const ensureIconExists = () => {
                                         if (!map.hasImage(newIconName)) {
-                                            console.log(`🔧 Gerando ícone ausente: ${newIconName}`);
                                             const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
                                             const img = new Image();
                                             img.onload = () => {
@@ -5335,7 +5267,6 @@
                             addressData = data;
                             // Save to cache for offline use
                             await saveCacheToDB('cachedPlanilha', data);
-                            console.log(`${data.length} endereços carregados do Supabase e salvos no cache`);
                         }
                     } catch (supabaseError) {
                         console.warn('Falha ao carregar do Supabase, usando cache:', supabaseError);
@@ -5344,13 +5275,11 @@
 
                 // If offline or Supabase failed, load from cache
                 if (addressData.length === 0) {
-                    console.log('Carregando endereços do cache offline...');
                     const cachedData = await getAllFromOfflineDB('cachedPlanilha');
 
                     if (cachedData && cachedData.length > 0) {
                         addressData = cachedData;
                         fromCache = true;
-                        console.log(`${addressData.length} endereços carregados do cache`);
                     } else {
                         // Fallback to pending data if no cache
                         const offlineData = await getAllFromOfflineDB('pendingPlanilha');
@@ -5370,7 +5299,6 @@
 
                         if (addressData.length > 0) {
                             fromCache = true;
-                            console.log(`${addressData.length} endereços carregados de dados pendentes`);
                         }
                     }
                 }
@@ -5385,7 +5313,6 @@
 
                 // Show indicator if using cache
                 if (fromCache && !isOnline) {
-                    console.log('Usando dados em cache (offline)');
                 }
 
             } catch (error) {
@@ -5470,7 +5397,6 @@
 
                         if (!clientError && clientData && clientData.length > 0) {
                             existingClient = clientData[0];
-                            console.log('Cliente encontrado online (lista manual):', existingClient);
                         }
                     } catch (err) {
                         console.warn('Erro ao verificar cliente existente online (lista manual):', err);
@@ -5487,7 +5413,6 @@
                         );
 
                         if (existingClient) {
-                            console.log('Cliente encontrado em dados pendentes offline (lista manual):', existingClient);
                             console.log('🔴 OFFLINE (lista manual) - Coordenadas do cadastro pendente:', {
                                 lat: existingClient.latitude,
                                 lng: existingClient.longitude
@@ -5502,7 +5427,6 @@
                             );
 
                             if (existingClient) {
-                                console.log('Cliente encontrado em cache offline (lista manual):', existingClient);
                                 console.log('🔴 OFFLINE (lista manual) - Coordenadas do cache:', {
                                     lat: existingClient.latitude,
                                     lng: existingClient.longitude
@@ -5619,16 +5543,13 @@
 
                 // If offline or not found online, search in cache
                 if (!foundRecord) {
-                    console.log('Buscando no cache offline...');
 
                     // Try cache first (from Supabase sync)
                     try {
                         foundRecord = await getFromCacheByIndex('cachedPlanilha', 'spx_tn', qrData);
                         if (foundRecord) {
-                            console.log('Encontrado no cache:', foundRecord);
                         }
                     } catch (err) {
-                        console.log('Erro ao buscar no cache:', err);
                     }
 
                     // Fallback to pending data
@@ -5639,7 +5560,6 @@
                         );
 
                         if (foundRecord) {
-                            console.log('Encontrado em dados pendentes:', foundRecord);
                         }
                     }
                 }
@@ -5665,7 +5585,6 @@
 
                                 if (!clientError && clientData && clientData.length > 0) {
                                     existingClient = clientData[0];
-                                    console.log('Cliente encontrado online:', existingClient);
                                 }
                             } catch (err) {
                                 console.warn('Erro ao verificar cliente existente online:', err);
@@ -5681,28 +5600,12 @@
                                     client.address === addressToCheck
                                 );
 
-                                if (existingClient) {
-                                    console.log('Cliente encontrado em dados pendentes offline:', existingClient);
-                                    console.log('🔴 OFFLINE - Coordenadas do cadastro pendente:', {
-                                        lat: existingClient.latitude,
-                                        lng: existingClient.longitude
-                                    });
-                                }
-
                                 // If not found in pending, check in cached clients
                                 if (!existingClient) {
                                     const cachedClients = await getAllFromOfflineDB('cachedClients');
                                     existingClient = cachedClients.find(client =>
                                         client.address === addressToCheck
                                     );
-
-                                    if (existingClient) {
-                                        console.log('Cliente encontrado em cache offline:', existingClient);
-                                        console.log('🔴 OFFLINE - Coordenadas do cache:', {
-                                            lat: existingClient.latitude,
-                                            lng: existingClient.longitude
-                                        });
-                                    }
                                 }
                             } catch (err) {
                                 console.warn('Erro ao verificar clientes offline:', err);
@@ -5770,14 +5673,6 @@
 
         // Show address exists modal
         function showAddressExistsModal(address, clientRecord) {
-            console.log('Mostrando modal de endereço existente:', { address, clientRecord });
-            console.log('⚠️ IMPORTANTE - Coordenadas no clientRecord:', {
-                fonte: clientRecord.id ? 'Supabase/Cache' : 'Pending',
-                latitude: clientRecord.latitude,
-                longitude: clientRecord.longitude,
-                tem_id: !!clientRecord.id,
-                tem_localId: !!clientRecord.localId
-            });
             existingClientRecord = clientRecord;
             addressExistsText.textContent = address;
             document.getElementById('overlay').classList.add('active');
@@ -5870,7 +5765,6 @@
 
         // Enter adjust mode with old position marker
         async function enterAdjustModeWithOldPosition() {
-            console.log('Entrando em modo de ajuste com posição antiga. existingClientRecord:', existingClientRecord);
             isAdjustMode = true;
 
             // Get current GPS position
@@ -5926,17 +5820,6 @@
 
             // Create and add old position marker if we have existing coordinates
             if (existingClientRecord && existingClientRecord.latitude && existingClientRecord.longitude) {
-                console.log('🔴 Criando marcador de posição antiga (coordenadas CADASTRADAS em clients):', existingClientRecord);
-                console.log('🔴 Coordenadas DO CADASTRO (posição antiga):', {
-                    lat: existingClientRecord.latitude,
-                    lng: existingClientRecord.longitude
-                });
-                console.log('📍 Para comparação - currentRecord (planilha):', {
-                    address: currentRecord.destination_address,
-                    lat_planilha: currentRecord.latitude,
-                    lng_planilha: currentRecord.longitude
-                });
-
                 // Create marker element directly with inline styles to ensure visibility
                 const markerEl = document.createElement('div');
                 markerEl.style.width = '40px';
@@ -6002,8 +5885,6 @@
                     </div>
                 `;
 
-                console.log('🔴 Elemento do marcador criado');
-                console.log('🔴 Verificando map:', typeof map !== 'undefined' ? 'definido' : 'indefinido');
 
                 try {
                     // Create and add marker to map using CADASTRO coordinates
@@ -6016,19 +5897,6 @@
                     })
                     .setLngLat([oldLng, oldLat])
                     .addTo(map);
-
-                    console.log('✅ Marcador VERMELHO adicionado ao mapa com sucesso!');
-                    console.log('🔴 Posição EXATA do marcador vermelho:', {
-                        lng: oldLng,
-                        lat: oldLat,
-                        getLngLat: oldPositionMarker.getLngLat()
-                    });
-
-                    // Verificar se o marcador está no DOM
-                    setTimeout(() => {
-                        const markerInDom = document.querySelector('.mapboxgl-marker');
-                        console.log('🔴 Marcadores no DOM:', document.querySelectorAll('.mapboxgl-marker').length);
-                    }, 100);
                 } catch (error) {
                     console.error('❌ Erro ao adicionar marcador:', error);
                 }
@@ -6106,7 +5974,6 @@
                             // Note: We need to delete by key, not by index
                             // Since getAllFromOfflineDB doesn't return keys, we'll just save the new one
                             // The sync function will handle duplicates
-                            console.log('Atualizando coordenadas offline do endereço:', clientData.address);
                         }
 
                         // Save updated coordinates
@@ -6118,7 +5985,6 @@
 
                     showQuickSuccess();
                     updateOfflineIndicator();
-                    console.log(isUpdate ? 'Cliente atualizado offline:' : 'Cliente salvo offline:', clientData.address);
                     currentRecord = null;
                     existingClientRecord = null;
                     return;
@@ -6142,7 +6008,6 @@
                         .eq('address', clientData.address);
 
                     if (error) throw error;
-                    console.log('Coordenadas atualizadas:', clientData.address);
                 } else {
                     // INSERT new record
                     const { error } = await db
@@ -6150,7 +6015,6 @@
                         .insert(clientData);
 
                     if (error) throw error;
-                    console.log('Novo cliente salvo:', clientData.address);
                 }
 
                 // Show quick success icon
@@ -6170,7 +6034,6 @@
                     await saveToOfflineDB('pendingClients', clientData);
                     showQuickSuccess();
                     updateOfflineIndicator();
-                    console.log('Cliente salvo offline (fallback):', clientData.address);
                     currentRecord = null;
                     existingClientRecord = null;
                 } catch (offlineErr) {
@@ -6446,7 +6309,6 @@
 
             // If user is more than 20 meters off-route, recalculate
             if (distanceToRoute && distanceToRoute > 0.02) {
-                console.log(`Usuário saiu da rota: ${(distanceToRoute * 1000).toFixed(0)}m. Recalculando...`);
 
                 try {
                     const newRoute = await getRoute(
@@ -6460,7 +6322,6 @@
                     currentNavigation.route = newRoute;
                     drawRoute(newRoute);
 
-                    console.log('Rota recalculada com sucesso');
                 } catch (error) {
                     console.error('Erro ao recalcular rota:', error);
                 }
