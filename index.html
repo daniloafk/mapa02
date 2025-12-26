@@ -4844,12 +4844,32 @@
                                                    statusToSave === 'not_delivered' ? 'gray-x' :
                                                    (props.isRegistered ? 'green' : 'red');
 
-                                    markerFeature.properties.icon = `pin-${newColor}-${props.packageCount}`;
+                                    const newIconName = `pin-${newColor}-${props.packageCount}`;
+                                    markerFeature.properties.icon = newIconName;
 
-                                    console.log(`✅ Marcador atualizado: status=${statusToSave}, icon=${markerFeature.properties.icon}`);
+                                    console.log(`✅ Marcador atualizado: status=${statusToSave}, icon=${newIconName}`);
 
-                                    // Re-renderiza o GeoJSON para aplicar mudanças
-                                    map.getSource('route-stops').setData(sourceData);
+                                    // Garante que o ícone existe antes de atualizar
+                                    const ensureIconExists = () => {
+                                        if (!map.hasImage(newIconName)) {
+                                            console.log(`🔧 Gerando ícone ausente: ${newIconName}`);
+                                            const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
+                                            const img = new Image();
+                                            img.onload = () => {
+                                                if (!map.hasImage(newIconName)) {
+                                                    map.addImage(newIconName, img, { pixelRatio: pixelRatio });
+                                                }
+                                                // Re-renderiza após adicionar o ícone
+                                                map.getSource('route-stops').setData(sourceData);
+                                            };
+                                            img.src = dataUrl;
+                                        } else {
+                                            // Ícone já existe, apenas re-renderiza
+                                            map.getSource('route-stops').setData(sourceData);
+                                        }
+                                    };
+
+                                    ensureIconExists();
                                 }
 
                                 // Sincroniza em background (não bloqueia a UI)
