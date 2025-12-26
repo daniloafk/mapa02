@@ -964,6 +964,8 @@
         .mapboxgl-popup-content {
             touch-action: pan-x pan-y;
             padding: 10px !important;
+            width: fit-content;
+            max-width: 280px;
         }
 
         .mapboxgl-popup-close-button {
@@ -1043,7 +1045,7 @@
 
         .route-popup-content {
             font-size: 13px;
-            max-width: 220px;
+            width: fit-content;
         }
 
         .route-popup-address {
@@ -3769,7 +3771,7 @@
                 offset: 25,
                 closeButton: true,
                 closeOnClick: true
-            }).setHTML(`<div style="font-size: 13px; font-weight: 500; max-width: 200px; padding-right: 8px;">${address}</div>`);
+            }).setHTML(`<div style="font-size: 13px; font-weight: 500;">${address}</div>`);
 
             // Create marker with popup attached
             viewMarker = new mapboxgl.Marker({
