@@ -3457,30 +3457,7 @@
                 style: 'mapbox://styles/mapbox/streets-v12',
                 center: [lng, lat],
                 zoom: zoom,
-                doubleClickZoom: false
             });
-
-            // Disable double-tap drag zoom but allow pan
-            let lastTapTime = 0;
-            const mapCanvas = map.getCanvas();
-
-            mapCanvas.addEventListener('touchstart', (e) => {
-                if (e.touches.length === 1) {
-                    const now = Date.now();
-                    if (now - lastTapTime < 500) {
-                        map.touchZoomRotate.disable();
-                    }
-                    lastTapTime = now;
-                }
-            }, { passive: true });
-
-            mapCanvas.addEventListener('touchend', () => {
-                setTimeout(() => {
-                    if (!map.touchZoomRotate.isEnabled()) {
-                        map.touchZoomRotate.enable();
-                    }
-                }, 100);
-            }, { passive: true });
 
             // Add map controls (sync, doesn't need load event)
             initializeMapControls();
