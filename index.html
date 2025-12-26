@@ -3459,6 +3459,35 @@
                 zoom: zoom,
             });
 
+            // Bloqueia apenas o "double-tap drag zoom" (mantém double-tap zoom normal)
+            let lastTap = 0;
+            let doubleTapDetected = false;
+            const canvas = map.getCanvas();
+
+            canvas.addEventListener('touchstart', function(e) {
+                const now = Date.now();
+                const timeSinceLastTap = now - lastTap;
+
+                if (timeSinceLastTap < 350 && timeSinceLastTap > 0 && e.touches.length === 1) {
+                    doubleTapDetected = true;
+                    // Desabilita temporariamente para bloquear o drag zoom
+                    map.touchZoomRotate.disable();
+                } else {
+                    doubleTapDetected = false;
+                }
+                lastTap = now;
+            }, { passive: true });
+
+            canvas.addEventListener('touchend', function() {
+                if (doubleTapDetected) {
+                    // Reabilita após soltar o dedo
+                    setTimeout(() => {
+                        map.touchZoomRotate.enable();
+                    }, 50);
+                }
+                doubleTapDetected = false;
+            }, { passive: true });
+
             // Add map controls (sync, doesn't need load event)
             initializeMapControls();
 
