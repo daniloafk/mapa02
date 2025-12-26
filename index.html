@@ -3459,37 +3459,42 @@
                 zoom: zoom,
             });
 
-            // Bloqueia apenas o "double-tap drag zoom" (mantém double-tap zoom normal)
+            // Bloqueia o "double-tap drag zoom" mas permite arrastar o mapa
             let lastTap = 0;
-            let initialZoom = null;
+            let blockingDragZoom = false;
             const canvas = map.getCanvas();
 
             canvas.addEventListener('touchstart', function(e) {
                 const now = Date.now();
                 const timeSinceLastTap = now - lastTap;
 
-                // Detecta double-tap com 1 dedo - salva o zoom atual
-                if (timeSinceLastTap < 350 && timeSinceLastTap > 0 && e.touches.length === 1) {
-                    initialZoom = map.getZoom();
-                } else {
-                    initialZoom = null;
+                if (e.touches.length >= 2) {
+                    // 2+ dedos = permite zoom/rotação normal
+                    blockingDragZoom = false;
+                    map.touchZoomRotate.enable();
+                } else if (timeSinceLastTap < 350 && timeSinceLastTap > 0 && e.touches.length === 1) {
+                    // Double-tap com 1 dedo = bloqueia o drag zoom
+                    blockingDragZoom = true;
+                    map.touchZoomRotate.disable();
+                    // dragPan continua ativo, então arrastar funciona
                 }
                 lastTap = now;
             }, { passive: true });
 
-            // Listener no mapa para reverter zoom do double-tap drag
-            map.on('zoom', function() {
-                if (initialZoom !== null) {
-                    const currentZoom = map.getZoom();
-                    // Se o zoom mudou por causa do drag (diferença gradual), reverte
-                    if (Math.abs(currentZoom - initialZoom) > 0.1 && Math.abs(currentZoom - initialZoom) < 1) {
-                        map.setZoom(initialZoom);
-                    }
+            canvas.addEventListener('touchmove', function(e) {
+                // Se colocar 2 dedos durante o gesto, reabilita zoom/rotação
+                if (e.touches.length >= 2 && blockingDragZoom) {
+                    blockingDragZoom = false;
+                    map.touchZoomRotate.enable();
                 }
-            });
+            }, { passive: true });
 
-            canvas.addEventListener('touchend', function() {
-                initialZoom = null;
+            canvas.addEventListener('touchend', function(e) {
+                // Quando soltar todos os dedos, reabilita
+                if (e.touches.length === 0) {
+                    blockingDragZoom = false;
+                    map.touchZoomRotate.enable();
+                }
             }, { passive: true });
 
             // Add map controls (sync, doesn't need load event)
