@@ -3243,15 +3243,8 @@
 
         // Main sync function - syncs all pending data
         async function syncAllPendingData() {
-            if (!isOnline) {
-                console.warn('❌ Não é possível sincronizar: offline');
-                return;
-            }
-
-            if (isSyncing) {
-                console.warn('⏳ Sincronização já em andamento...');
-                return;
-            }
+            if (!isOnline) return;
+            if (isSyncing) return;
 
             isSyncing = true;
             updateOfflineIndicator();
@@ -4126,18 +4119,11 @@
 
                 return data && data.length > 0;
             } catch (error) {
-                // Fallback to offline if Supabase fails
-                console.warn('Falha no Supabase, salvando offline:', error);
                 try {
-                    await saveToOfflineDB('pendingDeliveryStatus', {
-                        ids: ids,
-                        status: status
-                    });
-                    console.log('Status salvo offline (fallback)');
+                    await saveToOfflineDB('pendingDeliveryStatus', { ids, status });
                     updateOfflineIndicator();
                     return true;
                 } catch (offlineErr) {
-                    console.error('Erro ao salvar status:', offlineErr);
                     showErrorModal(`Erro ao atualizar status de entrega: ${error.message || error}`);
                     return false;
                 }
@@ -4457,13 +4443,9 @@
                                     );
 
 
-                                    if (distance > 0.1) { // More than 100 meters apart
-                                        console.log(`     Seq [${seq1}]: "${group1.originalAddress.substring(0, 60)}..."`);
-                                        console.log(`     Seq [${seq2}]: "${group2.originalAddress.substring(0, 60)}..."`);
-                                        return; // Don't merge - keep as separate markers
-                                    } else {
+                                    if (distance > 0.1) {
+                                        return;
                                     }
-                                } else {
                                 }
                             }
 
@@ -5157,10 +5139,8 @@
                 }, 2000);
 
             } catch (error) {
-                // Fallback to offline if Supabase fails
-                console.warn('Falha no Supabase, salvando offline:', error);
                 try {
-                    document.getElementById('progressText').textContent = 'Salvando offline (fallback)...';
+                    document.getElementById('progressText').textContent = 'Salvando offline...';
 
                     for (let i = 0; i < parsedData.length; i++) {
                         await saveToOfflineDB('pendingPlanilha', parsedData[i]);
@@ -5266,11 +5246,10 @@
 
                         if (!error && data && data.length > 0) {
                             addressData = data;
-                            // Save to cache for offline use
                             await saveCacheToDB('cachedPlanilha', data);
                         }
                     } catch (supabaseError) {
-                        console.warn('Falha ao carregar do Supabase, usando cache:', supabaseError);
+                        // Use cache on failure
                     }
                 }
 
@@ -5400,7 +5379,7 @@
                             existingClient = clientData[0];
                         }
                     } catch (err) {
-                        console.warn('Erro ao verificar cliente existente online (lista manual):', err);
+                        // Check offline on failure
                     }
                 }
 
@@ -5413,12 +5392,6 @@
                             client.address === addressToCheck
                         );
 
-                        if (existingClient) {
-                            console.log('🔴 OFFLINE (lista manual) - Coordenadas do cadastro pendente:', {
-                                lat: existingClient.latitude,
-                                lng: existingClient.longitude
-                            });
-                        }
 
                         // If not found in pending, check in cached clients
                         if (!existingClient) {
@@ -5427,15 +5400,9 @@
                                 client.address === addressToCheck
                             );
 
-                            if (existingClient) {
-                                console.log('🔴 OFFLINE (lista manual) - Coordenadas do cache:', {
-                                    lat: existingClient.latitude,
-                                    lng: existingClient.longitude
-                                });
-                            }
                         }
                     } catch (err) {
-                        console.warn('Erro ao verificar clientes offline (lista manual):', err);
+                        // Silently handle offline check errors
                     }
                 }
             }
@@ -5538,30 +5505,21 @@
                             foundRecord = data[0];
                         }
                     } catch (supabaseError) {
-                        console.warn('Falha ao buscar no Supabase, usando cache:', supabaseError);
+                        // Use cache on failure
                     }
                 }
 
                 // If offline or not found online, search in cache
                 if (!foundRecord) {
-
-                    // Try cache first (from Supabase sync)
                     try {
                         foundRecord = await getFromCacheByIndex('cachedPlanilha', 'spx_tn', qrData);
-                        if (foundRecord) {
-                        }
-                    } catch (err) {
-                    }
+                    } catch (err) {}
 
-                    // Fallback to pending data
                     if (!foundRecord) {
                         const offlineData = await getAllFromOfflineDB('pendingPlanilha');
                         foundRecord = offlineData.find(item =>
                             item.spx_tn && item.spx_tn.toString() === qrData.toString()
                         );
-
-                        if (foundRecord) {
-                        }
                     }
                 }
 
@@ -5587,30 +5545,19 @@
                                 if (!clientError && clientData && clientData.length > 0) {
                                     existingClient = clientData[0];
                                 }
-                            } catch (err) {
-                                console.warn('Erro ao verificar cliente existente online:', err);
-                            }
+                            } catch (err) {}
                         }
 
-                        // If offline or not found online, check in local storage
                         if (!existingClient) {
                             try {
-                                // Check in pending clients (offline data waiting to sync)
                                 const pendingClients = await getAllFromOfflineDB('pendingClients');
-                                existingClient = pendingClients.find(client =>
-                                    client.address === addressToCheck
-                                );
+                                existingClient = pendingClients.find(client => client.address === addressToCheck);
 
-                                // If not found in pending, check in cached clients
                                 if (!existingClient) {
                                     const cachedClients = await getAllFromOfflineDB('cachedClients');
-                                    existingClient = cachedClients.find(client =>
-                                        client.address === addressToCheck
-                                    );
+                                    existingClient = cachedClients.find(client => client.address === addressToCheck);
                                 }
-                            } catch (err) {
-                                console.warn('Erro ao verificar clientes offline:', err);
-                            }
+                            } catch (err) {}
                         }
                     }
 
@@ -5898,11 +5845,7 @@
                     })
                     .setLngLat([oldLng, oldLat])
                     .addTo(map);
-                } catch (error) {
-                    console.error('❌ Erro ao adicionar marcador:', error);
-                }
-            } else {
-                console.warn('⚠️ Não foi possível criar marcador. existingClientRecord:', existingClientRecord);
+                } catch (error) {}
             }
 
             // Show adjust mode UI
@@ -6029,8 +5972,6 @@
                 existingClientRecord = null;
 
             } catch (error) {
-                // If Supabase fails, save locally as fallback
-                console.warn('Falha no Supabase, salvando offline:', error);
                 try {
                     await saveToOfflineDB('pendingClients', clientData);
                     showQuickSuccess();
