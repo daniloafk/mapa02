@@ -3459,30 +3459,6 @@
                 zoom: zoom,
             });
 
-            // Desativa o zoom de duplo clique para evitar zoom acidental no mobile
-            map.doubleClickZoom.disable();
-
-            // Desativa o zoom de "double-tap drag" mas permite arrastar/rotacionar
-            let lastTap = 0;
-            const canvas = map.getCanvas();
-
-            canvas.addEventListener('touchstart', function(e) {
-                const now = Date.now();
-                const timeSinceLastTap = now - lastTap;
-
-                // Se é um toque duplo rápido com apenas um dedo
-                if (timeSinceLastTap < 350 && timeSinceLastTap > 0 && e.touches.length === 1) {
-                    // Desabilita temporariamente o touchZoomRotate para bloquear tap-drag zoom
-                    map.touchZoomRotate.disable();
-
-                    // Reabilita após o gesto terminar (permite zoom e rotação com 2 dedos)
-                    setTimeout(() => {
-                        map.touchZoomRotate.enable();
-                    }, 400);
-                }
-                lastTap = now;
-            }, { passive: true });
-
             // Add map controls (sync, doesn't need load event)
             initializeMapControls();
 
