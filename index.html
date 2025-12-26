@@ -3463,14 +3463,36 @@
             map.doubleClickZoom.disable();
 
             // Desativa o zoom de "double-tap drag" (toque duplo + arrastar com um dedo)
-            let lastTouchEnd = 0;
-            map.getCanvas().addEventListener('touchend', function(e) {
+            let lastTap = 0;
+            let doubleTapDetected = false;
+            const canvas = map.getCanvas();
+
+            canvas.addEventListener('touchstart', function(e) {
                 const now = Date.now();
-                if (now - lastTouchEnd <= 300) {
+                const timeSinceLastTap = now - lastTap;
+
+                // Se é um toque duplo rápido com apenas um dedo, marca e bloqueia
+                if (timeSinceLastTap < 350 && timeSinceLastTap > 0 && e.touches.length === 1) {
+                    doubleTapDetected = true;
                     e.preventDefault();
+                    e.stopPropagation();
+                } else {
+                    doubleTapDetected = false;
                 }
-                lastTouchEnd = now;
-            }, { passive: false });
+                lastTap = now;
+            }, { passive: false, capture: true });
+
+            canvas.addEventListener('touchmove', function(e) {
+                // Se double-tap foi detectado e está arrastando com um dedo, bloqueia
+                if (doubleTapDetected && e.touches.length === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }, { passive: false, capture: true });
+
+            canvas.addEventListener('touchend', function() {
+                doubleTapDetected = false;
+            }, { passive: true });
 
             // Add map controls (sync, doesn't need load event)
             initializeMapControls();
