@@ -297,6 +297,40 @@
             color: white;
         }
 
+        /* Tooltip styling for buttons */
+        .toggle-markers-btn[data-tooltip] {
+            position: relative;
+        }
+
+        .toggle-markers-btn[data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 60px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 10000;
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        body.dark .toggle-markers-btn[data-tooltip]:hover::after {
+            background: rgba(255, 255, 255, 0.95);
+            color: #1e293b;
+        }
+
+        /* Oculta tooltip em mobile */
+        @media (max-width: 768px) {
+            .toggle-markers-btn[data-tooltip]:hover::after {
+                display: none;
+            }
+        }
+
         .hamburger {
             width: 22px;
             height: 16px;
@@ -2632,7 +2666,7 @@
     </button>
 
     <!-- Toggle Markers Button -->
-    <button class="toggle-markers-btn" id="toggleMarkersBtn" aria-label="Exibir/ocultar marcadores" title="Exibir/ocultar marcadores">
+    <button class="toggle-markers-btn" id="toggleMarkersBtn" aria-label="Exibir/ocultar marcadores" data-tooltip="Exibir/ocultar marcadores">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
