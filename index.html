@@ -3460,17 +3460,33 @@
                 doubleClickZoom: false
             });
 
-            // Disable double-tap drag zoom (only for single finger)
+            // Disable double-tap drag zoom
             let lastTapTime = 0;
-            map.getCanvas().addEventListener('touchstart', (e) => {
+            let blockDrag = false;
+            const mapCanvas = map.getCanvas();
+
+            mapCanvas.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     const now = Date.now();
                     if (now - lastTapTime < 300) {
-                        e.preventDefault();
+                        blockDrag = true;
+                    } else {
+                        blockDrag = false;
                     }
                     lastTapTime = now;
                 }
+            }, { passive: true });
+
+            mapCanvas.addEventListener('touchmove', (e) => {
+                if (blockDrag && e.touches.length === 1) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
             }, { passive: false });
+
+            mapCanvas.addEventListener('touchend', () => {
+                blockDrag = false;
+            }, { passive: true });
 
             // Add map controls (sync, doesn't need load event)
             initializeMapControls();
