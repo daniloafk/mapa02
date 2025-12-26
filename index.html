@@ -3460,40 +3460,26 @@
                 doubleClickZoom: false
             });
 
-            // Disable double-tap drag zoom but allow pan and rotation
+            // Disable double-tap drag zoom but allow pan
             let lastTapTime = 0;
-            let doubleTapActive = false;
-            let lockedZoom = null;
             const mapCanvas = map.getCanvas();
 
             mapCanvas.addEventListener('touchstart', (e) => {
                 if (e.touches.length === 1) {
                     const now = Date.now();
                     if (now - lastTapTime < 500) {
-                        doubleTapActive = true;
-                        lockedZoom = map.getZoom();
+                        map.touchZoomRotate.disable();
                     }
                     lastTapTime = now;
                 }
             }, { passive: true });
 
-            map.on('zoom', () => {
-                if (doubleTapActive && lockedZoom !== null) {
-                    requestAnimationFrame(() => {
-                        if (doubleTapActive) {
-                            map.setZoom(lockedZoom, { duration: 0 });
-                        }
-                    });
-                }
-            });
-
-            mapCanvas.addEventListener('touchend', (e) => {
-                if (e.touches.length === 0) {
-                    setTimeout(() => {
-                        doubleTapActive = false;
-                        lockedZoom = null;
-                    }, 50);
-                }
+            mapCanvas.addEventListener('touchend', () => {
+                setTimeout(() => {
+                    if (!map.touchZoomRotate.isEnabled()) {
+                        map.touchZoomRotate.enable();
+                    }
+                }, 100);
             }, { passive: true });
 
             // Add map controls (sync, doesn't need load event)
