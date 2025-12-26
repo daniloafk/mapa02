@@ -3457,12 +3457,8 @@
                 style: 'mapbox://styles/mapbox/streets-v12',
                 center: [lng, lat],
                 zoom: zoom,
-                doubleClickZoom: false,
-                touchPitch: false
+                doubleClickZoom: false
             });
-
-            // Disable double-tap zoom on touch devices
-            map.touchZoomRotate.disableRotation();
 
             // Prevent double-tap zoom by intercepting rapid taps
             let lastTap = 0;
@@ -6062,7 +6058,7 @@
                 const data = await response.json();
 
                 if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-                    throw new Error('N��o foi possível calcular a rota');
+                    throw new Error('Não foi possível calcular a rota');
                 }
 
                 return data.routes[0];
