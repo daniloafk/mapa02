@@ -2,7 +2,10 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Mapa Interativo</title>
     <script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.css" rel="stylesheet">
@@ -32,41 +35,33 @@
         * {
             margin: 0;
             padding: 0;
-            -webkit-box-sizing: border-box;
-            -moz-box-sizing: border-box;
             box-sizing: border-box;
         }
 
-        html {
-            height: 100%;
-            width: 100%;
-        }
-
         body {
-            position: relative;
-            min-height: 100%;
-            height: 100%;
-            width: 100%;
             overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: #f8fafc;
-            color: #1e293b;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
+            width: 100vw;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-light);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
         body.dark {
-            background: #0f172a;
-            color: #f1f5f9;
+            background: var(--bg-dark);
+            color: var(--text-dark);
         }
 
         #map {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
             width: 100%;
             height: 100%;
-            z-index: 1;
+            touch-action: none; /* Let Mapbox handle all touch gestures */
         }
 
         /* Location Error */
@@ -2278,42 +2273,332 @@
             border-top: 4px solid #ef4444;
         }
 
-        /* Responsive - Simplificado para compatibilidade universal */
+        /* Responsive */
+        /* ========================================
+           RESPONSIVE DESIGN
+           ======================================== */
 
-        /* Telas pequenas (até 600px) */
-        @media screen and (max-width: 600px) {
+        /* Mobile Devices (Portrait) - até 480px */
+        @media (max-width: 480px) {
             .sidebar {
                 width: 100%;
                 max-width: 100%;
             }
+
+            /* Botões de navegação */
             .menu-btn, .toggle-markers-btn {
-                width: 44px;
-                height: 44px;
+                width: 40px !important;
+                height: 40px !important;
             }
+
             .offline-indicator {
-                width: 38px;
-                height: 38px;
-                top: 124px;
+                width: 34px !important;
+                height: 34px !important;
+                top: 120px;
             }
+
+            .offline-indicator svg {
+                width: 16px;
+                height: 16px;
+            }
+
+            /* Popup de rotas */
+            .mapboxgl-popup-content {
+                padding: 10px !important;
+                max-width: 260px !important;
+            }
+
+            .route-popup-content {
+                font-size: 11px !important;
+                max-width: 100% !important;
+            }
+
+            .route-popup-address {
+                font-size: 11px !important;
+                margin-bottom: 6px !important;
+            }
+
+            .route-popup-btn {
+                font-size: 9px !important;
+                padding: 6px 4px !important;
+                min-height: 32px !important;
+                gap: 3px !important;
+            }
+
+            .route-popup-btn svg {
+                width: 10px !important;
+                height: 10px !important;
+            }
+
+            .route-popup-btn .btn-text {
+                font-size: 9px !important;
+            }
+
+            .route-popup-order {
+                font-size: 9px !important;
+                padding: 2px 6px !important;
+            }
+
+            .route-popup-actions {
+                gap: 3px !important;
+                margin-top: 8px !important;
+                padding-top: 8px !important;
+            }
+
+            .mapboxgl-popup-close-button {
+                width: 24px !important;
+                height: 24px !important;
+                font-size: 18px !important;
+                line-height: 24px !important;
+            }
+
+            /* Sidebar header */
+            .sidebar-header {
+                padding: 16px;
+            }
+
+            .sidebar-header-icon {
+                width: 36px;
+                height: 36px;
+            }
+
+            .sidebar-header-icon svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .sidebar-title {
+                font-size: 16px;
+            }
+
+            /* Sidebar content */
+            .sidebar-content {
+                padding: 16px;
+            }
+
+            /* Botões do sidebar */
+            .sidebar button {
+                padding: 10px 16px !important;
+                font-size: 13px !important;
+                min-height: 40px !important;
+            }
+
+            /* Inputs */
+            input[type="text"],
+            input[type="file"],
+            select,
+            textarea {
+                padding: 10px !important;
+                font-size: 14px !important;
+                min-height: 40px !important;
+            }
+
+            /* Location error modal */
             .location-error {
                 padding: 20px;
-                max-width: 90%;
+                max-width: 85%;
+            }
+
+            .location-error h3 {
+                font-size: 16px;
+            }
+
+            .location-error p {
+                font-size: 13px;
+            }
+
+            .retry-btn {
+                padding: 10px 20px !important;
+                font-size: 13px !important;
+            }
+
+            /* Upload de arquivos */
+            .file-upload-label {
+                padding: 12px !important;
+                font-size: 13px !important;
             }
         }
 
-        /* Telas médias (601px a 1024px) */
-        @media screen and (min-width: 601px) and (max-width: 1024px) {
+        /* Mobile Devices (Landscape) & Small Tablets - 481px a 768px */
+        @media (min-width: 481px) and (max-width: 768px) {
+            .sidebar {
+                width: 360px;
+                max-width: 80vw;
+            }
+
+            .route-popup-content {
+                font-size: 12px;
+                max-width: 220px;
+            }
+
+            .route-popup-btn {
+                font-size: 11px !important;
+                padding: 8px 10px !important;
+                min-height: 38px !important;
+            }
+
+            .sidebar button {
+                min-height: 42px !important;
+                font-size: 14px !important;
+            }
+
+            input[type="text"],
+            input[type="file"],
+            select,
+            textarea {
+                min-height: 42px !important;
+                font-size: 14px !important;
+            }
+        }
+
+        /* Tablets & Small Laptops - 769px a 1024px */
+        @media (min-width: 769px) and (max-width: 1024px) {
             .sidebar {
                 width: 380px;
-                max-width: 70%;
             }
         }
 
-        /* Telas grandes (acima de 1024px) */
-        @media screen and (min-width: 1025px) {
+        /* Multimídia Veicular (Landscape) - típico 800x480 a 1280x720 */
+        @media (min-width: 600px) and (max-width: 1280px) and (orientation: landscape) {
+            /* Botões maiores para toque em telas de carro */
+            .menu-btn, .toggle-markers-btn {
+                width: 56px;
+                height: 56px;
+            }
+
+            .menu-btn {
+                top: 20px;
+                left: 20px;
+            }
+
+            .toggle-markers-btn {
+                top: 88px;
+                left: 20px;
+            }
+
+            .offline-indicator {
+                top: 156px;
+                left: 20px;
+                width: 48px;
+                height: 48px;
+            }
+
+            .offline-indicator svg {
+                width: 24px;
+                height: 24px;
+            }
+
+            /* Popups maiores para melhor legibilidade */
+            .route-popup-content {
+                font-size: 14px;
+                max-width: 280px;
+            }
+
+            .route-popup-btn {
+                font-size: 13px;
+                padding: 10px 12px;
+                min-height: 44px; /* Tamanho mínimo para toque confortável */
+            }
+
+            .route-popup-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            /* Sidebar otimizada para landscape */
+            .sidebar {
+                width: 420px;
+                max-width: 50vw;
+            }
+
+            .sidebar-header {
+                padding: 20px;
+            }
+
+            .sidebar-content {
+                padding: 20px;
+            }
+
+            /* Formulários com campos maiores */
+            input[type="text"],
+            input[type="file"],
+            select,
+            textarea {
+                min-height: 48px;
+                font-size: 15px;
+            }
+
+            button {
+                min-height: 48px;
+                font-size: 15px;
+            }
+        }
+
+        /* Desktop - 1025px em diante */
+        @media (min-width: 1025px) {
             .sidebar {
                 width: 400px;
             }
+
+            .route-popup-content {
+                max-width: 240px;
+            }
+        }
+
+        /* Large Desktop - 1440px em diante */
+        @media (min-width: 1440px) {
+            .sidebar {
+                width: 450px;
+            }
+
+            .route-popup-content {
+                font-size: 14px;
+                max-width: 260px;
+            }
+        }
+
+        /* Extra Large Desktop - 1920px em diante */
+        @media (min-width: 1920px) {
+            .sidebar {
+                width: 500px;
+            }
+
+            .menu-btn, .toggle-markers-btn {
+                width: 52px;
+                height: 52px;
+            }
+
+            .offline-indicator {
+                width: 44px;
+                height: 44px;
+            }
+
+            .route-popup-content {
+                font-size: 15px;
+                max-width: 300px;
+            }
+        }
+
+        /* Touch devices - área de toque maior (exceto mobile pequeno) */
+        @media (hover: none) and (pointer: coarse) and (min-width: 481px) {
+            .menu-btn, .toggle-markers-btn {
+                min-width: 48px;
+                min-height: 48px;
+            }
+
+            button:not(.route-popup-btn) {
+                min-height: 44px;
+            }
+
+            .route-popup-btn {
+                min-height: 42px;
+                padding: 10px 12px;
+            }
+        }
+
+        /* High DPI Screens (Retina, etc) */
+        @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+            /* Ajustes para telas de alta resolução se necessário */
         }
     </style>
 </head>
