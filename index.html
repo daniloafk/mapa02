@@ -7,49 +7,13 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Mapa Interativo</title>
-
-    <!-- CSS crítico inline para loader imediato -->
-    <style id="critical-css">
-        .app-loader{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f172a 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s,visibility .5s}
-        .app-loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
-        .loader-content{text-align:center;animation:fadeInUp .6s ease}
-        .loader-icon{width:80px;height:80px;margin:0 auto 24px;position:relative}
-        .loader-ring{position:absolute;inset:0;border:4px solid rgba(14,165,233,.2);border-top-color:#0ea5e9;border-radius:50%;animation:spin 1s linear infinite}
-        .loader-ring:nth-child(2){inset:8px;border-top-color:#8b5cf6;animation-duration:.8s;animation-direction:reverse}
-        .loader-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px}
-        .loader-pin svg{width:100%;height:100%;color:#0ea5e9}
-        .loader-title{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:20px;font-weight:700;color:#f1f5f9;margin-bottom:8px;letter-spacing:-.02em}
-        .loader-status{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#94a3b8;margin-bottom:20px}
-        .loader-progress{width:200px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden;margin:0 auto}
-        .loader-bar{height:100%;background:linear-gradient(90deg,#0ea5e9,#8b5cf6);border-radius:2px;width:0;transition:width .3s ease}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-        @media(prefers-color-scheme:light){.app-loader{background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 50%,#f8fafc 100%)}.loader-title{color:#1e293b}.loader-status{color:#64748b}.loader-progress{background:rgba(0,0,0,.1)}}
-
-        /* Mapbox CSS fallback crítico - garante layout correto antes do CSS externo carregar */
-        .mapboxgl-map{font:12px/20px Helvetica Neue,Arial,Helvetica,sans-serif;overflow:hidden;position:relative;-webkit-tap-highlight-color:rgba(0,0,0,0)}
-        .mapboxgl-canvas{position:absolute;left:0;top:0}
-        .mapboxgl-canvas-container{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden}
-        .mapboxgl-ctrl-group{background:#fff;border-radius:4px;box-shadow:0 0 0 2px rgba(0,0,0,.1)}
-        .mapboxgl-ctrl-group>button{width:29px;height:29px;display:block;padding:0;outline:none;border:0;box-sizing:border-box;background-color:transparent;cursor:pointer}
-        .mapboxgl-ctrl-top-right{position:absolute;top:10px;right:10px;z-index:2}
-        .mapboxgl-ctrl-top-left{position:absolute;top:10px;left:10px;z-index:2}
-        .mapboxgl-ctrl-bottom-left{position:absolute;bottom:10px;left:10px;z-index:2}
-        .mapboxgl-ctrl-bottom-right{position:absolute;bottom:10px;right:10px;z-index:2}
-        .mapboxgl-ctrl{clear:both;pointer-events:auto}
-        .mapboxgl-ctrl-top-left .mapboxgl-ctrl,.mapboxgl-ctrl-top-right .mapboxgl-ctrl{margin:10px 10px 0 0}
-        .mapboxgl-ctrl-bottom-left .mapboxgl-ctrl,.mapboxgl-ctrl-bottom-right .mapboxgl-ctrl{margin:0 10px 10px 0}
-    </style>
-
-    <!-- Mapbox CSS primeiro (crítico para o mapa) -->
-    <link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.css" rel="stylesheet" id="mapbox-css">
-
-    <!-- Fontes com preconnect e async loading -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
-
     <style>
         :root {
             --sidebar-width: 400px;
@@ -2639,26 +2603,6 @@
     </style>
 </head>
 <body>
-    <!-- Loader de inicialização - aparece imediatamente -->
-    <div class="app-loader" id="appLoader">
-        <div class="loader-content">
-            <div class="loader-icon">
-                <div class="loader-ring"></div>
-                <div class="loader-ring"></div>
-                <div class="loader-pin">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                    </svg>
-                </div>
-            </div>
-            <div class="loader-title">Mapa Interativo</div>
-            <div class="loader-status" id="loaderStatus">Inicializando...</div>
-            <div class="loader-progress">
-                <div class="loader-bar" id="loaderBar"></div>
-            </div>
-        </div>
-    </div>
-
     <div id="map"></div>
 
     <!-- Location Error -->
@@ -2971,95 +2915,10 @@
     </div>
 
     <script>
-        // ============================================
-        // LOADER SYSTEM - Controle de progresso
-        // ============================================
-        const loaderStatus = document.getElementById('loaderStatus');
-        const loaderBar = document.getElementById('loaderBar');
-        const appLoader = document.getElementById('appLoader');
-
-        let loadProgress = 0;
-        const loadSteps = {
-            scripts: 20,
-            mapbox: 40,
-            supabase: 60,
-            gps: 80,
-            ready: 100
-        };
-
-        function updateLoader(step, message) {
-            loadProgress = loadSteps[step] || loadProgress;
-            if (loaderStatus) loaderStatus.textContent = message;
-            if (loaderBar) loaderBar.style.width = loadProgress + '%';
-        }
-
-        function hideLoader() {
-            if (appLoader) {
-                appLoader.classList.add('hidden');
-                // Remove do DOM após a transição
-                setTimeout(() => {
-                    if (appLoader.parentNode) appLoader.remove();
-                }, 600);
-            }
-        }
-
-        // Função para carregar scripts dinamicamente
-        function loadScript(src) {
-            return new Promise((resolve, reject) => {
-                // Verifica se já foi carregado
-                if (document.querySelector(`script[src="${src}"]`)) {
-                    resolve();
-                    return;
-                }
-                const script = document.createElement('script');
-                script.src = src;
-                script.async = true;
-                script.onload = resolve;
-                script.onerror = () => reject(new Error(`Falha ao carregar: ${src}`));
-                document.head.appendChild(script);
-            });
-        }
-
-        // Inicialização assíncrona de todos os recursos
-        async function initializeApp() {
-            try {
-                updateLoader('scripts', 'Carregando recursos...');
-
-                // Carrega scripts em paralelo para maior velocidade
-                await Promise.all([
-                    loadScript('https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.js'),
-                    loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'),
-                    loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'),
-                    loadScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js')
-                ]);
-
-                updateLoader('mapbox', 'Preparando mapa...');
-
-                // Pequena pausa para garantir que os scripts foram processados
-                await new Promise(r => setTimeout(r, 100));
-
-                // Inicia o resto da aplicação
-                initApplication();
-
-            } catch (error) {
-                console.error('Erro ao carregar recursos:', error);
-                if (loaderStatus) loaderStatus.textContent = 'Erro ao carregar. Recarregando...';
-                // Tenta recarregar após 2 segundos
-                setTimeout(() => location.reload(), 2000);
-            }
-        }
-
-        // Inicia carregamento assim que possível
-        initializeApp();
-
-        function initApplication() {
-            // Supabase initialization
-            const SUPABASE_URL = 'https://wwvftlyvewetspombnky.supabase.co';
-            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3dmZ0bHl2ZXdldHNwb21ibmt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNjE5NjYsImV4cCI6MjA4MTkzNzk2Nn0.qvW0QconrSPOWWtB8SNalIpfWhlO2-Oc8LzJURk4zVs';
-            window.db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            const db = window.db;
-
-            updateLoader('supabase', 'Conectando banco de dados...');
+        // Supabase initialization
+        const SUPABASE_URL = 'https://wwvftlyvewetspombnky.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3dmZ0bHl2ZXdldHNwb21ibmt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNjE5NjYsImV4cCI6MjA4MTkzNzk2Nn0.qvW0QconrSPOWWtB8SNalIpfWhlO2-Oc8LzJURk4zVs';
+        const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ============================================
         // OFFLINE SYSTEM - IndexedDB & Sync
@@ -3567,7 +3426,7 @@
         });
 
         // Mapbox initialization
-        mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajdra3l0aTA1MXUzZXB2bzByZjVjMXUifQ.RyPdNBII88Qk9xE3j8Rijw';
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajk5bmZtZjAydXAzZXEyN3dib3I3OWoifQ.c33dA1QhHMYZcLULo3btmA';
 
         let map;
         const locationError = document.getElementById('locationError');
@@ -3582,127 +3441,16 @@
             timestamp: 0
         };
 
-        // Verifica suporte a WebGL
-        function checkWebGLSupport() {
-            try {
-                const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                if (!gl) {
-                    return { supported: false, reason: 'WebGL não é suportado neste navegador' };
-                }
-                if (gl.isContextLost && gl.isContextLost()) {
-                    return { supported: false, reason: 'Contexto WebGL perdido' };
-                }
-                return { supported: true };
-            } catch (e) {
-                return { supported: false, reason: 'Erro ao verificar WebGL: ' + e.message };
-            }
-        }
-
-        // Mostra erro de mapa
-        function showMapError(message) {
-            hideLoader();
-            const mapEl = document.getElementById('map');
-            if (mapEl) {
-                mapEl.innerHTML = `
-                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);padding:24px;text-align:center;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        <h3 style="margin:16px 0 8px;font-size:18px;font-weight:700;color:#1e293b;">Erro ao carregar o mapa</h3>
-                        <p style="margin:0 0 20px;font-size:14px;color:#64748b;max-width:300px;line-height:1.5;">${message}</p>
-                        <button onclick="location.reload()" style="padding:12px 24px;background:#0ea5e9;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
-                            Tentar novamente
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
         // Initialize map with given coordinates
         function initMapWithCoords(lat, lng, zoom = 14) {
             locationError.classList.remove('show');
 
-            // Verifica WebGL antes de criar o mapa
-            const webglCheck = checkWebGLSupport();
-            if (!webglCheck.supported) {
-                console.error('WebGL não suportado:', webglCheck.reason);
-                showMapError(webglCheck.reason + '. Tente usar outro navegador como Chrome ou Firefox.');
-                return;
-            }
-
-            // Verifica se mapboxgl está disponível
-            if (typeof mapboxgl === 'undefined') {
-                console.error('Mapbox GL JS não carregou');
-                showMapError('Biblioteca do mapa não carregou. Verifique sua conexão.');
-                return;
-            }
-
-            let mapCreated = false;
-
-            try {
-                map = new mapboxgl.Map({
-                    container: 'map',
-                    style: 'mapbox://styles/mapbox/streets-v12',
-                    center: [lng, lat],
-                    zoom: zoom,
-                    failIfMajorPerformanceCaveat: false,
-                    preserveDrawingBuffer: true,
-                    antialias: true,
-                    refreshExpiredTiles: true
-                });
-                mapCreated = true;
-
-                // Listener para erros do mapa
-                map.on('error', (e) => {
-                    console.error('Erro do Mapbox:', e.error);
-                    // Erro 401 = token inválido, 403 = token com restrições de domínio
-                    if (e.error && (e.error.status === 401 || e.error.status === 403)) {
-                        console.error('Erro de autenticação Mapbox. Status:', e.error.status);
-                        showMapError('Erro de acesso ao Mapbox (código ' + e.error.status + '). O token pode ter restrições de domínio.');
-                    }
-                });
-
-                // Força resize múltiplas vezes para garantir renderização correta
-                const forceResize = () => {
-                    if (map) {
-                        map.resize();
-                    }
-                };
-                setTimeout(forceResize, 100);
-                setTimeout(forceResize, 500);
-                setTimeout(forceResize, 1000);
-                setTimeout(forceResize, 2000);
-
-                // Timeout para detectar se tiles não carregaram após 15 segundos
-                let styleLoaded = false;
-                const mapLoadTimeout = setTimeout(() => {
-                    if (!styleLoaded) {
-                        console.warn('Mapa demorou muito para carregar estilo, tentando alternativa...');
-                        try {
-                            map.setStyle('mapbox://styles/mapbox/light-v11');
-                        } catch (err) {
-                            console.error('Erro ao mudar estilo:', err);
-                        }
-                    }
-                }, 15000);
-
-                map.once('styledata', () => {
-                    styleLoaded = true;
-                    clearTimeout(mapLoadTimeout);
-                    // Força resize após estilo carregar
-                    setTimeout(forceResize, 100);
-                });
-
-            } catch (error) {
-                console.error('Erro ao criar mapa:', error);
-                showMapError('Erro ao inicializar: ' + (error.message || 'Erro desconhecido'));
-                return;
-            }
-
-            if (!mapCreated) return;
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: [lng, lat],
+                zoom: zoom,
+            });
 
             // Bloqueia o "double-tap drag zoom" mas permite arrastar o mapa
             // Usa o container inteiro para capturar toques em popups/marcadores também
@@ -3748,90 +3496,9 @@
 
             // Single load event for all initialization
             map.on('load', () => {
-                updateLoader('ready', 'Pronto!');
-                // Esconde o loader após o mapa carregar
-                setTimeout(hideLoader, 300);
                 loadClientes();
                 setupMapClickHandler();
-
-                // Verifica se tiles estão realmente visíveis após 3 segundos
-                setTimeout(() => {
-                    checkTilesLoaded();
-                }, 3000);
             });
-
-            // Fallback: esconde loader após 8 segundos mesmo se o mapa não disparar o evento load
-            setTimeout(() => {
-                if (appLoader && !appLoader.classList.contains('hidden')) {
-                    hideLoader();
-                }
-            }, 8000);
-
-            // Detecta se o mapa renderizou mas sem tiles (tela bege/cinza)
-            map.on('idle', function onFirstIdle() {
-                map.off('idle', onFirstIdle);
-                // Após o primeiro idle, verifica se realmente renderizou
-                setTimeout(checkTilesLoaded, 2000);
-            });
-
-            // Listener para resize da janela - importante para tablets/PCs
-            window.addEventListener('resize', () => {
-                if (map) {
-                    setTimeout(() => map.resize(), 100);
-                }
-            });
-
-            // Força renderização quando a aba fica visível novamente
-            document.addEventListener('visibilitychange', () => {
-                if (document.visibilityState === 'visible' && map) {
-                    setTimeout(() => {
-                        map.resize();
-                        map.triggerRepaint();
-                    }, 200);
-                }
-            });
-        }
-
-        // Função para verificar se tiles carregaram
-        function checkTilesLoaded() {
-            if (!map) return;
-
-            try {
-                // Verifica se há sources carregados
-                const style = map.getStyle();
-                if (!style || !style.sources || Object.keys(style.sources).length === 0) {
-                    console.warn('Nenhum source carregado, tentando recarregar estilo...');
-                    reloadMapStyle();
-                    return;
-                }
-
-                // Verifica quantos tiles estão carregados
-                const areTilesLoaded = map.areTilesLoaded();
-                if (!areTilesLoaded) {
-                    console.warn('Tiles ainda não carregados...');
-                    // Dá mais tempo, não recarrega ainda
-                }
-            } catch (e) {
-                console.error('Erro ao verificar tiles:', e);
-            }
-        }
-
-        // Função para recarregar o estilo do mapa
-        function reloadMapStyle() {
-            if (!map) return;
-
-            console.log('Tentando recarregar estilo do mapa...');
-            try {
-                // Força resize primeiro (ajuda com alguns bugs de renderização)
-                map.resize();
-
-                // Tenta definir o estilo novamente
-                setTimeout(() => {
-                    map.setStyle('mapbox://styles/mapbox/streets-v12');
-                }, 500);
-            } catch (e) {
-                console.error('Erro ao recarregar estilo:', e);
-            }
         }
 
         function getUserLocationAndInitMap() {
@@ -3839,35 +3506,24 @@
             const defaultLat = -1.4558;
             const defaultLng = -48.4902;
 
-            updateLoader('gps', 'Obtendo localização...');
-
-            // OTIMIZAÇÃO: Inicia o mapa IMEDIATAMENTE com localização padrão
-            // e atualiza para GPS quando disponível
-            initMapWithCoords(defaultLat, defaultLng, 12);
-
-            // Tenta obter GPS em paralelo (não bloqueia o carregamento)
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
-                        // GPS obtido - centraliza suavemente no usuário
-                        if (map) {
-                            map.flyTo({
-                                center: [position.coords.longitude, position.coords.latitude],
-                                zoom: 14,
-                                duration: 1500
-                            });
-                        }
+                        initMapWithCoords(position.coords.latitude, position.coords.longitude);
                     },
                     (error) => {
-                        // GPS falhou - mantém localização padrão (mapa já carregado)
-                        console.log('GPS não disponível, usando localização padrão');
+                        // GPS failed - load map with default location anyway
+                        initMapWithCoords(defaultLat, defaultLng, 12);
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 8000,
-                        maximumAge: 60000 // Aceita posição em cache de até 1 minuto
+                        timeout: 10000,
+                        maximumAge: 0
                     }
                 );
+            } else {
+                // No geolocation support - load map with default location
+                initMapWithCoords(defaultLat, defaultLng, 12);
             }
         }
 
@@ -6810,8 +6466,6 @@
                 setTimeout(recenterOnGPS, 500);
             }
         });
-
-        } // Fecha initApplication()
     </script>
 </body>
 </html>
