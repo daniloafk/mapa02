@@ -3568,16 +3568,112 @@
             timestamp: 0
         };
 
+        // Verifica suporte a WebGL
+        function checkWebGLSupport() {
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (!gl) {
+                    return { supported: false, reason: 'WebGL não é suportado neste navegador' };
+                }
+                if (gl.isContextLost && gl.isContextLost()) {
+                    return { supported: false, reason: 'Contexto WebGL perdido' };
+                }
+                return { supported: true };
+            } catch (e) {
+                return { supported: false, reason: 'Erro ao verificar WebGL: ' + e.message };
+            }
+        }
+
+        // Mostra erro de mapa
+        function showMapError(message) {
+            hideLoader();
+            const mapEl = document.getElementById('map');
+            if (mapEl) {
+                mapEl.innerHTML = `
+                    <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);padding:24px;text-align:center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <h3 style="margin:16px 0 8px;font-size:18px;font-weight:700;color:#1e293b;">Erro ao carregar o mapa</h3>
+                        <p style="margin:0 0 20px;font-size:14px;color:#64748b;max-width:300px;line-height:1.5;">${message}</p>
+                        <button onclick="location.reload()" style="padding:12px 24px;background:#0ea5e9;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;">
+                            Tentar novamente
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
         // Initialize map with given coordinates
         function initMapWithCoords(lat, lng, zoom = 14) {
             locationError.classList.remove('show');
 
-            map = new mapboxgl.Map({
-                container: 'map',
-                style: 'mapbox://styles/mapbox/streets-v12',
-                center: [lng, lat],
-                zoom: zoom,
-            });
+            // Verifica WebGL antes de criar o mapa
+            const webglCheck = checkWebGLSupport();
+            if (!webglCheck.supported) {
+                console.error('WebGL não suportado:', webglCheck.reason);
+                showMapError(webglCheck.reason + '. Tente usar outro navegador como Chrome ou Firefox.');
+                return;
+            }
+
+            // Verifica se mapboxgl está disponível
+            if (typeof mapboxgl === 'undefined') {
+                console.error('Mapbox GL JS não carregou');
+                showMapError('Biblioteca do mapa não carregou. Verifique sua conexão.');
+                return;
+            }
+
+            let mapCreated = false;
+
+            try {
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: 'mapbox://styles/mapbox/streets-v12',
+                    center: [lng, lat],
+                    zoom: zoom,
+                    failIfMajorPerformanceCaveat: false,
+                    preserveDrawingBuffer: true,
+                    antialias: true,
+                    refreshExpiredTiles: true
+                });
+                mapCreated = true;
+
+                // Listener para erros do mapa
+                map.on('error', (e) => {
+                    console.error('Erro do Mapbox:', e.error);
+                    if (e.error && e.error.status === 401) {
+                        showMapError('Token do Mapbox inválido ou expirado.');
+                    }
+                });
+
+                // Timeout para detectar se tiles não carregaram após 15 segundos
+                let styleLoaded = false;
+                const mapLoadTimeout = setTimeout(() => {
+                    if (!styleLoaded) {
+                        console.warn('Mapa demorou muito para carregar estilo, tentando alternativa...');
+                        try {
+                            map.setStyle('mapbox://styles/mapbox/light-v11');
+                        } catch (err) {
+                            console.error('Erro ao mudar estilo:', err);
+                        }
+                    }
+                }, 15000);
+
+                map.once('styledata', () => {
+                    styleLoaded = true;
+                    clearTimeout(mapLoadTimeout);
+                });
+
+            } catch (error) {
+                console.error('Erro ao criar mapa:', error);
+                showMapError('Erro ao inicializar: ' + (error.message || 'Erro desconhecido'));
+                return;
+            }
+
+            if (!mapCreated) return;
 
             // Bloqueia o "double-tap drag zoom" mas permite arrastar o mapa
             // Usa o container inteiro para capturar toques em popups/marcadores também
@@ -3628,14 +3724,68 @@
                 setTimeout(hideLoader, 300);
                 loadClientes();
                 setupMapClickHandler();
+
+                // Verifica se tiles estão realmente visíveis após 3 segundos
+                setTimeout(() => {
+                    checkTilesLoaded();
+                }, 3000);
             });
 
-            // Fallback: esconde loader após 5 segundos mesmo se o mapa não disparar o evento load
+            // Fallback: esconde loader após 8 segundos mesmo se o mapa não disparar o evento load
             setTimeout(() => {
                 if (appLoader && !appLoader.classList.contains('hidden')) {
                     hideLoader();
                 }
-            }, 5000);
+            }, 8000);
+
+            // Detecta se o mapa renderizou mas sem tiles (tela bege/cinza)
+            map.on('idle', function onFirstIdle() {
+                map.off('idle', onFirstIdle);
+                // Após o primeiro idle, verifica se realmente renderizou
+                setTimeout(checkTilesLoaded, 2000);
+            });
+        }
+
+        // Função para verificar se tiles carregaram
+        function checkTilesLoaded() {
+            if (!map) return;
+
+            try {
+                // Verifica se há sources carregados
+                const style = map.getStyle();
+                if (!style || !style.sources || Object.keys(style.sources).length === 0) {
+                    console.warn('Nenhum source carregado, tentando recarregar estilo...');
+                    reloadMapStyle();
+                    return;
+                }
+
+                // Verifica quantos tiles estão carregados
+                const areTilesLoaded = map.areTilesLoaded();
+                if (!areTilesLoaded) {
+                    console.warn('Tiles ainda não carregados...');
+                    // Dá mais tempo, não recarrega ainda
+                }
+            } catch (e) {
+                console.error('Erro ao verificar tiles:', e);
+            }
+        }
+
+        // Função para recarregar o estilo do mapa
+        function reloadMapStyle() {
+            if (!map) return;
+
+            console.log('Tentando recarregar estilo do mapa...');
+            try {
+                // Força resize primeiro (ajuda com alguns bugs de renderização)
+                map.resize();
+
+                // Tenta definir o estilo novamente
+                setTimeout(() => {
+                    map.setStyle('mapbox://styles/mapbox/streets-v12');
+                }, 500);
+            } catch (e) {
+                console.error('Erro ao recarregar estilo:', e);
+            }
         }
 
         function getUserLocationAndInitMap() {
