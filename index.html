@@ -3028,7 +3028,6 @@
                 initApplication();
 
             } catch (error) {
-                console.error('Erro ao carregar recursos:', error);
                 if (loaderStatus) loaderStatus.textContent = 'Erro ao carregar. Recarregando...';
                 // Tenta recarregar após 2 segundos
                 setTimeout(() => location.reload(), 2000);
@@ -3060,7 +3059,7 @@
                 const request = indexedDB.open('MapaInterativoDB', 2);
 
                 request.onerror = () => {
-                    console.error('Erro ao abrir IndexedDB:', request.error);
+                    // Erro ao abrir IndexedDB
                     reject(request.error);
                 };
 
@@ -3129,7 +3128,7 @@
                 };
 
                 request.onerror = () => {
-                    console.error('Erro ao salvar offline:', request.error);
+                    // Erro ao salvar offline
                     reject(request.error);
                 };
             });
@@ -3226,19 +3225,10 @@
         async function syncPendingClients() {
             try {
                 const pendingClients = await getPendingFromOfflineDB('pendingClients');
-
-
-                if (pendingClients.length === 0) {
-                    return;
-                }
-
-                let syncedCount = 0;
-                let errorCount = 0;
+                if (pendingClients.length === 0) return;
 
                 for (const client of pendingClients) {
                     try {
-
-                        // Check if client already exists
                         const { data: existingData } = await db
                             .from('clients')
                             .select('*')
@@ -3248,7 +3238,6 @@
                         let error = null;
 
                         if (existingData && existingData.length > 0) {
-                            // Client exists - UPDATE coordinates
                             const updateResult = await db
                                 .from('clients')
                                 .update({
@@ -3256,10 +3245,8 @@
                                     longitude: client.longitude
                                 })
                                 .eq('address', client.address);
-
                             error = updateResult.error;
                         } else {
-                            // Client doesn't exist - INSERT new
                             const insertResult = await db
                                 .from('clients')
                                 .insert({
@@ -3267,25 +3254,18 @@
                                     latitude: client.latitude,
                                     longitude: client.longitude
                                 });
-
                             error = insertResult.error;
                         }
 
                         if (!error) {
                             await deleteSyncedFromOfflineDB('pendingClients', client.localId);
-                            syncedCount++;
-                        } else {
-                            errorCount++;
-                            console.error(`❌ Erro ao sincronizar cliente:`, error);
                         }
                     } catch (err) {
-                        errorCount++;
-                        console.error(`❌ Erro na sincronização de cliente:`, err);
+                        // Erro na sincronização, mantém pendente
                     }
                 }
-
             } catch (err) {
-                console.error('Erro ao obter clientes pendentes:', err);
+                // Erro ao obter clientes pendentes
             }
         }
 
@@ -3293,13 +3273,8 @@
         async function syncPendingPlanilha() {
             try {
                 const pendingPlanilha = await getPendingFromOfflineDB('pendingPlanilha');
+                if (pendingPlanilha.length === 0) return;
 
-
-                if (pendingPlanilha.length === 0) {
-                    return;
-                }
-
-                // Group by batch for efficiency
                 const batchData = pendingPlanilha.map(item => ({
                     destination_address: item.destination_address,
                     latitude: item.latitude,
@@ -3312,7 +3287,6 @@
                     city: item.city
                 }));
 
-
                 const { error } = await db
                     .from('planilha')
                     .insert(batchData);
@@ -3321,11 +3295,9 @@
                     for (const item of pendingPlanilha) {
                         await deleteSyncedFromOfflineDB('pendingPlanilha', item.localId);
                     }
-                } else {
-                    console.error('❌ Erro ao sincronizar planilha:', error);
                 }
             } catch (err) {
-                console.error('❌ Erro na sincronização de planilha:', err);
+                // Erro na sincronização de planilha
             }
         }
 
@@ -3333,18 +3305,10 @@
         async function syncPendingDeliveryStatus() {
             try {
                 const pendingStatus = await getPendingFromOfflineDB('pendingDeliveryStatus');
-
-
-                if (pendingStatus.length === 0) {
-                    return;
-                }
-
-                let syncedCount = 0;
-                let errorCount = 0;
+                if (pendingStatus.length === 0) return;
 
                 for (const item of pendingStatus) {
                     try {
-
                         const { error } = await db
                             .from('planilha')
                             .update({ delivery_status: item.status })
@@ -3352,38 +3316,28 @@
 
                         if (!error) {
                             await deleteSyncedFromOfflineDB('pendingDeliveryStatus', item.localId);
-                            syncedCount++;
-                        } else {
-                            errorCount++;
-                            console.error(`❌ Erro ao sincronizar status:`, error);
                         }
                     } catch (err) {
-                        errorCount++;
-                        console.error(`❌ Erro na sincronização de status:`, err);
+                        // Erro na sincronização de status
                     }
                 }
-
             } catch (err) {
-                console.error('Erro ao obter status pendentes:', err);
+                // Erro ao obter status pendentes
             }
         }
 
         // Main sync function - syncs all pending data
         async function syncAllPendingData() {
-            if (!isOnline) return;
-            if (isSyncing) return;
+            if (!isOnline || isSyncing) return;
 
             isSyncing = true;
             updateOfflineIndicator();
-
 
             try {
                 await syncPendingClients();
                 await syncPendingPlanilha();
                 await syncPendingDeliveryStatus();
 
-
-                // Refresh data after sync
                 loadClientes();
                 if (routeMarkersVisible) {
                     loadRouteMarkers(true);
@@ -3393,7 +3347,7 @@
                 updateOfflineIndicator();
 
             } catch (error) {
-                console.error('❌ Erro durante sincronização:', error);
+                // Erro durante sincronização
             } finally {
                 isSyncing = false;
                 updateOfflineIndicator();
@@ -3431,7 +3385,7 @@
                     badge.style.display = totalPending > 0 ? 'flex' : 'none';
                 }
             } catch (err) {
-                console.error('Erro ao atualizar indicador:', err);
+                // Erro ao atualizar indicador
             }
         }
 
@@ -3498,7 +3452,7 @@
                 }
 
             } catch (error) {
-                console.error('Erro ao salvar cache:', error);
+                // Erro ao salvar cache
             }
         }
 
@@ -3533,7 +3487,7 @@
                 syncAllPendingData();
             }
         }).catch(err => {
-            console.error('Falha ao inicializar sistema offline:', err);
+            // Falha ao inicializar sistema offline
         });
 
         // ============================================
@@ -3687,7 +3641,7 @@
                     },
                     (error) => {
                         // GPS falhou - mantém localização padrão (mapa já carregado)
-                        console.log('GPS não disponível, usando localização padrão');
+                        // GPS não disponível, usando localização padrão
                     },
                     {
                         enableHighAccuracy: true,
@@ -3837,7 +3791,7 @@
                     clienteCount.textContent = 'Nenhum cliente';
                 }
             } catch (error) {
-                console.error('Erro ao carregar clientes:', error);
+                // Erro ao carregar clientes
                 clienteCount.textContent = 'Erro ao carregar';
 
                 // Try IndexedDB cache as fallback
@@ -3849,7 +3803,7 @@
                         clienteCount.textContent = `${cachedClients.length} cliente${cachedClients.length > 1 ? 's' : ''} (offline)`;
                     }
                 } catch (cacheError) {
-                    console.error('Erro ao carregar cache:', cacheError);
+                    // Erro ao carregar cache
                 }
             }
         }
@@ -4255,7 +4209,7 @@
         // Update delivery status in Supabase or offline
         async function updateDeliveryStatus(ids, status) {
             if (!ids || ids.length === 0) {
-                console.error('IDs vazios');
+                // IDs vazios
                 return false;
             }
 
@@ -4270,7 +4224,7 @@
                     updateOfflineIndicator();
                     return true;
                 } catch (err) {
-                    console.error('Erro ao salvar status offline:', err);
+                    // Erro ao salvar status offline
                     return false;
                 }
             }
@@ -4284,7 +4238,7 @@
                     .select();
 
                 if (error) {
-                    console.error('Erro do Supabase:', error);
+                    // Erro do Supabase
                     throw error;
                 }
 
@@ -4986,7 +4940,7 @@
 
                                 // Sincroniza em background (não bloqueia a UI)
                                 updateDeliveryStatus(ids, statusToSave).catch(err => {
-                                    console.error('Erro ao sincronizar status:', err);
+                                    // Erro ao sincronizar status
                                 });
                             });
                         });
@@ -5462,12 +5416,8 @@
                 planilhaAddressData = addressData;
                 renderAddressList(addressData);
 
-                // Show indicator if using cache
-                if (fromCache && !isOnline) {
-                }
-
             } catch (error) {
-                console.error('Erro ao carregar endereços:', error);
+                // Erro ao carregar endereços
                 qrAddressList.innerHTML = '<div class="qr-address-list-empty">Erro ao carregar</div>';
             }
         }
@@ -5754,7 +5704,7 @@
                 }
 
             } catch (error) {
-                console.error('Erro na busca:', error);
+                // Erro na busca
                 qrLoading.classList.remove('active');
                 currentRecord = null;
                 qrStatusText.textContent = 'Erro na busca';
@@ -6104,7 +6054,7 @@
                     existingClientRecord = null;
                     return;
                 } catch (err) {
-                    console.error('Erro ao salvar offline:', err);
+                    // Erro ao salvar offline
                     showErrorModal('Erro ao salvar offline.');
                     return;
                 }
@@ -6436,7 +6386,7 @@
                     drawRoute(newRoute);
 
                 } catch (error) {
-                    console.error('Erro ao recalcular rota:', error);
+                    // Erro ao recalcular rota
                 }
             }
         }
