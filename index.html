@@ -2,7 +2,10 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Mapa Interativo</title>
     <script src="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.css" rel="stylesheet">
@@ -38,6 +41,7 @@
         body {
             overflow: hidden;
             height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
             width: 100vw;
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg-light);
@@ -57,6 +61,7 @@
             left: 0;
             width: 100%;
             height: 100%;
+            touch-action: none; /* Let Mapbox handle all touch gestures */
         }
 
         /* Location Error */
