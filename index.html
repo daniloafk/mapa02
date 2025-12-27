@@ -3577,6 +3577,36 @@
                 style: 'mapbox://styles/mapbox/streets-v12',
                 center: [lng, lat],
                 zoom: zoom,
+                // Performance optimizations
+                fadeDuration: 0,                    // Remove fade animation dos tiles (mais rápido)
+                trackResize: true,                  // Mantém responsivo
+                renderWorldCopies: true,            // Mantém mundo contínuo
+                maxTileCacheSize: 100,              // Cache maior = menos recarregamento
+                collectResourceTiming: false,       // Desativa coleta de métricas
+                crossSourceCollisions: false,       // Menos cálculos de colisão
+                localIdeographFontFamily: false,    // Usa fontes do servidor
+                pitchWithRotate: false,             // Desativa pitch com rotação (mais leve)
+                dragRotate: false,                  // Desativa rotação com drag (mais leve)
+                touchPitch: false,                  // Desativa pitch com touch
+            });
+
+            // Otimizações de performance durante interações
+            map.on('dragstart', () => {
+                // Reduz qualidade durante drag para mais fluidez
+                map.getCanvas().style.imageRendering = 'optimizeSpeed';
+            });
+
+            map.on('dragend', () => {
+                // Restaura qualidade após drag
+                map.getCanvas().style.imageRendering = 'auto';
+            });
+
+            map.on('zoomstart', () => {
+                map.getCanvas().style.imageRendering = 'optimizeSpeed';
+            });
+
+            map.on('zoomend', () => {
+                map.getCanvas().style.imageRendering = 'auto';
             });
 
             // Bloqueia o "double-tap drag zoom" mas permite arrastar o mapa
