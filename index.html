@@ -3157,35 +3157,6 @@
             });
         }
 
-        // Mark data as synced in IndexedDB
-        function markAsSynced(storeName, localId) {
-            return new Promise((resolve, reject) => {
-                if (!offlineDB) {
-                    reject(new Error('IndexedDB não inicializado'));
-                    return;
-                }
-
-                const transaction = offlineDB.transaction([storeName], 'readwrite');
-                const store = transaction.objectStore(storeName);
-                const getRequest = store.get(localId);
-
-                getRequest.onsuccess = () => {
-                    const data = getRequest.result;
-                    if (data) {
-                        data.synced = 1; // 1 = true (sincronizado)
-                        data.syncedAt = new Date().toISOString();
-                        const updateRequest = store.put(data);
-                        updateRequest.onsuccess = () => resolve();
-                        updateRequest.onerror = () => reject(updateRequest.error);
-                    } else {
-                        resolve();
-                    }
-                };
-
-                getRequest.onerror = () => reject(getRequest.error);
-            });
-        }
-
         // Delete synced data from IndexedDB
         function deleteSyncedFromOfflineDB(storeName, localId) {
             return new Promise((resolve, reject) => {
