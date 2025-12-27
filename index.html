@@ -2439,6 +2439,42 @@
                 padding: 12px !important;
                 font-size: 13px !important;
             }
+
+            /* Botões do lado direito - mobile */
+            .spreadsheet-btn {
+                top: 140px !important;
+                right: 8px !important;
+                width: 40px !important;
+                height: 40px !important;
+            }
+
+            .route-markers-btn {
+                top: 190px !important;
+                right: 8px !important;
+                width: 40px !important;
+                height: 40px !important;
+            }
+
+            .spreadsheet-btn svg, .route-markers-btn svg {
+                width: 20px !important;
+                height: 20px !important;
+            }
+
+            /* Botão cadastrar - mobile */
+            .cadastrar-btn {
+                min-width: 160px !important;
+                padding: 12px 20px !important;
+                font-size: 13px !important;
+                bottom: 20px !important;
+            }
+
+            /* Botão encerrar navegação - mobile */
+            .end-nav-btn {
+                min-width: 160px !important;
+                padding: 12px 20px !important;
+                font-size: 13px !important;
+                bottom: 76px !important;
+            }
         }
 
         /* Mobile Devices (Landscape) & Small Tablets - 481px a 768px */
@@ -2471,12 +2507,49 @@
                 min-height: 42px !important;
                 font-size: 14px !important;
             }
+
+            /* Botões do lado direito - small tablets */
+            .spreadsheet-btn {
+                top: 150px;
+                right: 12px;
+                width: 46px;
+                height: 46px;
+            }
+
+            .route-markers-btn {
+                top: 206px;
+                right: 12px;
+                width: 46px;
+                height: 46px;
+            }
+
+            /* Botões inferiores - small tablets */
+            .cadastrar-btn {
+                min-width: 180px;
+                padding: 14px 24px;
+            }
+
+            .end-nav-btn {
+                min-width: 180px;
+                padding: 14px 24px;
+            }
         }
 
         /* Tablets & Small Laptops - 769px a 1024px */
         @media (min-width: 769px) and (max-width: 1024px) {
             .sidebar {
                 width: 380px;
+            }
+
+            /* Botões do lado direito - tablets */
+            .spreadsheet-btn {
+                top: 155px;
+                right: 14px;
+            }
+
+            .route-markers-btn {
+                top: 215px;
+                right: 14px;
             }
         }
 
@@ -2508,6 +2581,37 @@
             .offline-indicator svg {
                 width: 24px;
                 height: 24px;
+            }
+
+            /* Botões do lado direito - posicionados abaixo dos controles do Mapbox */
+            .spreadsheet-btn {
+                top: 160px;
+                right: 15px;
+                width: 52px;
+                height: 52px;
+            }
+
+            .route-markers-btn {
+                top: 224px;
+                right: 15px;
+                width: 52px;
+                height: 52px;
+            }
+
+            /* Botão cadastrar maior para touch */
+            .cadastrar-btn {
+                min-width: 200px;
+                padding: 16px 28px;
+                font-size: 16px;
+                bottom: 28px;
+            }
+
+            /* Botão encerrar navegação */
+            .end-nav-btn {
+                min-width: 200px;
+                padding: 16px 28px;
+                font-size: 16px;
+                bottom: 96px;
             }
 
             /* Popups maiores para melhor legibilidade */
@@ -2608,6 +2712,11 @@
                 min-height: 48px;
             }
 
+            .spreadsheet-btn, .route-markers-btn {
+                min-width: 46px;
+                min-height: 46px;
+            }
+
             button:not(.route-popup-btn) {
                 min-height: 44px;
             }
@@ -2615,6 +2724,11 @@
             .route-popup-btn {
                 min-height: 42px;
                 padding: 10px 12px;
+            }
+
+            .cadastrar-btn, .end-nav-btn {
+                min-height: 48px;
+                padding: 14px 24px;
             }
         }
 
