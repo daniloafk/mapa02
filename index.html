@@ -4489,7 +4489,7 @@
                 // Fetch active clients from clients table to check registered addresses
                 const { data: clientsData, error: clientsError } = await db
                     .from('clients')
-                    .select('id, address, latitude, longitude')
+                    .select('id, address, bairro, city, zipcode, latitude, longitude')
                     .not('latitude', 'is', null)
                     .not('longitude', 'is', null);
 
@@ -4568,34 +4568,98 @@
                     return intersection.size / union.size;
                 }
 
-                // Find matching registered client for an address
-                function findRegisteredClient(addr) {
+                // Normalize CEP for comparison (remove dash and spaces)
+                function normalizeCep(cep) {
+                    if (!cep) return '';
+                    return cep.toString().replace(/[-\s]/g, '').trim();
+                }
+
+                // Normalize bairro for comparison
+                function normalizeBairro(bairro) {
+                    if (!bairro) return '';
+                    return bairro
+                        .toLowerCase()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[()]/g, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                }
+
+                // Find matching registered client for an address (with optional bairro and zipcode)
+                function findRegisteredClient(addr, planilhaBairro = null, planilhaZipcode = null) {
                     if (!addr || registeredClients.length === 0) return null;
                     const normalizedAddr = normalizeAddress(addr);
                     const addrHouseNum = extractHouseNumber(addr);
+                    const normalizedPlanilhaBairro = normalizeBairro(planilhaBairro);
+                    const normalizedPlanilhaCep = normalizeCep(planilhaZipcode);
 
                     let bestMatch = null;
-                    let bestSimilarity = 0;
+                    let bestScore = 0;
 
                     for (const client of registeredClients) {
                         const normalizedClient = normalizeAddress(client.address);
                         const clientHouseNum = extractHouseNumber(client.address);
+                        const normalizedClientBairro = normalizeBairro(client.bairro);
+                        const normalizedClientCep = normalizeCep(client.zipcode);
+
                         const similarity = textSimilarity(normalizedAddr, normalizedClient);
+
+                        // Calculate bonus score for matching bairro and CEP
+                        let bonusScore = 0;
+                        let hasCepMatch = false;
+                        let hasBairroMatch = false;
+
+                        // CEP match gives highest bonus (most reliable)
+                        if (normalizedPlanilhaCep && normalizedClientCep) {
+                            if (normalizedPlanilhaCep === normalizedClientCep) {
+                                bonusScore += 0.4;
+                                hasCepMatch = true;
+                            }
+                        }
+
+                        // Bairro match gives medium bonus
+                        if (normalizedPlanilhaBairro && normalizedClientBairro) {
+                            if (normalizedPlanilhaBairro === normalizedClientBairro ||
+                                normalizedPlanilhaBairro.includes(normalizedClientBairro) ||
+                                normalizedClientBairro.includes(normalizedPlanilhaBairro)) {
+                                bonusScore += 0.25;
+                                hasBairroMatch = true;
+                            }
+                        }
+
+                        // Combined score
+                        const totalScore = similarity + bonusScore;
 
                         // If both have house numbers, they must match
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
-                                // Same house number - use relaxed threshold (consistent with shouldMergeAddresses)
-                                if (similarity >= 0.15 && similarity > bestSimilarity) {
+                                // Same house number - accept with lower threshold if CEP/bairro match
+                                const threshold = (hasCepMatch || hasBairroMatch) ? 0.10 : 0.15;
+                                if (similarity >= threshold && totalScore > bestScore) {
                                     bestMatch = client;
-                                    bestSimilarity = similarity;
+                                    bestScore = totalScore;
+                                }
+                            } else if (hasCepMatch && hasBairroMatch) {
+                                // Different house numbers but CEP and bairro match perfectly
+                                // This could be the same location with typo in number
+                                // Still require minimum text similarity
+                                if (similarity >= 0.10 && totalScore > bestScore) {
+                                    bestMatch = client;
+                                    bestScore = totalScore;
                                 }
                             }
                         } else if (!addrHouseNum && !clientHouseNum) {
-                            // Neither has house number, use higher similarity
-                            if (similarity >= 0.8 && similarity > bestSimilarity) {
+                            // Neither has house number - accept with lower threshold if CEP/bairro match
+                            const threshold = (hasCepMatch || hasBairroMatch) ? 0.5 : 0.8;
+                            if (similarity >= threshold && totalScore > bestScore) {
                                 bestMatch = client;
-                                bestSimilarity = similarity;
+                                bestScore = totalScore;
+                            }
+                        } else if (hasCepMatch && hasBairroMatch) {
+                            // One has number, other doesn't, but CEP and bairro match
+                            if (similarity >= 0.3 && totalScore > bestScore) {
+                                bestMatch = client;
+                                bestScore = totalScore;
                             }
                         }
                     }
@@ -4640,6 +4704,8 @@
                     if (!initialGroups[normalizedAddr]) {
                         initialGroups[normalizedAddr] = {
                             originalAddress: row.destination_address,
+                            originalBairro: row.bairro,
+                            originalZipcode: row.zipcode,
                             items: []
                         };
                     }
@@ -4681,8 +4747,8 @@
                             const seq2 = group2.items.map(i => i.sequence).join(',');
 
                             // Check if both have registered clients with distant coordinates
-                            const client1 = findRegisteredClient(group1.originalAddress);
-                            const client2 = findRegisteredClient(group2.originalAddress);
+                            const client1 = findRegisteredClient(group1.originalAddress, group1.originalBairro, group1.originalZipcode);
+                            const client2 = findRegisteredClient(group2.originalAddress, group2.originalBairro, group2.originalZipcode);
 
                             // Special log for sequences 4, 5, 51
                             const hasTargetSeq = [4, 5, 51].some(s => seq1.includes(s) || seq2.includes(s));
@@ -4755,6 +4821,7 @@
                     const stopsList = [];
                     const ids = [];
                     const allAddresses = []; // Store all unique addresses in this group
+                    const allAddressesWithDetails = []; // Store addresses with bairro/zipcode for matching
                     const addressSequencePairs = []; // Store address+sequence pairs
                     let deliveryStatus = null;
                     mergedItems.forEach(item => {
@@ -4767,9 +4834,14 @@
                         if (item.id) {
                             ids.push(item.id);
                         }
-                        // Collect all unique addresses
+                        // Collect all unique addresses with their bairro/zipcode
                         if (item.destination_address && !allAddresses.includes(item.destination_address)) {
                             allAddresses.push(item.destination_address);
+                            allAddressesWithDetails.push({
+                                address: item.destination_address,
+                                bairro: item.bairro,
+                                zipcode: item.zipcode
+                            });
                         }
                         // Store address+sequence pairs for popup display
                         if (item.destination_address && item.sequence) {
@@ -4787,8 +4859,8 @@
                     // Check if ANY address in this group has a registered client (Option 1: at least one)
                     // Collect ALL registered clients for this group, then cluster their coordinates
                     const registeredClients = [];
-                    for (const addr of allAddresses) {
-                        const client = findRegisteredClient(addr);
+                    for (const addrDetails of allAddressesWithDetails) {
+                        const client = findRegisteredClient(addrDetails.address, addrDetails.bairro, addrDetails.zipcode);
                         if (client) {
                             registeredClients.push(client);
                         }
