@@ -3524,8 +3524,40 @@
             updateOfflineIndicator();
 
             // Auto-sync when back online
-            setTimeout(() => {
-                syncAllPendingData();
+            setTimeout(async () => {
+                await syncAllPendingData();
+
+                // Refresh caches with fresh data from Supabase
+                try {
+                    // Refresh clients cache
+                    const { data: freshClients } = await db
+                        .from('clients')
+                        .select('id, address, bairro, city, zipcode, latitude, longitude')
+                        .not('latitude', 'is', null)
+                        .not('longitude', 'is', null);
+
+                    if (freshClients && freshClients.length > 0) {
+                        await saveCacheToDB('cachedClients', freshClients);
+                    }
+
+                    // Refresh planilha cache
+                    const { data: freshPlanilha } = await db
+                        .from('planilha')
+                        .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
+                        .not('destination_address', 'is', null)
+                        .order('sequence', { ascending: true });
+
+                    if (freshPlanilha && freshPlanilha.length > 0) {
+                        await saveCacheToDB('cachedPlanilha', freshPlanilha);
+                    }
+
+                    // Reload route markers if they are visible
+                    if (map && map.getSource && map.getSource('route-stops')) {
+                        await loadRouteMarkers(true);
+                    }
+                } catch (refreshError) {
+                    // Silently fail cache refresh
+                }
             }, 1000);
         });
 
@@ -6356,6 +6388,11 @@
 
                 // Refresh clients list
                 loadClientes();
+
+                // Update route markers if visible (to reflect new registration)
+                if (map && map.getSource && map.getSource('route-stops')) {
+                    setTimeout(() => loadRouteMarkers(true), 500);
+                }
 
                 // Reset current record
                 currentRecord = null;
