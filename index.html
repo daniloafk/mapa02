@@ -3511,6 +3511,34 @@
                 await syncPendingDeliveryStatus();
 
                 if (!skipReload) {
+                    // When not skipping reload, first refresh the caches to ensure consistency
+                    try {
+                        const { data: freshClients } = await db
+                            .from('clients')
+                            .select('id, address, bairro, city, zipcode, latitude, longitude')
+                            .not('latitude', 'is', null)
+                            .not('longitude', 'is', null);
+
+                        if (freshClients && freshClients.length > 0) {
+                            await saveCacheToDB('cachedClients', freshClients);
+                        }
+
+                        const { data: freshPlanilha } = await db
+                            .from('planilha')
+                            .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
+                            .not('destination_address', 'is', null)
+                            .order('sequence', { ascending: true });
+
+                        if (freshPlanilha && freshPlanilha.length > 0) {
+                            await saveCacheToDB('cachedPlanilha', freshPlanilha);
+                        }
+                    } catch (cacheErr) {
+                        // Cache refresh failed, continue anyway
+                    }
+
+                    // Small delay to ensure writes complete
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
                     loadClientes();
                     if (routeMarkersVisible) {
                         loadRouteMarkers(true);
@@ -3574,8 +3602,12 @@
                 await syncAllPendingData(true);
 
                 // Step 2: Refresh caches with fresh data from Supabase BEFORE reloading markers
+                // Store fresh data in variables first
+                let freshClientsData = null;
+                let freshPlanilhaData = null;
+
                 try {
-                    // Refresh clients cache first
+                    // Fetch fresh clients data
                     const { data: freshClients } = await db
                         .from('clients')
                         .select('id, address, bairro, city, zipcode, latitude, longitude')
@@ -3583,10 +3615,11 @@
                         .not('longitude', 'is', null);
 
                     if (freshClients && freshClients.length > 0) {
+                        freshClientsData = freshClients;
                         await saveCacheToDB('cachedClients', freshClients);
                     }
 
-                    // Refresh planilha cache
+                    // Fetch fresh planilha data
                     const { data: freshPlanilha } = await db
                         .from('planilha')
                         .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
@@ -3594,11 +3627,15 @@
                         .order('sequence', { ascending: true });
 
                     if (freshPlanilha && freshPlanilha.length > 0) {
+                        freshPlanilhaData = freshPlanilha;
                         await saveCacheToDB('cachedPlanilha', freshPlanilha);
                     }
                 } catch (refreshError) {
                     // Silently fail cache refresh
                 }
+
+                // Small delay to ensure IndexedDB writes are complete
+                await new Promise(resolve => setTimeout(resolve, 100));
 
                 // Step 3: NOW reload clientes and markers with fresh synchronized data
                 loadClientes();
@@ -6449,6 +6486,31 @@
                     } else {
                         // New client - just save
                         await saveToOfflineDB('pendingClients', clientData);
+                    }
+
+                    // ALSO update the cachedClients to keep markers consistent
+                    // This ensures offline markers use the same data as when we go online
+                    try {
+                        const cachedClients = await getAllFromOfflineDB('cachedClients');
+                        const existingIndex = cachedClients.findIndex(c => c.address === clientData.address);
+
+                        if (existingIndex !== -1) {
+                            // Update existing client in cache
+                            cachedClients[existingIndex] = {
+                                ...cachedClients[existingIndex],
+                                ...clientData
+                            };
+                        } else {
+                            // Add new client to cache
+                            cachedClients.push({
+                                ...clientData,
+                                id: 'pending_' + Date.now() // Temporary ID for cache
+                            });
+                        }
+
+                        await saveCacheToDB('cachedClients', cachedClients);
+                    } catch (cacheUpdateErr) {
+                        // Cache update failed, but pendingClients was saved
                     }
 
                     showQuickSuccess();
