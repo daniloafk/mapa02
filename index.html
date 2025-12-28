@@ -3642,12 +3642,17 @@
                 if (routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
                     await loadRouteMarkers(true);
                 }
+
+                // Step 4: Start periodic cache refresh to keep data updated
+                startPeriodicCacheRefresh();
             }, 1000);
         });
 
         window.addEventListener('offline', () => {
             isOnline = false;
             updateOfflineIndicator();
+            // Stop periodic refresh when offline (to save resources)
+            stopPeriodicCacheRefresh();
         });
 
         // Get all data from IndexedDB store (for offline reading)
@@ -3745,10 +3750,78 @@
             // Try to sync on startup if online
             if (isOnline) {
                 syncAllPendingData();
+                // Start periodic cache refresh when online
+                startPeriodicCacheRefresh();
             }
         }).catch(err => {
             // Falha ao inicializar sistema offline
         });
+
+        // ============================================
+        // PERIODIC CACHE REFRESH SYSTEM
+        // ============================================
+
+        let cacheRefreshInterval = null;
+        let lastCacheRefresh = 0;
+        const CACHE_REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
+
+        // Refresh all caches with fresh data from Supabase
+        async function refreshAllCaches() {
+            if (!isOnline || !offlineDB) return;
+
+            try {
+                // Refresh clients cache
+                const { data: freshClients, error: clientsError } = await db
+                    .from('clients')
+                    .select('id, address, bairro, city, zipcode, latitude, longitude')
+                    .not('latitude', 'is', null)
+                    .not('longitude', 'is', null);
+
+                if (!clientsError && freshClients && freshClients.length > 0) {
+                    await saveCacheToDB('cachedClients', freshClients);
+                }
+
+                // Refresh planilha cache
+                const { data: freshPlanilha, error: planilhaError } = await db
+                    .from('planilha')
+                    .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
+                    .not('destination_address', 'is', null)
+                    .order('sequence', { ascending: true });
+
+                if (!planilhaError && freshPlanilha && freshPlanilha.length > 0) {
+                    await saveCacheToDB('cachedPlanilha', freshPlanilha);
+                }
+
+                lastCacheRefresh = Date.now();
+            } catch (err) {
+                // Cache refresh failed silently
+            }
+        }
+
+        // Start periodic cache refresh
+        function startPeriodicCacheRefresh() {
+            if (cacheRefreshInterval) {
+                clearInterval(cacheRefreshInterval);
+            }
+
+            // Immediate refresh on start
+            refreshAllCaches();
+
+            // Then refresh every CACHE_REFRESH_INTERVAL
+            cacheRefreshInterval = setInterval(() => {
+                if (isOnline) {
+                    refreshAllCaches();
+                }
+            }, CACHE_REFRESH_INTERVAL);
+        }
+
+        // Stop periodic cache refresh
+        function stopPeriodicCacheRefresh() {
+            if (cacheRefreshInterval) {
+                clearInterval(cacheRefreshInterval);
+                cacheRefreshInterval = null;
+            }
+        }
 
         // ============================================
         // END OFFLINE SYSTEM
@@ -4505,10 +4578,41 @@
                     throw error;
                 }
 
+                // Update local cache with new status
+                try {
+                    const cachedPlanilha = await getAllFromOfflineDB('cachedPlanilha');
+                    if (cachedPlanilha && cachedPlanilha.length > 0) {
+                        const updatedPlanilha = cachedPlanilha.map(item => {
+                            if (ids.includes(item.id)) {
+                                return { ...item, delivery_status: status };
+                            }
+                            return item;
+                        });
+                        await saveCacheToDB('cachedPlanilha', updatedPlanilha);
+                    }
+                } catch (cacheErr) {
+                    // Cache update failed, but Supabase update succeeded
+                }
+
                 return data && data.length > 0;
             } catch (error) {
                 try {
                     await saveToOfflineDB('pendingDeliveryStatus', { ids, status });
+
+                    // Also update local cache when saving offline
+                    try {
+                        const cachedPlanilha = await getAllFromOfflineDB('cachedPlanilha');
+                        if (cachedPlanilha && cachedPlanilha.length > 0) {
+                            const updatedPlanilha = cachedPlanilha.map(item => {
+                                if (ids.includes(item.id)) {
+                                    return { ...item, delivery_status: status };
+                                }
+                                return item;
+                            });
+                            await saveCacheToDB('cachedPlanilha', updatedPlanilha);
+                        }
+                    } catch (cacheErr) {}
+
                     updateOfflineIndicator();
                     return true;
                 } catch (offlineErr) {
@@ -5631,6 +5735,16 @@
                         document.getElementById('progressText').textContent = `Salvando offline... ${i + 1}/${parsedData.length}`;
                     }
 
+                    // Also update cached planilha to include the new data
+                    try {
+                        const existingCache = await getAllFromOfflineDB('cachedPlanilha');
+                        // Merge with existing cache, new data comes first
+                        const mergedData = [...parsedData, ...existingCache];
+                        await saveCacheToDB('cachedPlanilha', mergedData);
+                    } catch (cacheErr) {
+                        // Cache update failed, but pending data was saved
+                    }
+
                     // Success
                     uploadProgress.classList.remove('active');
                     uploadSuccess.classList.add('active');
@@ -6568,6 +6682,27 @@
             } catch (error) {
                 try {
                     await saveToOfflineDB('pendingClients', clientData);
+
+                    // Also update local cache when saving offline
+                    try {
+                        const cachedClients = await getAllFromOfflineDB('cachedClients');
+                        const existingIndex = cachedClients.findIndex(c => c.address === clientData.address);
+
+                        if (existingIndex !== -1) {
+                            cachedClients[existingIndex] = {
+                                ...cachedClients[existingIndex],
+                                ...clientData
+                            };
+                        } else {
+                            cachedClients.push({
+                                ...clientData,
+                                id: 'pending_' + Date.now()
+                            });
+                        }
+
+                        await saveCacheToDB('cachedClients', cachedClients);
+                    } catch (cacheErr) {}
+
                     showQuickSuccess();
                     updateOfflineIndicator();
                     currentRecord = null;
