@@ -4472,28 +4472,85 @@
 
         async function loadRouteMarkers(skipFitBounds = false) {
             try {
-                // Fetch all data from planilha table including delivery_status
-                const { data, error } = await db
-                    .from('planilha')
-                    .select('id, destination_address, latitude, longitude, sequence, stop, delivery_status')
-                    .not('latitude', 'is', null)
-                    .not('longitude', 'is', null);
+                let data = null;
+                let registeredClients = [];
 
-                if (error) throw error;
+                // Try online first, fallback to offline cache
+                if (isOnline) {
+                    // Fetch all data from planilha table including delivery_status
+                    const { data: onlineData, error } = await db
+                        .from('planilha')
+                        .select('id, destination_address, bairro, city, zipcode, latitude, longitude, sequence, stop, delivery_status')
+                        .not('latitude', 'is', null)
+                        .not('longitude', 'is', null);
+
+                    if (!error && onlineData) {
+                        data = onlineData;
+                    }
+
+                    // Fetch active clients from clients table to check registered addresses
+                    const { data: clientsData, error: clientsError } = await db
+                        .from('clients')
+                        .select('id, address, bairro, city, zipcode, latitude, longitude')
+                        .not('latitude', 'is', null)
+                        .not('longitude', 'is', null);
+
+                    registeredClients = clientsError ? [] : (clientsData || []);
+                }
+
+                // Fallback to offline cache if no data or offline
+                if (!data || data.length === 0) {
+                    try {
+                        // Try cached planilha data
+                        const cachedPlanilha = await getAllFromOfflineDB('cachedPlanilha');
+                        if (cachedPlanilha && cachedPlanilha.length > 0) {
+                            // Filter only entries with valid coordinates
+                            data = cachedPlanilha.filter(item =>
+                                item.latitude && item.longitude
+                            );
+                        }
+
+                        // If still no data, try pending planilha
+                        if (!data || data.length === 0) {
+                            const pendingPlanilha = await getAllFromOfflineDB('pendingPlanilha');
+                            if (pendingPlanilha && pendingPlanilha.length > 0) {
+                                data = pendingPlanilha.filter(item =>
+                                    item.latitude && item.longitude
+                                );
+                            }
+                        }
+                    } catch (cacheError) {
+                        // Cache error, continue with empty data
+                    }
+                }
+
+                // Fallback to offline cache for clients
+                if (registeredClients.length === 0) {
+                    try {
+                        const cachedClients = await getAllFromOfflineDB('cachedClients');
+                        if (cachedClients && cachedClients.length > 0) {
+                            registeredClients = cachedClients.filter(client =>
+                                client.latitude && client.longitude
+                            );
+                        }
+
+                        // Also include pending clients
+                        const pendingClients = await getAllFromOfflineDB('pendingClients');
+                        if (pendingClients && pendingClients.length > 0) {
+                            const validPending = pendingClients.filter(client =>
+                                client.latitude && client.longitude
+                            );
+                            registeredClients = [...registeredClients, ...validPending];
+                        }
+                    } catch (cacheError) {
+                        // Cache error, continue with empty clients
+                    }
+                }
 
                 if (!data || data.length === 0) {
                     showErrorModal('Nenhum dado encontrado na planilha. Faça o upload de uma planilha primeiro.');
                     return;
                 }
-
-                // Fetch active clients from clients table to check registered addresses
-                const { data: clientsData, error: clientsError } = await db
-                    .from('clients')
-                    .select('id, address, bairro, city, zipcode, latitude, longitude')
-                    .not('latitude', 'is', null)
-                    .not('longitude', 'is', null);
-
-                const registeredClients = clientsError ? [] : (clientsData || []);
 
                 // Normalize address text for comparison
                 function normalizeAddress(addr) {
@@ -5569,7 +5626,7 @@
                     try {
                         const { data, error } = await db
                             .from('planilha')
-                            .select('id, sequence, destination_address, bairro, city, latitude, longitude, spx_tn')
+                            .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn')
                             .not('destination_address', 'is', null)
                             .order('sequence', { ascending: true });
 
@@ -5600,6 +5657,7 @@
                                 destination_address: item.destination_address,
                                 bairro: item.bairro,
                                 city: item.city,
+                                zipcode: item.zipcode,
                                 latitude: item.latitude,
                                 longitude: item.longitude,
                                 spx_tn: item.spx_tn
