@@ -4518,6 +4518,10 @@
 
                     if (!error && onlineData) {
                         data = onlineData;
+                        // Update cache with fresh data
+                        try {
+                            await saveCacheToDB('cachedPlanilha', onlineData);
+                        } catch (e) {}
                     }
 
                     // Fetch active clients from clients table to check registered addresses
@@ -4527,7 +4531,32 @@
                         .not('latitude', 'is', null)
                         .not('longitude', 'is', null);
 
-                    registeredClients = clientsError ? [] : (clientsData || []);
+                    if (!clientsError && clientsData) {
+                        registeredClients = clientsData;
+                        // Update cache with fresh data
+                        try {
+                            await saveCacheToDB('cachedClients', clientsData);
+                        } catch (e) {}
+                    }
+
+                    // Also include pending clients (not yet synced) when online
+                    try {
+                        const pendingClients = await getAllFromOfflineDB('pendingClients');
+                        if (pendingClients && pendingClients.length > 0) {
+                            const validPending = pendingClients.filter(client =>
+                                client.latitude && client.longitude
+                            );
+                            // Merge pending with online data, avoiding duplicates by address
+                            validPending.forEach(pending => {
+                                const exists = registeredClients.some(c =>
+                                    c.address === pending.address
+                                );
+                                if (!exists) {
+                                    registeredClients.push(pending);
+                                }
+                            });
+                        }
+                    } catch (e) {}
                 }
 
                 // Fallback to offline cache if no data or offline
@@ -4556,7 +4585,7 @@
                     }
                 }
 
-                // Fallback to offline cache for clients
+                // Fallback to offline cache for clients (only if not already loaded)
                 if (registeredClients.length === 0) {
                     try {
                         const cachedClients = await getAllFromOfflineDB('cachedClients');
@@ -4572,7 +4601,15 @@
                             const validPending = pendingClients.filter(client =>
                                 client.latitude && client.longitude
                             );
-                            registeredClients = [...registeredClients, ...validPending];
+                            // Merge pending with cached data, avoiding duplicates
+                            validPending.forEach(pending => {
+                                const exists = registeredClients.some(c =>
+                                    c.address === pending.address
+                                );
+                                if (!exists) {
+                                    registeredClients.push(pending);
+                                }
+                            });
                         }
                     } catch (cacheError) {
                         // Cache error, continue with empty clients
