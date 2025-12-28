@@ -6323,9 +6323,19 @@
         });
 
         // Function to update coordinates from map center
+        // Called on moveend to ensure we capture the final position
         function updateAdjustedCoordinates() {
             const center = map.getCenter();
             adjustedCoordinates = {
+                latitude: center.lat,
+                longitude: center.lng
+            };
+        }
+
+        // Function to get current map center coordinates (for immediate capture)
+        function getCurrentMapCenterCoordinates() {
+            const center = map.getCenter();
+            return {
                 latitude: center.lat,
                 longitude: center.lng
             };
@@ -6372,8 +6382,8 @@
                 longitude: initialLng
             };
 
-            // Listen to map move to update coordinates
-            map.on('move', updateAdjustedCoordinates);
+            // Listen to map moveend to update coordinates (more accurate than 'move')
+            map.on('moveend', updateAdjustedCoordinates);
 
             // Show adjust mode UI
             adjustModeAddress.textContent = currentRecord.destination_address || 'Endereço';
@@ -6435,8 +6445,8 @@
                 longitude: initialLng
             };
 
-            // Listen to map move to update coordinates
-            map.on('move', updateAdjustedCoordinates);
+            // Listen to map moveend to update coordinates (more accurate than 'move')
+            map.on('moveend', updateAdjustedCoordinates);
 
             // Create and add old position marker if we have existing coordinates
             if (existingClientRecord && existingClientRecord.latitude && existingClientRecord.longitude) {
@@ -6535,7 +6545,14 @@
 
         // Confirm adjust mode - save adjusted coordinates with quick success
         adjustModeConfirm.addEventListener('click', async () => {
-            if (adjustedCoordinates) {
+            // Capture the EXACT current map center at the moment of confirmation
+            // This ensures we save the precise position where the pin is
+            const finalCoordinates = getCurrentMapCenterCoordinates();
+
+            if (finalCoordinates && finalCoordinates.latitude && finalCoordinates.longitude) {
+                await saveClientLocationQuick(finalCoordinates);
+            } else if (adjustedCoordinates) {
+                // Fallback to last tracked coordinates
                 await saveClientLocationQuick(adjustedCoordinates);
             }
             exitAdjustMode();
@@ -6717,8 +6734,8 @@
         function exitAdjustMode() {
             isAdjustMode = false;
 
-            // Remove map move listener
-            map.off('move', updateAdjustedCoordinates);
+            // Remove map moveend listener
+            map.off('moveend', updateAdjustedCoordinates);
 
             // Hide center pin
             centerPin.classList.remove('active');
