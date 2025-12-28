@@ -3170,7 +3170,7 @@
         // Initialize IndexedDB for offline storage
         function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('MapaInterativoDB', 2);
+                const request = indexedDB.open('MapaInterativoDB', 3);
 
                 request.onerror = () => {
                     // Erro ao abrir IndexedDB
@@ -3215,6 +3215,9 @@
                     if (!db.objectStoreNames.contains('cachedClients')) {
                         const clientsCacheStore = db.createObjectStore('cachedClients', { keyPath: 'id', autoIncrement: true });
                         clientsCacheStore.createIndex('address', 'address', { unique: false });
+                        clientsCacheStore.createIndex('bairro', 'bairro', { unique: false });
+                        clientsCacheStore.createIndex('city', 'city', { unique: false });
+                        clientsCacheStore.createIndex('zipcode', 'zipcode', { unique: false });
                     }
 
                 };
@@ -3326,6 +3329,9 @@
                             const updateResult = await db
                                 .from('clients')
                                 .update({
+                                    bairro: client.bairro,
+                                    city: client.city,
+                                    zipcode: client.zipcode,
                                     latitude: client.latitude,
                                     longitude: client.longitude
                                 })
@@ -3336,6 +3342,9 @@
                                 .from('clients')
                                 .insert({
                                     address: client.address,
+                                    bairro: client.bairro,
+                                    city: client.city,
+                                    zipcode: client.zipcode,
                                     latitude: client.latitude,
                                     longitude: client.longitude
                                 });
@@ -5562,6 +5571,7 @@
                 destination_address: addr.destination_address,
                 bairro: addr.bairro,
                 city: addr.city,
+                zipcode: addr.zipcode,
                 latitude: addr.latitude || null,
                 longitude: addr.longitude || null,
                 sequence: addr.sequence
@@ -6100,6 +6110,9 @@
 
             const clientData = {
                 address: currentRecord.destination_address,
+                bairro: currentRecord.bairro || null,
+                city: currentRecord.city || null,
+                zipcode: currentRecord.zipcode || null,
                 latitude: coordinates.latitude,
                 longitude: coordinates.longitude
             };
@@ -6152,6 +6165,9 @@
                     const { error } = await db
                         .from('clients')
                         .update({
+                            bairro: clientData.bairro,
+                            city: clientData.city,
+                            zipcode: clientData.zipcode,
                             latitude: coordinates.latitude,
                             longitude: coordinates.longitude
                         })
