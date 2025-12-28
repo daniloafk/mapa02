@@ -3361,18 +3361,30 @@
                         let error = null;
 
                         if (existingData && existingData.length > 0) {
-                            const updateResult = await db
-                                .from('clients')
-                                .update({
-                                    bairro: client.bairro,
-                                    city: client.city,
-                                    zipcode: client.zipcode,
-                                    latitude: client.latitude,
-                                    longitude: client.longitude
-                                })
-                                .eq('address', client.address);
-                            error = updateResult.error;
+                            // Client already exists - only update missing fields, preserve existing coordinates
+                            const existingClient = existingData[0];
+                            const updateData = {};
+
+                            // Only update fields that are empty in Supabase but have values in pending
+                            if (!existingClient.bairro && client.bairro) updateData.bairro = client.bairro;
+                            if (!existingClient.city && client.city) updateData.city = client.city;
+                            if (!existingClient.zipcode && client.zipcode) updateData.zipcode = client.zipcode;
+
+                            // Only update coordinates if they don't exist in Supabase
+                            // This prevents overwriting verified coordinates with potentially less accurate ones
+                            if (!existingClient.latitude && client.latitude) updateData.latitude = client.latitude;
+                            if (!existingClient.longitude && client.longitude) updateData.longitude = client.longitude;
+
+                            // Only do the update if there's something to update
+                            if (Object.keys(updateData).length > 0) {
+                                const updateResult = await db
+                                    .from('clients')
+                                    .update(updateData)
+                                    .eq('address', client.address);
+                                error = updateResult.error;
+                            }
                         } else {
+                            // New client - insert with all data
                             const insertResult = await db
                                 .from('clients')
                                 .insert({
@@ -3392,6 +3404,21 @@
                     } catch (err) {
                         // Erro na sincronização, mantém pendente
                     }
+                }
+
+                // After sync, refresh the clients cache with fresh data from Supabase
+                try {
+                    const { data: freshClients } = await db
+                        .from('clients')
+                        .select('id, address, bairro, city, zipcode, latitude, longitude')
+                        .not('latitude', 'is', null)
+                        .not('longitude', 'is', null);
+
+                    if (freshClients && freshClients.length > 0) {
+                        await saveCacheToDB('cachedClients', freshClients);
+                    }
+                } catch (cacheErr) {
+                    // Erro ao atualizar cache
                 }
             } catch (err) {
                 // Erro ao obter clientes pendentes
@@ -3423,6 +3450,21 @@
                 if (!error) {
                     for (const item of pendingPlanilha) {
                         await deleteSyncedFromOfflineDB('pendingPlanilha', item.localId);
+                    }
+
+                    // After sync, refresh the planilha cache with fresh data from Supabase
+                    try {
+                        const { data: freshPlanilha } = await db
+                            .from('planilha')
+                            .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
+                            .not('destination_address', 'is', null)
+                            .order('sequence', { ascending: true });
+
+                        if (freshPlanilha && freshPlanilha.length > 0) {
+                            await saveCacheToDB('cachedPlanilha', freshPlanilha);
+                        }
+                    } catch (cacheErr) {
+                        // Erro ao atualizar cache
                     }
                 }
             } catch (err) {
@@ -3456,7 +3498,8 @@
         }
 
         // Main sync function - syncs all pending data
-        async function syncAllPendingData() {
+        // skipReload: if true, won't reload markers/clients (caller will handle it)
+        async function syncAllPendingData(skipReload = false) {
             if (!isOnline || isSyncing) return;
 
             isSyncing = true;
@@ -3467,9 +3510,11 @@
                 await syncPendingPlanilha();
                 await syncPendingDeliveryStatus();
 
-                loadClientes();
-                if (routeMarkersVisible) {
-                    loadRouteMarkers(true);
+                if (!skipReload) {
+                    loadClientes();
+                    if (routeMarkersVisible) {
+                        loadRouteMarkers(true);
+                    }
                 }
 
                 // Update pending count
@@ -3525,11 +3570,12 @@
 
             // Auto-sync when back online
             setTimeout(async () => {
-                await syncAllPendingData();
+                // Step 1: Sync pending data WITHOUT reloading markers yet
+                await syncAllPendingData(true);
 
-                // Refresh caches with fresh data from Supabase
+                // Step 2: Refresh caches with fresh data from Supabase BEFORE reloading markers
                 try {
-                    // Refresh clients cache
+                    // Refresh clients cache first
                     const { data: freshClients } = await db
                         .from('clients')
                         .select('id, address, bairro, city, zipcode, latitude, longitude')
@@ -3550,13 +3596,14 @@
                     if (freshPlanilha && freshPlanilha.length > 0) {
                         await saveCacheToDB('cachedPlanilha', freshPlanilha);
                     }
-
-                    // Reload route markers if they are visible
-                    if (map && map.getSource && map.getSource('route-stops')) {
-                        await loadRouteMarkers(true);
-                    }
                 } catch (refreshError) {
                     // Silently fail cache refresh
+                }
+
+                // Step 3: NOW reload clientes and markers with fresh synchronized data
+                loadClientes();
+                if (routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
+                    await loadRouteMarkers(true);
                 }
             }, 1000);
         });
@@ -3592,29 +3639,44 @@
         async function saveCacheToDB(storeName, dataArray) {
             if (!offlineDB) return;
 
-            try {
-                const transaction = offlineDB.transaction([storeName], 'readwrite');
-                const store = transaction.objectStore(storeName);
+            return new Promise((resolve, reject) => {
+                try {
+                    const transaction = offlineDB.transaction([storeName], 'readwrite');
+                    const store = transaction.objectStore(storeName);
 
-                // Clear old cache first
-                await new Promise((resolve, reject) => {
+                    // Clear old cache first
                     const clearRequest = store.clear();
-                    clearRequest.onsuccess = () => resolve();
+                    clearRequest.onsuccess = () => {
+                        // Add all new data using put (replaces if exists)
+                        let completed = 0;
+                        if (dataArray.length === 0) {
+                            resolve();
+                            return;
+                        }
+
+                        dataArray.forEach(item => {
+                            // Use put instead of add to handle duplicates
+                            const putRequest = store.put(item);
+                            putRequest.onsuccess = () => {
+                                completed++;
+                                if (completed === dataArray.length) {
+                                    resolve();
+                                }
+                            };
+                            putRequest.onerror = () => {
+                                completed++;
+                                if (completed === dataArray.length) {
+                                    resolve();
+                                }
+                            };
+                        });
+                    };
                     clearRequest.onerror = () => reject(clearRequest.error);
-                });
 
-                // Add all new data
-                for (const item of dataArray) {
-                    await new Promise((resolve, reject) => {
-                        const addRequest = store.add(item);
-                        addRequest.onsuccess = () => resolve();
-                        addRequest.onerror = () => reject(addRequest.error);
-                    });
+                } catch (error) {
+                    reject(error);
                 }
-
-            } catch (error) {
-                // Erro ao salvar cache
-            }
+            });
         }
 
         // Get data from cache by index
@@ -4540,18 +4602,22 @@
                     }
 
                     // Also include pending clients (not yet synced) when online
+                    // But ONLY add those that don't already exist in Supabase
+                    // Supabase data has priority (more reliable coordinates)
                     try {
                         const pendingClients = await getAllFromOfflineDB('pendingClients');
                         if (pendingClients && pendingClients.length > 0) {
                             const validPending = pendingClients.filter(client =>
                                 client.latitude && client.longitude
                             );
-                            // Merge pending with online data, avoiding duplicates by address
+                            // Only add pending clients that are truly NEW (not in Supabase)
                             validPending.forEach(pending => {
-                                const exists = registeredClients.some(c =>
+                                const existsInSupabase = registeredClients.some(c =>
                                     c.address === pending.address
                                 );
-                                if (!exists) {
+                                // If client exists in Supabase, DON'T add the pending version
+                                // Supabase coordinates are considered more reliable
+                                if (!existsInSupabase) {
                                     registeredClients.push(pending);
                                 }
                             });
@@ -4595,18 +4661,20 @@
                             );
                         }
 
-                        // Also include pending clients
+                        // Also include pending clients (for NEW clients not yet in cache)
+                        // Cache data has priority over pending data
                         const pendingClients = await getAllFromOfflineDB('pendingClients');
                         if (pendingClients && pendingClients.length > 0) {
                             const validPending = pendingClients.filter(client =>
                                 client.latitude && client.longitude
                             );
-                            // Merge pending with cached data, avoiding duplicates
+                            // Only add pending clients that are NOT in cache
+                            // Cache coordinates are considered more reliable (from Supabase)
                             validPending.forEach(pending => {
-                                const exists = registeredClients.some(c =>
+                                const existsInCache = registeredClients.some(c =>
                                     c.address === pending.address
                                 );
-                                if (!exists) {
+                                if (!existsInCache) {
                                     registeredClients.push(pending);
                                 }
                             });
