@@ -3763,7 +3763,7 @@
 
         let cacheRefreshInterval = null;
         let lastCacheRefresh = 0;
-        const CACHE_REFRESH_INTERVAL = 2 * 60 * 1000; // 2 minutes
+        const CACHE_REFRESH_INTERVAL = 30 * 1000; // 30 seconds
 
         // Refresh all caches with fresh data from Supabase
         async function refreshAllCaches() {
