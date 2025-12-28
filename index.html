@@ -722,6 +722,41 @@
             color: #f87171;
         }
 
+        .cliente-item-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 6px;
+        }
+
+        .cliente-item-bairro {
+            font-size: 11px;
+            color: #8b5cf6;
+            font-weight: 500;
+            padding: 3px 8px;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 6px;
+        }
+
+        body.dark .cliente-item-bairro {
+            color: #a78bfa;
+            background: rgba(139, 92, 246, 0.15);
+        }
+
+        .cliente-item-cep {
+            font-size: 11px;
+            color: #0ea5e9;
+            font-weight: 500;
+            padding: 3px 8px;
+            background: rgba(14, 165, 233, 0.1);
+            border-radius: 6px;
+        }
+
+        body.dark .cliente-item-cep {
+            color: #38bdf8;
+            background: rgba(14, 165, 233, 0.15);
+        }
+
         .cliente-item-coords {
             font-size: 11px;
             color: var(--text-muted-light);
@@ -3913,7 +3948,9 @@
                     renderClientes(allClientes);
                 } else {
                     const filtered = allClientes.filter(cliente =>
-                        cliente.address.toLowerCase().includes(searchTerm)
+                        cliente.address.toLowerCase().includes(searchTerm) ||
+                        (cliente.bairro && cliente.bairro.toLowerCase().includes(searchTerm)) ||
+                        (cliente.zipcode && cliente.zipcode.toLowerCase().includes(searchTerm))
                     );
                     renderClientes(filtered);
                 }
@@ -3956,6 +3993,7 @@
                             </button>
                         </div>
                     </div>
+                    ${cliente.bairro || cliente.zipcode ? `<div class="cliente-item-info">${cliente.bairro ? `<span class="cliente-item-bairro">🏘️ ${cliente.bairro}</span>` : ''}${cliente.zipcode ? `<span class="cliente-item-cep">📮 ${cliente.zipcode}</span>` : ''}</div>` : ''}
                     <div class="cliente-item-coords">📍 ${cliente.latitude ? cliente.latitude.toFixed(6) : '0.000000'}, ${cliente.longitude ? cliente.longitude.toFixed(6) : '0.000000'}</div>
                 </div>
             `).join('');
