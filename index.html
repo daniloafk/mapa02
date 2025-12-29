@@ -5902,12 +5902,48 @@
         }
 
         // Load addresses from planilha for manual selection
+        // Only shows addresses that are NOT yet registered as clients
         async function loadPlanilhaAddresses() {
             qrAddressList.innerHTML = '<div class="qr-address-list-empty">Carregando...</div>';
 
             try {
                 let addressData = [];
+                let registeredClients = [];
                 let fromCache = false;
+
+                // Load registered clients first (to filter out already registered addresses)
+                if (isOnline) {
+                    try {
+                        const { data: clientsData, error: clientsError } = await db
+                            .from('clients')
+                            .select('address')
+                            .not('address', 'is', null);
+
+                        if (!clientsError && clientsData) {
+                            registeredClients = clientsData.map(c => c.address);
+                        }
+                    } catch (e) {}
+                }
+
+                // If offline or failed, load from cache
+                if (registeredClients.length === 0) {
+                    try {
+                        const cachedClients = await getAllFromOfflineDB('cachedClients');
+                        if (cachedClients && cachedClients.length > 0) {
+                            registeredClients = cachedClients.map(c => c.address);
+                        }
+
+                        // Also include pending clients (not yet synced)
+                        const pendingClients = await getAllFromOfflineDB('pendingClients');
+                        if (pendingClients && pendingClients.length > 0) {
+                            pendingClients.forEach(c => {
+                                if (c.address && !registeredClients.includes(c.address)) {
+                                    registeredClients.push(c.address);
+                                }
+                            });
+                        }
+                    } catch (e) {}
+                }
 
                 // Try online first if available
                 if (isOnline) {
@@ -5963,8 +5999,20 @@
                     return;
                 }
 
-                planilhaAddressData = addressData;
-                renderAddressList(addressData);
+                // Filter out addresses that are already registered as clients
+                const unregisteredAddresses = addressData.filter(addr => {
+                    if (!addr.destination_address) return false;
+                    // Check if this address is already registered
+                    return !registeredClients.includes(addr.destination_address);
+                });
+
+                if (unregisteredAddresses.length === 0) {
+                    qrAddressList.innerHTML = '<div class="qr-address-list-empty">Todos os endereços já foram cadastrados! 🎉</div>';
+                    return;
+                }
+
+                planilhaAddressData = unregisteredAddresses;
+                renderAddressList(unregisteredAddresses);
 
             } catch (error) {
                 // Erro ao carregar endereços
