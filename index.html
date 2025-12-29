@@ -2433,11 +2433,39 @@
                 padding: 16px;
             }
 
-            /* Botões do sidebar */
-            .sidebar button {
+            /* Botões do sidebar - exceto close-btn e cliente-item-btn */
+            .sidebar button:not(.close-btn):not(.cliente-item-btn) {
                 padding: 10px 16px !important;
                 font-size: 13px !important;
                 min-height: 40px !important;
+            }
+
+            /* Botão fechar sidebar - mobile */
+            .close-btn {
+                width: 40px !important;
+                height: 40px !important;
+                min-height: 40px !important;
+                padding: 0 !important;
+                flex-shrink: 0;
+            }
+
+            .close-btn svg {
+                width: 22px !important;
+                height: 22px !important;
+            }
+
+            /* Botão excluir cliente - mobile */
+            .cliente-item-btn {
+                width: 32px !important;
+                height: 32px !important;
+                min-height: 32px !important;
+                padding: 0 !important;
+                flex-shrink: 0;
+            }
+
+            .cliente-item-btn svg {
+                width: 18px !important;
+                height: 18px !important;
             }
 
             /* Inputs */
@@ -2530,9 +2558,38 @@
                 min-height: 38px !important;
             }
 
-            .sidebar button {
+            /* Botões do sidebar - exceto close-btn e cliente-item-btn */
+            .sidebar button:not(.close-btn):not(.cliente-item-btn) {
                 min-height: 42px !important;
                 font-size: 14px !important;
+            }
+
+            /* Botão fechar sidebar - tablet */
+            .close-btn {
+                width: 38px !important;
+                height: 38px !important;
+                min-height: 38px !important;
+                padding: 0 !important;
+                flex-shrink: 0;
+            }
+
+            .close-btn svg {
+                width: 20px !important;
+                height: 20px !important;
+            }
+
+            /* Botão excluir cliente - tablet */
+            .cliente-item-btn {
+                width: 30px !important;
+                height: 30px !important;
+                min-height: 30px !important;
+                padding: 0 !important;
+                flex-shrink: 0;
+            }
+
+            .cliente-item-btn svg {
+                width: 16px !important;
+                height: 16px !important;
             }
 
             input[type="text"],
@@ -2689,9 +2746,38 @@
                 font-size: 15px;
             }
 
-            button {
+            /* Botões gerais - exceto close-btn e cliente-item-btn */
+            button:not(.close-btn):not(.cliente-item-btn) {
                 min-height: 48px;
                 font-size: 15px;
+            }
+
+            /* Botão fechar sidebar - veicular */
+            .close-btn {
+                width: 42px !important;
+                height: 42px !important;
+                min-height: 42px !important;
+                padding: 0 !important;
+                flex-shrink: 0;
+            }
+
+            .close-btn svg {
+                width: 22px !important;
+                height: 22px !important;
+            }
+
+            /* Botão excluir cliente - veicular */
+            .cliente-item-btn {
+                width: 36px !important;
+                height: 36px !important;
+                min-height: 36px !important;
+                padding: 0 !important;
+                flex-shrink: 0;
+            }
+
+            .cliente-item-btn svg {
+                width: 18px !important;
+                height: 18px !important;
             }
         }
 
@@ -2752,7 +2838,8 @@
                 min-height: 46px;
             }
 
-            button:not(.route-popup-btn) {
+            /* Botões gerais - exceto close-btn, cliente-item-btn e route-popup-btn */
+            button:not(.route-popup-btn):not(.close-btn):not(.cliente-item-btn) {
                 min-height: 44px;
             }
 
@@ -2764,6 +2851,32 @@
             .cadastrar-btn, .end-nav-btn {
                 min-height: 48px;
                 padding: 14px 24px;
+            }
+
+            /* Botão fechar sidebar - touch */
+            .close-btn {
+                width: 44px !important;
+                height: 44px !important;
+                min-height: 44px !important;
+                padding: 0 !important;
+            }
+
+            .close-btn svg {
+                width: 22px !important;
+                height: 22px !important;
+            }
+
+            /* Botão excluir cliente - touch */
+            .cliente-item-btn {
+                width: 36px !important;
+                height: 36px !important;
+                min-height: 36px !important;
+                padding: 0 !important;
+            }
+
+            .cliente-item-btn svg {
+                width: 18px !important;
+                height: 18px !important;
             }
         }
 
