@@ -454,6 +454,8 @@
 
         .search-input-wrapper {
             position: relative;
+            display: flex;
+            align-items: center;
         }
 
         .search-input-wrapper svg {
@@ -465,6 +467,8 @@
             height: 18px;
             color: var(--text-muted-light);
             pointer-events: none;
+            z-index: 1;
+            flex-shrink: 0;
         }
 
         body.dark .search-input-wrapper svg {
@@ -2468,14 +2472,27 @@
                 height: 18px !important;
             }
 
-            /* Inputs */
-            input[type="text"],
+            /* Inputs - exceto search-input que tem estilos próprios */
+            input[type="text"]:not(.search-input),
             input[type="file"],
             select,
             textarea {
                 padding: 10px !important;
                 font-size: 14px !important;
                 min-height: 40px !important;
+            }
+
+            /* Search input específico - mobile */
+            .search-input {
+                padding: 12px 14px 12px 42px !important;
+                font-size: 16px !important;
+                min-height: 44px !important;
+            }
+
+            .search-input-wrapper svg {
+                width: 20px !important;
+                height: 20px !important;
+                left: 12px !important;
             }
 
             /* Location error modal */
@@ -2592,12 +2609,26 @@
                 height: 16px !important;
             }
 
-            input[type="text"],
+            /* Inputs - exceto search-input */
+            input[type="text"]:not(.search-input),
             input[type="file"],
             select,
             textarea {
                 min-height: 42px !important;
                 font-size: 14px !important;
+            }
+
+            /* Search input específico - tablet */
+            .search-input {
+                padding: 11px 14px 11px 42px !important;
+                font-size: 15px !important;
+                min-height: 42px !important;
+            }
+
+            .search-input-wrapper svg {
+                width: 18px !important;
+                height: 18px !important;
+                left: 14px !important;
             }
 
             /* Botões do lado direito - small tablets */
@@ -2737,13 +2768,26 @@
                 padding: 20px;
             }
 
-            /* Formulários com campos maiores */
-            input[type="text"],
+            /* Formulários com campos maiores - exceto search-input */
+            input[type="text"]:not(.search-input),
             input[type="file"],
             select,
             textarea {
                 min-height: 48px;
                 font-size: 15px;
+            }
+
+            /* Search input específico - veicular */
+            .search-input {
+                padding: 12px 14px 12px 44px !important;
+                font-size: 16px !important;
+                min-height: 48px !important;
+            }
+
+            .search-input-wrapper svg {
+                width: 20px !important;
+                height: 20px !important;
+                left: 14px !important;
             }
 
             /* Botões gerais - exceto close-btn e cliente-item-btn */
