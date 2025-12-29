@@ -173,11 +173,11 @@
         /* Offline Indicator */
         .offline-indicator {
             position: fixed;
-            top: 136px;
+            top: 140px;
             left: 16px;
             z-index: 1000;
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border: none;
             border-radius: 50%;
             background: #22c55e;
@@ -241,6 +241,8 @@
             z-index: 1000;
             width: 48px;
             height: 48px;
+            min-width: 48px;
+            min-height: 48px;
             border: none;
             border-radius: 12px;
             background: var(--surface-light);
@@ -250,6 +252,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0;
         }
 
         body.dark .menu-btn {
@@ -273,6 +276,8 @@
             z-index: 1000;
             width: 48px;
             height: 48px;
+            min-width: 48px;
+            min-height: 48px;
             border: none;
             border-radius: 12px;
             background: var(--surface-light);
@@ -282,6 +287,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0;
         }
 
         body.dark .toggle-markers-btn {
@@ -922,14 +928,16 @@
             height: 20px;
         }
 
-        /* Spreadsheet Button */
+        /* Spreadsheet Button - positioned below Mapbox controls */
         .spreadsheet-btn {
             position: fixed;
-            top: 180px;
+            top: 160px;
             right: 10px;
             z-index: 1000;
             width: 48px;
             height: 48px;
+            min-width: 48px;
+            min-height: 48px;
             border: none;
             border-radius: 12px;
             background: var(--surface-light);
@@ -939,6 +947,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0;
         }
 
         body.dark .spreadsheet-btn {
@@ -968,11 +977,13 @@
         /* Route Markers Button */
         .route-markers-btn {
             position: fixed;
-            top: 240px;
+            top: 220px;
             right: 10px;
             z-index: 1000;
             width: 48px;
             height: 48px;
+            min-width: 48px;
+            min-height: 48px;
             border: none;
             border-radius: 12px;
             background: var(--surface-light);
@@ -982,6 +993,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 0;
         }
 
         body.dark .route-markers-btn {
@@ -2346,21 +2358,37 @@
                 max-width: 100%;
             }
 
-            /* Botões de navegação */
-            .menu-btn, .toggle-markers-btn {
-                width: 40px !important;
-                height: 40px !important;
+            /* Botões de navegação - esquerda */
+            .menu-btn {
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
+                top: 12px !important;
+                left: 12px !important;
+            }
+
+            .toggle-markers-btn {
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
+                top: 64px !important;
+                left: 12px !important;
             }
 
             .offline-indicator {
-                width: 34px !important;
-                height: 34px !important;
-                top: 120px;
+                width: 38px !important;
+                height: 38px !important;
+                min-width: 38px !important;
+                min-height: 38px !important;
+                top: 116px !important;
+                left: 12px !important;
             }
 
             .offline-indicator svg {
-                width: 16px;
-                height: 16px;
+                width: 18px !important;
+                height: 18px !important;
             }
 
             /* Popup de rotas */
@@ -2520,40 +2548,54 @@
                 font-size: 13px !important;
             }
 
-            /* Botões do lado direito - mobile */
+            /* Botões do lado direito - mobile (abaixo dos controles Mapbox) */
             .spreadsheet-btn {
-                top: 140px !important;
-                right: 8px !important;
-                width: 40px !important;
-                height: 40px !important;
+                top: 130px !important;
+                right: 10px !important;
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
             }
 
             .route-markers-btn {
-                top: 190px !important;
-                right: 8px !important;
-                width: 40px !important;
-                height: 40px !important;
+                top: 182px !important;
+                right: 10px !important;
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
             }
 
             .spreadsheet-btn svg, .route-markers-btn svg {
-                width: 20px !important;
-                height: 20px !important;
+                width: 22px !important;
+                height: 22px !important;
             }
 
             /* Botão cadastrar - mobile */
             .cadastrar-btn {
                 min-width: 160px !important;
                 padding: 12px 20px !important;
-                font-size: 13px !important;
+                font-size: 14px !important;
                 bottom: 20px !important;
+            }
+
+            .cadastrar-btn svg {
+                width: 18px !important;
+                height: 18px !important;
             }
 
             /* Botão encerrar navegação - mobile */
             .end-nav-btn {
                 min-width: 160px !important;
                 padding: 12px 20px !important;
-                font-size: 13px !important;
-                bottom: 76px !important;
+                font-size: 14px !important;
+                bottom: 80px !important;
+            }
+
+            .end-nav-btn svg {
+                width: 18px !important;
+                height: 18px !important;
             }
         }
 
@@ -2631,30 +2673,71 @@
                 left: 14px !important;
             }
 
+            /* Botões de navegação - esquerda - tablets */
+            .menu-btn {
+                width: 46px !important;
+                height: 46px !important;
+                min-width: 46px !important;
+                min-height: 46px !important;
+                top: 14px !important;
+                left: 14px !important;
+            }
+
+            .toggle-markers-btn {
+                width: 46px !important;
+                height: 46px !important;
+                min-width: 46px !important;
+                min-height: 46px !important;
+                top: 70px !important;
+                left: 14px !important;
+            }
+
+            .offline-indicator {
+                width: 40px !important;
+                height: 40px !important;
+                min-width: 40px !important;
+                min-height: 40px !important;
+                top: 126px !important;
+                left: 14px !important;
+            }
+
             /* Botões do lado direito - small tablets */
             .spreadsheet-btn {
-                top: 150px;
-                right: 12px;
-                width: 46px;
-                height: 46px;
+                top: 145px !important;
+                right: 12px !important;
+                width: 46px !important;
+                height: 46px !important;
+                min-width: 46px !important;
+                min-height: 46px !important;
             }
 
             .route-markers-btn {
-                top: 206px;
-                right: 12px;
-                width: 46px;
-                height: 46px;
+                top: 201px !important;
+                right: 12px !important;
+                width: 46px !important;
+                height: 46px !important;
+                min-width: 46px !important;
+                min-height: 46px !important;
+            }
+
+            .spreadsheet-btn svg, .route-markers-btn svg {
+                width: 22px !important;
+                height: 22px !important;
             }
 
             /* Botões inferiores - small tablets */
             .cadastrar-btn {
-                min-width: 180px;
-                padding: 14px 24px;
+                min-width: 180px !important;
+                padding: 14px 24px !important;
+                font-size: 14px !important;
+                bottom: 24px !important;
             }
 
             .end-nav-btn {
-                min-width: 180px;
-                padding: 14px 24px;
+                min-width: 180px !important;
+                padding: 14px 24px !important;
+                font-size: 14px !important;
+                bottom: 88px !important;
             }
         }
 
@@ -2664,77 +2747,107 @@
                 width: 380px;
             }
 
+            /* Botões de navegação - esquerda */
+            .menu-btn {
+                top: 16px;
+                left: 16px;
+            }
+
+            .toggle-markers-btn {
+                top: 76px;
+                left: 16px;
+            }
+
+            .offline-indicator {
+                top: 136px;
+                left: 16px;
+            }
+
             /* Botões do lado direito - tablets */
             .spreadsheet-btn {
                 top: 155px;
-                right: 14px;
+                right: 12px;
             }
 
             .route-markers-btn {
                 top: 215px;
-                right: 14px;
+                right: 12px;
             }
         }
 
         /* Multimídia Veicular (Landscape) - típico 800x480 a 1280x720 */
         @media (min-width: 600px) and (max-width: 1280px) and (orientation: landscape) {
             /* Botões maiores para toque em telas de carro */
-            .menu-btn, .toggle-markers-btn {
-                width: 56px;
-                height: 56px;
-            }
-
             .menu-btn {
-                top: 20px;
-                left: 20px;
+                width: 52px !important;
+                height: 52px !important;
+                min-width: 52px !important;
+                min-height: 52px !important;
+                top: 16px !important;
+                left: 16px !important;
             }
 
             .toggle-markers-btn {
-                top: 88px;
-                left: 20px;
+                width: 52px !important;
+                height: 52px !important;
+                min-width: 52px !important;
+                min-height: 52px !important;
+                top: 80px !important;
+                left: 16px !important;
             }
 
             .offline-indicator {
-                top: 156px;
-                left: 20px;
-                width: 48px;
-                height: 48px;
+                top: 144px !important;
+                left: 16px !important;
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
             }
 
             .offline-indicator svg {
-                width: 24px;
-                height: 24px;
+                width: 22px !important;
+                height: 22px !important;
             }
 
             /* Botões do lado direito - posicionados abaixo dos controles do Mapbox */
             .spreadsheet-btn {
-                top: 160px;
-                right: 15px;
-                width: 52px;
-                height: 52px;
+                top: 155px !important;
+                right: 14px !important;
+                width: 50px !important;
+                height: 50px !important;
+                min-width: 50px !important;
+                min-height: 50px !important;
             }
 
             .route-markers-btn {
-                top: 224px;
-                right: 15px;
-                width: 52px;
-                height: 52px;
+                top: 217px !important;
+                right: 14px !important;
+                width: 50px !important;
+                height: 50px !important;
+                min-width: 50px !important;
+                min-height: 50px !important;
+            }
+
+            .spreadsheet-btn svg, .route-markers-btn svg {
+                width: 24px !important;
+                height: 24px !important;
             }
 
             /* Botão cadastrar maior para touch */
             .cadastrar-btn {
-                min-width: 200px;
-                padding: 16px 28px;
-                font-size: 16px;
-                bottom: 28px;
+                min-width: 200px !important;
+                padding: 16px 28px !important;
+                font-size: 15px !important;
+                bottom: 24px !important;
             }
 
             /* Botão encerrar navegação */
             .end-nav-btn {
-                min-width: 200px;
-                padding: 16px 28px;
-                font-size: 16px;
-                bottom: 96px;
+                min-width: 200px !important;
+                padding: 16px 28px !important;
+                font-size: 15px !important;
+                bottom: 92px !important;
             }
 
             /* Popups maiores para melhor legibilidade */
