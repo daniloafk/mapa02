@@ -5315,7 +5315,6 @@
             try {
                 let data = null;
                 let registeredClients = [];
-                console.log('[DEBUG] Iniciando loadRouteMarkers...');
 
                 // Try online first, fallback to offline cache
                 if (isOnline) {
@@ -5328,16 +5327,10 @@
 
                     if (!error && onlineData) {
                         data = onlineData;
-                        console.log(`[DEBUG] Planilha carregada: ${data.length} registros`);
-                        // Check order 13
-                        const o13 = data.find(d => d.sequence === 13);
-                        console.log(`[DEBUG] Ordem 13:`, o13 ? { lat: o13.latitude, lng: o13.longitude, addr: o13.destination_address?.substring(0, 30) } : 'NÃO ENCONTRADA');
                         // Update cache with fresh data
                         try {
                             await saveCacheToDB('cachedPlanilha', onlineData);
                         } catch (e) {}
-                    } else if (error) {
-                        console.error('[DEBUG] Erro ao carregar planilha:', error);
                     }
 
                     // Fetch active clients from clients table to check registered addresses
@@ -5573,7 +5566,7 @@
                         // Combined score
                         const totalScore = similarity + bonusScore;
 
-                        // If both have house numbers, they must match
+                        // If both have house numbers, they must match EXACTLY
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
                                 // Same house number - accept with lower threshold if CEP/bairro match
@@ -5582,15 +5575,10 @@
                                     bestMatch = client;
                                     bestScore = totalScore;
                                 }
-                            } else if (hasCepMatch && hasBairroMatch) {
-                                // Different house numbers but CEP and bairro match perfectly
-                                // This could be the same location with typo in number
-                                // Still require minimum text similarity
-                                if (similarity >= 0.10 && totalScore > bestScore) {
-                                    bestMatch = client;
-                                    bestScore = totalScore;
-                                }
                             }
+                            // IMPORTANTE: Se os números de casa são DIFERENTES, NÃO fazer match
+                            // Isso garante que "Rua X, 99" NUNCA combine com "Rua X, 587"
+                            // O endereço será tratado como não cadastrado (marcador vermelho)
                         } else if (!addrHouseNum && !clientHouseNum) {
                             // Neither has house number - accept with lower threshold if CEP/bairro match
                             const threshold = (hasCepMatch || hasBairroMatch) ? 0.5 : 0.8;
@@ -5808,14 +5796,6 @@
                     for (const addrDetails of allAddressesWithDetails) {
                         const client = findRegisteredClient(addrDetails.address, addrDetails.bairro, addrDetails.zipcode);
                         if (client) {
-                            // Debug for order 13
-                            if (sequences.includes(13)) {
-                                console.log(`[DEBUG] ORDEM 13 - MATCH ENCONTRADO:`, {
-                                    planilha: addrDetails.address?.substring(0, 50),
-                                    cliente: client.address?.substring(0, 50),
-                                    clienteId: client.id
-                                });
-                            }
                             registeredClients.push(client);
                         }
                     }
@@ -5873,9 +5853,6 @@
                 });
 
                 const stops = mergedGroups;
-                console.log(`[DEBUG] Total de paradas criadas: ${stops.length}`);
-                const stop13 = stops.find(s => s.sequences && s.sequences.includes(13));
-                console.log(`[DEBUG] Parada com ordem 13:`, stop13 ? { lat: stop13.latitude, lng: stop13.longitude, isReg: stop13.isRegistered } : 'NÃO ENCONTRADA');
 
                 // Determine icon color based on delivery status
                 function getIconColor(stop) {
