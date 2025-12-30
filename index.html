@@ -5586,13 +5586,10 @@
                                 bestMatch = client;
                                 bestScore = totalScore;
                             }
-                        } else if (hasCepMatch && hasBairroMatch) {
-                            // One has number, other doesn't, but CEP and bairro match
-                            if (similarity >= 0.3 && totalScore > bestScore) {
-                                bestMatch = client;
-                                bestScore = totalScore;
-                            }
                         }
+                        // IMPORTANTE: Se UM tem número e o OUTRO não, NÃO fazer match
+                        // Exemplo: "Rua X, 99" não deve combinar com "Rua X" (sem número)
+                        // Pois o cliente sem número pode ser qualquer endereço daquela rua
                     }
 
                     return bestMatch;
