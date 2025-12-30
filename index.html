@@ -5318,12 +5318,12 @@
 
                 // Try online first, fallback to offline cache
                 if (isOnline) {
-                    // Fetch all data from planilha table including delivery_status
+                    // Fetch ALL data from planilha table (including those without coordinates)
+                    // We'll try to get coordinates from registered clients or geocoding
                     const { data: onlineData, error } = await db
                         .from('planilha')
                         .select('id, destination_address, bairro, city, zipcode, latitude, longitude, sequence, stop, delivery_status')
-                        .not('latitude', 'is', null)
-                        .not('longitude', 'is', null);
+                        .not('destination_address', 'is', null);
 
                     if (!error && onlineData) {
                         data = onlineData;
@@ -5375,22 +5375,17 @@
                 // Fallback to offline cache if no data or offline
                 if (!data || data.length === 0) {
                     try {
-                        // Try cached planilha data
+                        // Try cached planilha data - load ALL entries (we handle missing coords later)
                         const cachedPlanilha = await getAllFromOfflineDB('cachedPlanilha');
                         if (cachedPlanilha && cachedPlanilha.length > 0) {
-                            // Filter only entries with valid coordinates
-                            data = cachedPlanilha.filter(item =>
-                                item.latitude && item.longitude
-                            );
+                            data = cachedPlanilha.filter(item => item.destination_address);
                         }
 
                         // If still no data, try pending planilha
                         if (!data || data.length === 0) {
                             const pendingPlanilha = await getAllFromOfflineDB('pendingPlanilha');
                             if (pendingPlanilha && pendingPlanilha.length > 0) {
-                                data = pendingPlanilha.filter(item =>
-                                    item.latitude && item.longitude
-                                );
+                                data = pendingPlanilha.filter(item => item.destination_address);
                             }
                         }
                     } catch (cacheError) {
@@ -5724,9 +5719,12 @@
 
                     // Use clustering to find the correct coordinates
                     // Group coordinates that are close together, pick the largest cluster
+                    // Only include items that have valid coordinates
                     const coordClusters = [];
+                    const itemsWithCoords = mergedItems.filter(item => item.latitude && item.longitude);
+                    const itemsWithoutCoords = mergedItems.filter(item => !item.latitude || !item.longitude);
 
-                    mergedItems.forEach(item => {
+                    itemsWithCoords.forEach(item => {
                         // Find a cluster within 200m
                         let foundCluster = null;
                         for (const cluster of coordClusters) {
@@ -5750,7 +5748,7 @@
                     });
 
                     // Find the largest cluster (most items = most likely correct location)
-                    let bestCluster = coordClusters[0];
+                    let bestCluster = coordClusters.length > 0 ? coordClusters[0] : null;
                     coordClusters.forEach(cluster => {
                         if (cluster.count > bestCluster.count) {
                             bestCluster = cluster;
@@ -5808,29 +5806,41 @@
                     }
 
                     // Determine final coordinates
+                    // Priority: 1. Registered client coords (GREEN), 2. Planilha coords (RED), 3. Skip if no coords
                     let finalLat, finalLng;
+                    let hasValidCoords = false;
+
                     if (registeredClients.length > 0) {
-                        // Use average of all registered clients' coordinates (cluster them)
+                        // Use average of all registered clients' coordinates (GREEN marker)
                         finalLat = registeredClients.reduce((sum, c) => sum + c.latitude, 0) / registeredClients.length;
                         finalLng = registeredClients.reduce((sum, c) => sum + c.longitude, 0) / registeredClients.length;
-                    } else {
-                        // No registered clients - use planilha coordinates cluster
+                        hasValidCoords = true;
+                    } else if (bestCluster) {
+                        // No registered clients - use planilha coordinates cluster (RED marker)
                         finalLat = bestCluster.lat;
                         finalLng = bestCluster.lng;
+                        hasValidCoords = true;
                     }
+                    // If no coords at all (neither registered client nor planilha has coords), skip this group
 
-                    mergedGroups.push({
-                        address: group1.originalAddress, // Main address for display
-                        allAddresses: allAddresses, // All addresses in this group
-                        addressSequencePairs: addressSequencePairs, // Address+sequence pairs for popup
-                        latitude: finalLat,
-                        longitude: finalLng,
-                        sequences: sequences,
-                        stops: stopsList,
-                        ids: ids,
-                        deliveryStatus: deliveryStatus,
-                        isRegistered: registeredClients.length > 0 // GREEN if at least one address is registered
-                    });
+                    // Only add to mergedGroups if we have valid coordinates
+                    if (hasValidCoords) {
+                        mergedGroups.push({
+                            address: group1.originalAddress, // Main address for display
+                            allAddresses: allAddresses, // All addresses in this group
+                            addressSequencePairs: addressSequencePairs, // Address+sequence pairs for popup
+                            latitude: finalLat,
+                            longitude: finalLng,
+                            sequences: sequences,
+                            stops: stopsList,
+                            ids: ids,
+                            deliveryStatus: deliveryStatus,
+                            isRegistered: registeredClients.length > 0 // GREEN if at least one address is registered
+                        });
+                    } else {
+                        // Log addresses without any coordinates for debugging
+                        console.warn(`[RouteMarkers] Endereço sem coordenadas (ordem ${sequences.join(',')}): ${group1.originalAddress}`);
+                    }
                 });
 
                 const stops = mergedGroups;
