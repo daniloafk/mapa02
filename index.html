@@ -5315,6 +5315,7 @@
             try {
                 let data = null;
                 let registeredClients = [];
+                console.log('[DEBUG] Iniciando loadRouteMarkers...');
 
                 // Try online first, fallback to offline cache
                 if (isOnline) {
@@ -5327,10 +5328,16 @@
 
                     if (!error && onlineData) {
                         data = onlineData;
+                        console.log(`[DEBUG] Planilha carregada: ${data.length} registros`);
+                        // Check order 13
+                        const o13 = data.find(d => d.sequence === 13);
+                        console.log(`[DEBUG] Ordem 13:`, o13 ? { lat: o13.latitude, lng: o13.longitude, addr: o13.destination_address?.substring(0, 30) } : 'NÃO ENCONTRADA');
                         // Update cache with fresh data
                         try {
                             await saveCacheToDB('cachedPlanilha', onlineData);
                         } catch (e) {}
+                    } else if (error) {
+                        console.error('[DEBUG] Erro ao carregar planilha:', error);
                     }
 
                     // Fetch active clients from clients table to check registered addresses
@@ -5858,6 +5865,9 @@
                 });
 
                 const stops = mergedGroups;
+                console.log(`[DEBUG] Total de paradas criadas: ${stops.length}`);
+                const stop13 = stops.find(s => s.sequences && s.sequences.includes(13));
+                console.log(`[DEBUG] Parada com ordem 13:`, stop13 ? { lat: stop13.latitude, lng: stop13.longitude, isReg: stop13.isRegistered } : 'NÃO ENCONTRADA');
 
                 // Determine icon color based on delivery status
                 function getIconColor(stop) {
@@ -6282,7 +6292,7 @@
         // Geocode existing addresses button
         geocodeExisting.addEventListener('click', async () => {
             if (!isOnline) {
-                showErrorModal('A geocodifica��ão requer conexão com a internet.');
+                showErrorModal('A geocodificação requer conexão com a internet.');
                 return;
             }
 
