@@ -5806,39 +5806,53 @@
                     }
 
                     // Determine final coordinates
-                    // Priority: 1. Registered client coords (GREEN), 2. Planilha coords (RED), 3. Skip if no coords
+                    // Priority: 1. Registered client coords (GREEN), 2. Planilha coords (RED)
                     let finalLat, finalLng;
                     let hasValidCoords = false;
 
                     if (registeredClients.length > 0) {
-                        // Use average of all registered clients' coordinates (GREEN marker)
+                        // Match found! Use client coordinates (GREEN marker)
                         finalLat = registeredClients.reduce((sum, c) => sum + c.latitude, 0) / registeredClients.length;
                         finalLng = registeredClients.reduce((sum, c) => sum + c.longitude, 0) / registeredClients.length;
                         hasValidCoords = true;
-                    } else if (bestCluster) {
-                        // No registered clients - use planilha coordinates cluster (RED marker)
-                        finalLat = bestCluster.lat;
-                        finalLng = bestCluster.lng;
-                        hasValidCoords = true;
+                    } else {
+                        // NO match - use planilha coordinates (RED marker)
+                        // Try bestCluster first, otherwise use first item with valid coords
+                        if (bestCluster) {
+                            finalLat = bestCluster.lat;
+                            finalLng = bestCluster.lng;
+                            hasValidCoords = true;
+                        } else if (itemsWithCoords.length > 0) {
+                            // Fallback: use first item's coordinates directly
+                            finalLat = itemsWithCoords[0].latitude;
+                            finalLng = itemsWithCoords[0].longitude;
+                            hasValidCoords = true;
+                        } else {
+                            // Last resort: check if ANY mergedItem has coords
+                            const itemWithCoord = mergedItems.find(item => item.latitude && item.longitude);
+                            if (itemWithCoord) {
+                                finalLat = itemWithCoord.latitude;
+                                finalLng = itemWithCoord.longitude;
+                                hasValidCoords = true;
+                            }
+                        }
                     }
-                    // If no coords at all (neither registered client nor planilha has coords), skip this group
 
-                    // Only add to mergedGroups if we have valid coordinates
+                    // Add to mergedGroups if we have valid coordinates
                     if (hasValidCoords) {
                         mergedGroups.push({
-                            address: group1.originalAddress, // Main address for display
-                            allAddresses: allAddresses, // All addresses in this group
-                            addressSequencePairs: addressSequencePairs, // Address+sequence pairs for popup
+                            address: group1.originalAddress,
+                            allAddresses: allAddresses,
+                            addressSequencePairs: addressSequencePairs,
                             latitude: finalLat,
                             longitude: finalLng,
                             sequences: sequences,
                             stops: stopsList,
                             ids: ids,
                             deliveryStatus: deliveryStatus,
-                            isRegistered: registeredClients.length > 0 // GREEN if at least one address is registered
+                            isRegistered: registeredClients.length > 0 // GREEN if match, RED if not
                         });
                     } else {
-                        // Log addresses without any coordinates for debugging
                         console.warn(`[RouteMarkers] Endereço sem coordenadas (ordem ${sequences.join(',')}): ${group1.originalAddress}`);
                     }
                 });
@@ -6268,7 +6282,7 @@
         // Geocode existing addresses button
         geocodeExisting.addEventListener('click', async () => {
             if (!isOnline) {
-                showErrorModal('A geocodificação requer conexão com a internet.');
+                showErrorModal('A geocodifica��ão requer conexão com a internet.');
                 return;
             }
 
