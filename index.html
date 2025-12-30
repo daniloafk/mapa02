@@ -5808,6 +5808,14 @@
                     for (const addrDetails of allAddressesWithDetails) {
                         const client = findRegisteredClient(addrDetails.address, addrDetails.bairro, addrDetails.zipcode);
                         if (client) {
+                            // Debug for order 13
+                            if (sequences.includes(13)) {
+                                console.log(`[DEBUG] ORDEM 13 - MATCH ENCONTRADO:`, {
+                                    planilha: addrDetails.address?.substring(0, 50),
+                                    cliente: client.address?.substring(0, 50),
+                                    clienteId: client.id
+                                });
+                            }
                             registeredClients.push(client);
                         }
                     }
