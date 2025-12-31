@@ -5858,6 +5858,17 @@
 
                     // Add to mergedGroups if we have valid coordinates
                     if (hasValidCoords) {
+                        // Debug for stops containing orders 38 or 89
+                        if (sequences.includes(38) || sequences.includes(89)) {
+                            console.log('[FINAL STOP DEBUG]', {
+                                sequences: sequences,
+                                address: group1.originalAddress?.substring(0, 50),
+                                allAddresses: allAddresses.map(a => a.substring(0, 40)),
+                                lat: finalLat,
+                                lng: finalLng
+                            });
+                        }
+
                         mergedGroups.push({
                             address: group1.originalAddress,
                             allAddresses: allAddresses,
