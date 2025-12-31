@@ -5597,7 +5597,7 @@
                 }
 
                 // Check if two addresses should be merged (same street AND same house number)
-                function shouldMergeAddresses(addr1, addr2, normalized1, normalized2) {
+                function shouldMergeAddresses(addr1, addr2, normalized1, normalized2, bairro1 = null, bairro2 = null, cep1 = null, cep2 = null) {
                     // Extract house numbers first
                     const houseNum1 = extractHouseNumber(addr1);
                     const houseNum2 = extractHouseNumber(addr2);
@@ -5607,10 +5607,37 @@
                         if (houseNum1 !== houseNum2) {
                             return false; // Different house numbers = different addresses
                         }
+
+                        // Check if CEP and bairro match
+                        const normalizedCep1 = normalizeCep(cep1);
+                        const normalizedCep2 = normalizeCep(cep2);
+                        const normalizedBairro1 = normalizeBairro(bairro1);
+                        const normalizedBairro2 = normalizeBairro(bairro2);
+
+                        const hasCepMatch = normalizedCep1 && normalizedCep2 && normalizedCep1 === normalizedCep2;
+                        const hasBairroMatch = normalizedBairro1 && normalizedBairro2 && (
+                            normalizedBairro1 === normalizedBairro2 ||
+                            normalizedBairro1.includes(normalizedBairro2) ||
+                            normalizedBairro2.includes(normalizedBairro1)
+                        );
+
                         // Same house number - check if street name is similar
                         const similarity = textSimilarity(normalized1, normalized2);
-                        // Increase threshold to 60% to prevent merging different streets with same number
-                        const shouldMerge = similarity >= 0.60;
+
+                        // Smart threshold based on CEP/bairro match:
+                        // - If CEP AND bairro match: low threshold (15%) - allows different complements
+                        // - If only one matches: medium threshold (40%)
+                        // - If neither matches: high threshold (60%) - prevents different streets
+                        let threshold;
+                        if (hasCepMatch && hasBairroMatch) {
+                            threshold = 0.15;
+                        } else if (hasCepMatch || hasBairroMatch) {
+                            threshold = 0.40;
+                        } else {
+                            threshold = 0.60;
+                        }
+
+                        const shouldMerge = similarity >= threshold;
 
                         // Debug for orders 12 and 13
                         if ((addr1.includes('Coronel Juvêncio') && addr1.includes('99')) ||
@@ -5621,7 +5648,9 @@
                                 norm1: normalized1.substring(0, 50),
                                 norm2: normalized2.substring(0, 50),
                                 similarity: similarity.toFixed(3),
-                                threshold: 0.60,
+                                threshold,
+                                hasCepMatch,
+                                hasBairroMatch,
                                 willMerge: shouldMerge
                             });
                         }
@@ -5690,7 +5719,11 @@
                             group1.originalAddress,
                             group2.originalAddress,
                             key1,
-                            key2
+                            key2,
+                            group1.originalBairro,
+                            group2.originalBairro,
+                            group1.originalZipcode,
+                            group2.originalZipcode
                         );
 
                         if (shouldMerge) {
