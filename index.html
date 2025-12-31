@@ -5531,7 +5531,6 @@
 
                     let bestMatch = null;
                     let bestScore = 0;
-                    let debugInfo = null; // Para debug
 
                     for (const client of registeredClients) {
                         const normalizedClient = normalizeAddress(client.address);
@@ -5570,22 +5569,12 @@
                         // If both have house numbers, they must match EXACTLY
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
-                                // Same house number - accept with lower threshold if CEP/bairro match
-                                const threshold = (hasCepMatch || hasBairroMatch) ? 0.10 : 0.15;
+                                // Same house number - BUT we need high similarity unless CEP/bairro also match
+                                // This prevents "Rua A, 10" from matching "Rua B, 10" (different streets!)
+                                const threshold = (hasCepMatch || hasBairroMatch) ? 0.10 : 0.70;
                                 if (similarity >= threshold && totalScore > bestScore) {
                                     bestMatch = client;
                                     bestScore = totalScore;
-                                    debugInfo = {
-                                        reason: 'SAME_HOUSE_NUMBER',
-                                        planilha: addr.substring(0, 50),
-                                        planilhaNum: addrHouseNum,
-                                        cliente: client.address?.substring(0, 50),
-                                        clienteNum: clientHouseNum,
-                                        similarity: similarity.toFixed(3),
-                                        threshold,
-                                        hasCepMatch,
-                                        hasBairroMatch
-                                    };
                                 }
                             }
                             // IMPORTANTE: Se os números de casa são DIFERENTES, NÃO fazer match
@@ -5597,15 +5586,6 @@
                             if (similarity >= threshold && totalScore > bestScore) {
                                 bestMatch = client;
                                 bestScore = totalScore;
-                                debugInfo = {
-                                    reason: 'NO_HOUSE_NUMBERS',
-                                    planilha: addr.substring(0, 50),
-                                    cliente: client.address?.substring(0, 50),
-                                    similarity: similarity.toFixed(3),
-                                    threshold,
-                                    hasCepMatch,
-                                    hasBairroMatch
-                                };
                             }
                         }
                         // IMPORTANTE: Se UM tem número e o OUTRO não, NÃO fazer match
@@ -5613,9 +5593,6 @@
                         // Pois o cliente sem número pode ser qualquer endereço daquela rua
                     }
 
-                    if (bestMatch && debugInfo) {
-                        console.log('[MATCH DEBUG]', JSON.stringify(debugInfo));
-                    }
                     return bestMatch;
                 }
 
