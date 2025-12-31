@@ -5611,15 +5611,17 @@
                         const similarity = textSimilarity(normalized1, normalized2);
                         // Increase threshold to 60% to prevent merging different streets with same number
                         const result = similarity >= 0.60;
-                        if (result && (addr1.includes('94') || addr2.includes('94'))) {
-                            console.log('[MERGE DEBUG]', {
+
+                        // Debug for addresses with 94
+                        if (addr1.includes('94') || addr2.includes('94')) {
+                            console.log('[MERGE ATTEMPT]', {
                                 addr1: addr1.substring(0, 50),
                                 addr2: addr2.substring(0, 50),
                                 norm1: normalized1.substring(0, 40),
                                 norm2: normalized2.substring(0, 40),
                                 similarity: similarity.toFixed(3),
                                 threshold: 0.60,
-                                result
+                                willMerge: result
                             });
                         }
                         return result;
