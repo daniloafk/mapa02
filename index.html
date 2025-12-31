@@ -5701,6 +5701,18 @@
                     const comp1 = extractAddressComponents(addr1);
                     const comp2 = extractAddressComponents(addr2);
 
+                    // Debug for orders 12 and 13
+                    if ((addr1.includes('Coronel Juvêncio') && addr1.includes('99')) ||
+                        (addr2.includes('Coronel Juvêncio') && addr2.includes('99'))) {
+                        console.log('[MERGE DECISION]', {
+                            addr1: addr1.substring(0, 50),
+                            addr2: addr2.substring(0, 50),
+                            comp1: { primary: comp1.primary, secondary: comp1.secondary, number: comp1.number },
+                            comp2: { primary: comp2.primary, secondary: comp2.secondary, number: comp2.number },
+                            cep1, cep2, bairro1, bairro2
+                        });
+                    }
+
                     // If both have house numbers, they MUST match to merge
                     if (comp1.number && comp2.number) {
                         if (comp1.number !== comp2.number) {
@@ -5753,7 +5765,21 @@
                             threshold = 0.60;
                         }
 
-                        return similarity >= threshold;
+                        const willMerge = similarity >= threshold;
+
+                        // Debug for orders 12 and 13 - show final decision
+                        if ((addr1.includes('Coronel Juvêncio') && addr1.includes('99')) ||
+                            (addr2.includes('Coronel Juvêncio') && addr2.includes('99'))) {
+                            console.log('[MERGE RESULT]', {
+                                similarity: similarity.toFixed(3),
+                                threshold,
+                                hasCepMatch,
+                                hasBairroMatch,
+                                willMerge
+                            });
+                        }
+
+                        return willMerge;
                     }
 
                     // If only one has house number, don't merge (ambiguous)
