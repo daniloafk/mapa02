@@ -5701,17 +5701,6 @@
                     const comp1 = extractAddressComponents(addr1);
                     const comp2 = extractAddressComponents(addr2);
 
-                    // Debug for orders 44 and 47
-                    if ((addr1.includes('José Mariano Cavaleiro') && addr1.includes('22')) ||
-                        (addr2.includes('José Mariano Cavaleiro') && addr2.includes('22'))) {
-                        console.log('[COMPONENTS DEBUG]', {
-                            addr1: addr1.substring(0, 60),
-                            comp1: { primary: comp1.primary.substring(0, 40), secondary: comp1.secondary, number: comp1.number, clean: comp1.clean.substring(0, 50) },
-                            addr2: addr2.substring(0, 60),
-                            comp2: { primary: comp2.primary.substring(0, 40), secondary: comp2.secondary, number: comp2.number, clean: comp2.clean.substring(0, 50) }
-                        });
-                    }
-
                     // If both have house numbers, they MUST match to merge
                     if (comp1.number && comp2.number) {
                         if (comp1.number !== comp2.number) {
