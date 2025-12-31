@@ -5607,10 +5607,21 @@
                         if (houseNum1 !== houseNum2) {
                             return false; // Different house numbers = different addresses
                         }
-                        // Same house number - check if street name is similar (very relaxed threshold)
+                        // Same house number - check if street name is similar
                         const similarity = textSimilarity(normalized1, normalized2);
-                        // Lower threshold to 15% when house numbers match (catches "Rua palma muniz 465" variations)
-                        const result = similarity >= 0.15;
+                        // Increase threshold to 60% to prevent merging different streets with same number
+                        const result = similarity >= 0.60;
+                        if (result && (addr1.includes('94') || addr2.includes('94'))) {
+                            console.log('[MERGE DEBUG]', {
+                                addr1: addr1.substring(0, 50),
+                                addr2: addr2.substring(0, 50),
+                                norm1: normalized1.substring(0, 40),
+                                norm2: normalized2.substring(0, 40),
+                                similarity: similarity.toFixed(3),
+                                threshold: 0.60,
+                                result
+                            });
+                        }
                         return result;
                     }
 
@@ -5639,6 +5650,15 @@
                         };
                     }
                     initialGroups[normalizedAddr].items.push(row);
+
+                    // Debug for orders 38 and 89
+                    if (row.sequence === 38 || row.sequence === 89) {
+                        console.log(`[INITIAL GROUP DEBUG] Ordem ${row.sequence}:`, {
+                            original: row.destination_address?.substring(0, 50),
+                            normalized: normalizedAddr.substring(0, 50),
+                            groupKey: normalizedAddr.substring(0, 50)
+                        });
+                    }
                 });
 
                 // Second pass: Merge similar addresses regardless of distance
@@ -5675,15 +5695,19 @@
                             const seq1 = group1.items.map(i => i.sequence).join(',');
                             const seq2 = group2.items.map(i => i.sequence).join(',');
 
+                            // Debug for orders 38 and 89
+                            if (seq1.includes('38') || seq1.includes('89') || seq2.includes('38') || seq2.includes('89')) {
+                                console.log('[MERGE HAPPENING]', {
+                                    seq1,
+                                    seq2,
+                                    addr1: group1.originalAddress?.substring(0, 50),
+                                    addr2: group2.originalAddress?.substring(0, 50)
+                                });
+                            }
+
                             // Check if both have registered clients with distant coordinates
                             const client1 = findRegisteredClient(group1.originalAddress, group1.originalBairro, group1.originalZipcode);
                             const client2 = findRegisteredClient(group2.originalAddress, group2.originalBairro, group2.originalZipcode);
-
-                            // Special log for sequences 4, 5, 51
-                            const hasTargetSeq = [4, 5, 51].some(s => seq1.includes(s) || seq2.includes(s));
-                            if (hasTargetSeq) {
-                            }
-
 
                             if (client1 && client2) {
                                 // Check if they are DIFFERENT clients
@@ -5693,7 +5717,6 @@
                                         client1.latitude, client1.longitude,
                                         client2.latitude, client2.longitude
                                     );
-
 
                                     if (distance > 0.1) {
                                         return;
