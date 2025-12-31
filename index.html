@@ -5610,7 +5610,23 @@
                         // Same house number - check if street name is similar
                         const similarity = textSimilarity(normalized1, normalized2);
                         // Increase threshold to 60% to prevent merging different streets with same number
-                        return similarity >= 0.60;
+                        const shouldMerge = similarity >= 0.60;
+
+                        // Debug for orders 12 and 13
+                        if ((addr1.includes('Coronel Juvêncio') && addr1.includes('99')) ||
+                            (addr2.includes('Coronel Juvêncio') && addr2.includes('99'))) {
+                            console.log('[MERGE CHECK]', {
+                                addr1: addr1.substring(0, 50),
+                                addr2: addr2.substring(0, 50),
+                                norm1: normalized1.substring(0, 50),
+                                norm2: normalized2.substring(0, 50),
+                                similarity: similarity.toFixed(3),
+                                threshold: 0.60,
+                                willMerge: shouldMerge
+                            });
+                        }
+
+                        return shouldMerge;
                     }
 
                     // If only one has house number, don't merge (ambiguous)
@@ -5638,6 +5654,14 @@
                         };
                     }
                     initialGroups[normalizedAddr].items.push(row);
+
+                    // Debug for orders 12 and 13
+                    if (row.sequence === 12 || row.sequence === 13) {
+                        console.log(`[GROUP DEBUG] Ordem ${row.sequence}:`, {
+                            original: row.destination_address?.substring(0, 60),
+                            normalized: normalizedAddr.substring(0, 60)
+                        });
+                    }
                 });
 
                 // Second pass: Merge similar addresses regardless of distance
