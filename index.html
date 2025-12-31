@@ -5494,6 +5494,105 @@
                     return null;
                 }
 
+                // Extract address components (main street, secondary street, number)
+                function extractAddressComponents(addr) {
+                    if (!addr) return { primary: '', secondary: '', number: '', clean: '' };
+
+                    // Types of streets (ordered by specificity to avoid false matches)
+                    const streetTypes = [
+                        { pattern: /\b(passagem|pass\.?)\b/gi, name: 'passagem' },
+                        { pattern: /\b(alameda|al\.?)\b/gi, name: 'alameda' },
+                        { pattern: /\b(travessa|tv\.?|trav\.?)\b/gi, name: 'travessa' },
+                        { pattern: /\b(avenida|av\.?)\b/gi, name: 'avenida' },
+                        { pattern: /\b(rodovia|rod\.?)\b/gi, name: 'rodovia' },
+                        { pattern: /\b(estrada|est\.?)\b/gi, name: 'estrada' },
+                        { pattern: /\b(praça|pça\.?|praca)\b/gi, name: 'praca' },
+                        { pattern: /\b(viela)\b/gi, name: 'viela' },
+                        { pattern: /\b(beco)\b/gi, name: 'beco' },
+                        { pattern: /\b(rua|r\.?)\b/gi, name: 'rua' }
+                    ];
+
+                    // Reference words that indicate start of complement (not part of address)
+                    const referenceWords = [
+                        'proximo', 'próximo', 'prox', 'próx',
+                        'ao lado', 'em frente', 'atras', 'atrás',
+                        'entre', 'perto',
+                        'casa', 'fundos', 'frente',
+                        'referencia', 'referência', 'ref',
+                        'descendo', 'subindo',
+                        'esquina', 'esq'
+                    ];
+
+                    // Extract house number first
+                    const houseNum = extractHouseNumber(addr);
+
+                    // Find all street type occurrences with their positions
+                    const matches = [];
+                    for (const streetType of streetTypes) {
+                        let match;
+                        const regex = new RegExp(streetType.pattern);
+                        while ((match = regex.exec(addr)) !== null) {
+                            matches.push({
+                                type: streetType.name,
+                                index: match.index,
+                                fullMatch: match[0]
+                            });
+                        }
+                    }
+
+                    // Sort by position in string
+                    matches.sort((a, b) => a.index - b.index);
+
+                    let primary = '';
+                    let secondary = '';
+
+                    if (matches.length === 0) {
+                        // No street type found, use the whole address
+                        primary = addr.trim();
+                    } else if (matches.length === 1) {
+                        // Only one street type - it's the primary
+                        const match = matches[0];
+                        // Extract from street type to number or end
+                        const afterType = addr.substring(match.index);
+                        const beforeComma = afterType.split(',')[0];
+                        primary = beforeComma.trim();
+                    } else {
+                        // Multiple street types - first is primary, second is secondary
+                        const first = matches[0];
+                        const second = matches[1];
+
+                        // Primary: from first type to just before second type
+                        const primaryText = addr.substring(first.index, second.index).replace(/[,\s]+$/, '').trim();
+                        primary = primaryText;
+
+                        // Secondary: from second type to number or comma
+                        const afterSecond = addr.substring(second.index);
+                        const beforeComma = afterSecond.split(',')[0];
+                        secondary = beforeComma.trim();
+                    }
+
+                    // Remove reference words from primary and secondary
+                    const refPattern = new RegExp(`\\b(${referenceWords.join('|')})\\b.*$`, 'i');
+                    primary = primary.replace(refPattern, '').trim();
+                    secondary = secondary.replace(refPattern, '').trim();
+
+                    // Create clean identifier: primary + secondary (if exists) + number
+                    let clean = normalizeAddress(primary);
+                    if (secondary) {
+                        clean += ' ' + normalizeAddress(secondary);
+                    }
+                    if (houseNum) {
+                        clean += ' ' + houseNum;
+                    }
+
+                    return {
+                        primary: primary,
+                        secondary: secondary,
+                        number: houseNum,
+                        clean: clean.trim()
+                    };
+                }
+
                 // Calculate text similarity (Jaccard index based on words)
                 function textSimilarity(text1, text2) {
                     const words1 = new Set(text1.split(' ').filter(w => w.length > 2));
@@ -5598,17 +5697,45 @@
 
                 // Check if two addresses should be merged (same street AND same house number)
                 function shouldMergeAddresses(addr1, addr2, normalized1, normalized2, bairro1 = null, bairro2 = null, cep1 = null, cep2 = null) {
-                    // Extract house numbers first
-                    const houseNum1 = extractHouseNumber(addr1);
-                    const houseNum2 = extractHouseNumber(addr2);
+                    // Extract address components intelligently
+                    const comp1 = extractAddressComponents(addr1);
+                    const comp2 = extractAddressComponents(addr2);
+
+                    // Debug for orders 44 and 47
+                    if ((addr1.includes('José Mariano Cavaleiro') && addr1.includes('22')) ||
+                        (addr2.includes('José Mariano Cavaleiro') && addr2.includes('22'))) {
+                        console.log('[COMPONENTS DEBUG]', {
+                            addr1: addr1.substring(0, 60),
+                            comp1: { primary: comp1.primary.substring(0, 40), secondary: comp1.secondary, number: comp1.number, clean: comp1.clean.substring(0, 50) },
+                            addr2: addr2.substring(0, 60),
+                            comp2: { primary: comp2.primary.substring(0, 40), secondary: comp2.secondary, number: comp2.number, clean: comp2.clean.substring(0, 50) }
+                        });
+                    }
 
                     // If both have house numbers, they MUST match to merge
-                    if (houseNum1 && houseNum2) {
-                        if (houseNum1 !== houseNum2) {
+                    if (comp1.number && comp2.number) {
+                        if (comp1.number !== comp2.number) {
                             return false; // Different house numbers = different addresses
                         }
 
-                        // Check if CEP and bairro match
+                        // Check if both have secondary streets (Passagem, Alameda, etc.)
+                        const hasSecondary1 = comp1.secondary && comp1.secondary.length > 0;
+                        const hasSecondary2 = comp2.secondary && comp2.secondary.length > 0;
+
+                        // If both have secondary streets, they MUST match (same passagem/alameda)
+                        if (hasSecondary1 && hasSecondary2) {
+                            // Compare the clean identifiers which include primary + secondary + number
+                            const similarity = textSimilarity(comp1.clean, comp2.clean);
+                            // High threshold for secondary streets (they must be very similar)
+                            return similarity >= 0.70;
+                        }
+
+                        // If one has secondary and other doesn't, don't merge
+                        if (hasSecondary1 !== hasSecondary2) {
+                            return false;
+                        }
+
+                        // Neither has secondary - check primary street + CEP/bairro
                         const normalizedCep1 = normalizeCep(cep1);
                         const normalizedCep2 = normalizeCep(cep2);
                         const normalizedBairro1 = normalizeBairro(bairro1);
@@ -5621,8 +5748,8 @@
                             normalizedBairro2.includes(normalizedBairro1)
                         );
 
-                        // Same house number - check if street name is similar
-                        const similarity = textSimilarity(normalized1, normalized2);
+                        // Compare primary streets using clean identifiers
+                        const similarity = textSimilarity(comp1.clean, comp2.clean);
 
                         // Smart threshold based on CEP/bairro match:
                         // - If CEP AND bairro match: low threshold (15%) - allows different complements
@@ -5637,29 +5764,11 @@
                             threshold = 0.60;
                         }
 
-                        const shouldMerge = similarity >= threshold;
-
-                        // Debug for orders 12 and 13
-                        if ((addr1.includes('Coronel Juvêncio') && addr1.includes('99')) ||
-                            (addr2.includes('Coronel Juvêncio') && addr2.includes('99'))) {
-                            console.log('[MERGE CHECK]', {
-                                addr1: addr1.substring(0, 50),
-                                addr2: addr2.substring(0, 50),
-                                norm1: normalized1.substring(0, 50),
-                                norm2: normalized2.substring(0, 50),
-                                similarity: similarity.toFixed(3),
-                                threshold,
-                                hasCepMatch,
-                                hasBairroMatch,
-                                willMerge: shouldMerge
-                            });
-                        }
-
-                        return shouldMerge;
+                        return similarity >= threshold;
                     }
 
                     // If only one has house number, don't merge (ambiguous)
-                    if (houseNum1 || houseNum2) {
+                    if (comp1.number || comp2.number) {
                         return false;
                     }
 
@@ -5683,14 +5792,6 @@
                         };
                     }
                     initialGroups[normalizedAddr].items.push(row);
-
-                    // Debug for orders 12 and 13
-                    if (row.sequence === 12 || row.sequence === 13) {
-                        console.log(`[GROUP DEBUG] Ordem ${row.sequence}:`, {
-                            original: row.destination_address?.substring(0, 60),
-                            normalized: normalizedAddr.substring(0, 60)
-                        });
-                    }
                 });
 
                 // Second pass: Merge similar addresses regardless of distance
