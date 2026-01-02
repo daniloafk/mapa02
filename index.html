@@ -6001,7 +6001,9 @@
                             stops: stopsList,
                             ids: ids,
                             deliveryStatus: deliveryStatus,
-                            isRegistered: registeredClients.length > 0 // GREEN if match, RED if not
+                            isRegistered: registeredClients.length > 0, // GREEN if match, RED if not
+                            bairro: group1.originalBairro || null,
+                            zipcode: group1.originalZipcode || null
                         });
                     } else {
                         console.warn(`[RouteMarkers] Endereço sem coordenadas (ordem ${sequences.join(',')}): ${group1.originalAddress}`);
@@ -6076,7 +6078,9 @@
                             sequences: stop.sequences.join(', '),
                             isRegistered: stop.isRegistered,
                             ids: stop.ids.join(','),
-                            deliveryStatus: stop.deliveryStatus || 'pending'
+                            deliveryStatus: stop.deliveryStatus || 'pending',
+                            bairro: stop.bairro || '',
+                            zipcode: stop.zipcode || ''
                         }
                     };
                 });
@@ -6138,19 +6142,25 @@
                         const addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
                         const hasMultipleAddresses = addressSequencePairs.length > 1;
 
+                        // Build bairro and CEP info display
+                        const bairroDisplay = props.bairro ? `<span style="font-size: 10px; color: #8b5cf6; font-weight: 500; padding: 2px 6px; background: rgba(139, 92, 246, 0.1); border-radius: 4px;">🏘️ ${props.bairro}</span>` : '';
+                        const cepDisplay = props.zipcode ? `<span style="font-size: 10px; color: #0ea5e9; font-weight: 500; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;">📮 ${props.zipcode}</span>` : '';
+                        const locationInfo = (bairroDisplay || cepDisplay) ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; margin-bottom: 8px;">${bairroDisplay}${cepDisplay}</div>` : '';
+
                         // Build address display
                         let addressDisplay = '';
                         if (hasMultipleAddresses) {
                             addressDisplay = `
                                 <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
+                                ${locationInfo}
                                 <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
                                     ${addressSequencePairs.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}
                                 </div>
                             `;
                         } else if (addressSequencePairs.length === 1) {
-                            addressDisplay = `<div class="route-popup-address">${addressSequencePairs[0].address}</div>`;
+                            addressDisplay = `<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
                         } else {
-                            addressDisplay = `<div class="route-popup-address">${props.address}</div>`;
+                            addressDisplay = `<div class="route-popup-address">${props.address}</div>${locationInfo}`;
                         }
 
                         // Determine current status for button styling
