@@ -2016,7 +2016,9 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            transform: translate(-50%, -100%);
+            /* Alinha a ponta da sombra (bottom do pin) no centro do mapa */
+            /* head (16px) + needle (30px) + shadow offset (6px) = 52px */
+            transform: translate(-50%, calc(-100% - 6px));
             z-index: 1000;
             pointer-events: none;
             display: none;
