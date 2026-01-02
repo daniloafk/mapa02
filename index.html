@@ -1119,6 +1119,7 @@
         .route-popup-content {
             font-size: 13px;
             width: fit-content;
+            min-width: 250px; /* Garante espaço mínimo para os 3 botões */
         }
 
         .route-popup-address {
@@ -1144,7 +1145,7 @@
 
         .route-popup-actions {
             display: flex;
-            flex-wrap: nowrap;
+            flex-wrap: wrap; /* Permite quebra de linha se necessário */
             gap: 4px;
             margin-top: 10px;
             padding-top: 10px;
@@ -1152,12 +1153,12 @@
         }
 
         .route-popup-btn {
-            flex: 1;
+            flex: 1 1 auto; /* flex-grow flex-shrink flex-basis */
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 2px;
-            padding: 6px 6px;
+            padding: 6px 8px;
             border: none;
             border-radius: 6px;
             font-size: 10px;
@@ -1167,6 +1168,8 @@
             color: #1e293b;
             transition: all 0.2s ease;
             white-space: nowrap;
+            min-width: 70px; /* Largura mínima para garantir legibilidade */
+            max-width: 100%; /* Previne overflow */
         }
 
         .route-popup-btn svg {
@@ -2455,9 +2458,10 @@
 
             .route-popup-btn {
                 font-size: 9px !important;
-                padding: 6px 4px !important;
+                padding: 6px 6px !important;
                 min-height: 32px !important;
-                gap: 3px !important;
+                gap: 2px !important;
+                min-width: 65px !important; /* Ajuste para telas pequenas */
             }
 
             .route-popup-btn svg {
@@ -2739,6 +2743,7 @@
                 font-size: 11px !important;
                 padding: 8px 10px !important;
                 min-height: 38px !important;
+                min-width: 70px !important;
             }
 
             /* Botões do sidebar - exceto close-btn e cliente-item-btn */
@@ -6176,9 +6181,9 @@
                             <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
                         `;
 
-                        // Responsive maxWidth for popup
+                        // Responsive maxWidth for popup - aumentado para acomodar 3 botões
                         const isMobile = window.innerWidth <= 480;
-                        const popupMaxWidth = isMobile ? '260px' : '300px';
+                        const popupMaxWidth = isMobile ? '280px' : '320px';
 
                         routePopup = new mapboxgl.Popup({
                             offset: [0, -50],
