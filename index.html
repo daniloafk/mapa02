@@ -2022,7 +2022,9 @@
         }
 
         .center-pin.active {
-            display: block;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .center-pin-marker {
@@ -2031,10 +2033,16 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            /* Posiciona o ponto de precisão (bottom da needle - 3px) exatamente no centro do mapa */
-            /* head (16px) + needle (30px) = 46px total */
-            /* O ponto de precisão está 3px abaixo da needle, então compensamos com -3px adicional */
-            transform: translate(-50%, calc(-100% - 7px));
+            /*
+             * Cálculo preciso do posicionamento:
+             * - head: 16px altura
+             * - needle: 30px altura
+             * - Total do marcador: 46px
+             * - O centro do mapa deve coincidir com a PONTA da agulha (bottom da needle)
+             * - transform: translate(-50%, -100%) posiciona o bottom no centro
+             * - Não precisamos de offset adicional pois a ponta da agulha É o bottom
+             */
+            transform: translate(-50%, -100%);
         }
 
         .center-pin-head {
@@ -2053,31 +2061,111 @@
             background: linear-gradient(to bottom, #dc2626 0%, #991b1b 100%);
             border-radius: 0 0 2px 2px;
             box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.3);
+            position: relative;
         }
 
         .center-pin-shadow {
             position: absolute;
-            bottom: -3px; /* Ajustado para ficar logo abaixo da ponta da agulha */
+            bottom: 0; /* Exatamente na ponta da agulha */
             left: 50%;
-            transform: translateX(-50%);
+            transform: translate(-50%, 100%); /* Posiciona abaixo da ponta */
             width: 12px;
             height: 6px;
             background: radial-gradient(ellipse, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
+            pointer-events: none;
         }
 
         /* Ponto de precisão no centro exato - indica onde as coordenadas serão salvas */
         .center-pin-precision {
             position: absolute;
-            bottom: -3px; /* Posicionado logo abaixo da ponta da agulha */
+            bottom: 0; /* Exatamente na ponta da agulha */
             left: 50%;
-            transform: translateX(-50%);
-            width: 8px;
-            height: 8px;
+            transform: translate(-50%, 50%); /* Centraliza o ponto verticalmente na ponta */
+            width: 10px;
+            height: 10px;
             background: white;
             border: 2px solid #dc2626;
             border-radius: 50%;
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25), 0 1px 4px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.3), 0 1px 6px rgba(0, 0, 0, 0.5);
             z-index: 10;
+        }
+
+        /* Display de coordenadas em tempo real
+         * Posicionado abaixo do crosshair para não atrapalhar a mira
+         */
+        .center-pin-coords {
+            position: absolute;
+            top: 20px; /* Abaixo do centro do mapa */
+            left: 0;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #10b981; /* Verde para destacar as coordenadas */
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            white-space: nowrap;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            z-index: 5;
+        }
+
+        .center-pin-coords::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 6px solid rgba(0, 0, 0, 0.9);
+        }
+
+        /* Crosshair visual no centro exato do mapa
+         * O .center-pin está em top:50%, left:50% (centro da tela)
+         * O crosshair deve indicar EXATAMENTE esse ponto central
+         */
+        .center-pin-crosshair {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%); /* Centraliza no ponto 0,0 do .center-pin */
+            width: 24px;
+            height: 24px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .center-pin-crosshair::before,
+        .center-pin-crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(220, 38, 38, 0.7);
+        }
+
+        .center-pin-crosshair::before {
+            /* Linha horizontal */
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+
+        .center-pin-crosshair::after {
+            /* Linha vertical */
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            transform: translateX(-50%);
+        }
+
+        /* Estado desabilitado durante animação */
+        .adjust-mode-btn-confirm.disabled {
+            opacity: 0.5;
+            pointer-events: none;
         }
 
         /* View Marker (for "Ver no mapa" button) */
@@ -3648,12 +3736,19 @@
 
     <!-- Center Pin for Adjust Mode (needle style) -->
     <div class="center-pin" id="centerPin">
+        <!-- Crosshair no centro exato do mapa -->
+        <div class="center-pin-crosshair"></div>
+        <!-- Marcador visual -->
         <div class="center-pin-marker">
             <div class="center-pin-head"></div>
             <div class="center-pin-needle">
                 <div class="center-pin-precision"></div>
+                <div class="center-pin-shadow"></div>
             </div>
-            <div class="center-pin-shadow"></div>
+        </div>
+        <!-- Display de coordenadas em tempo real -->
+        <div class="center-pin-coords" id="centerPinCoords">
+            --.------°, --.------°
         </div>
     </div>
 
@@ -3785,7 +3880,7 @@
             });
         }
 
-        // Inicialização ass��ncrona de todos os recursos
+        // Inicialização assíncrona de todos os recursos
         async function initializeApp() {
             try {
                 updateLoader('scripts', 'Carregando recursos...');
@@ -7406,7 +7501,9 @@
 
         let adjustedCoordinates = null;
         let isAdjustMode = false;
+        let isMapAnimating = false; // Flag para detectar se o mapa está em animação
         const centerPin = document.getElementById('centerPin');
+        const centerPinCoords = document.getElementById('centerPinCoords');
 
         // Address exists modal elements
         const addressExistsModal = document.getElementById('addressExistsModal');
@@ -7449,23 +7546,51 @@
             enterAdjustModeWithOldPosition();
         });
 
-        // Function to update coordinates from map center
-        // Called on moveend to ensure we capture the final position
+        // Function to update coordinates from map center and display in real-time
+        // Called on 'move' event for immediate visual feedback
         function updateAdjustedCoordinates() {
             const center = map.getCenter();
             adjustedCoordinates = {
                 latitude: center.lat,
                 longitude: center.lng
             };
+
+            // Atualiza o display de coordenadas em tempo real
+            if (centerPinCoords && isAdjustMode) {
+                const latStr = center.lat.toFixed(6);
+                const lngStr = center.lng.toFixed(6);
+                centerPinCoords.textContent = `${latStr}°, ${lngStr}°`;
+            }
         }
 
         // Function to get current map center coordinates (for immediate capture)
+        // Esta função captura as coordenadas EXATAS no momento da chamada
+        // independente de qualquer evento ou animação
         function getCurrentMapCenterCoordinates() {
             const center = map.getCenter();
             return {
                 latitude: center.lat,
                 longitude: center.lng
             };
+        }
+
+        // Handler para detectar início de animação do mapa
+        function onMapMoveStart() {
+            if (isAdjustMode) {
+                isMapAnimating = true;
+                // Opcional: adicionar classe para feedback visual
+                adjustModeConfirm.classList.add('disabled');
+            }
+        }
+
+        // Handler para detectar fim de animação do mapa
+        function onMapMoveEnd() {
+            if (isAdjustMode) {
+                isMapAnimating = false;
+                adjustModeConfirm.classList.remove('disabled');
+                // Atualiza as coordenadas finais
+                updateAdjustedCoordinates();
+            }
         }
 
         // Enter adjust mode - show fixed center pin, start at GPS position
@@ -7509,8 +7634,22 @@
                 longitude: initialLng
             };
 
-            // Listen to map moveend to update coordinates (more accurate than 'move')
-            map.on('moveend', updateAdjustedCoordinates);
+            // Inicializa o display de coordenadas
+            if (centerPinCoords) {
+                centerPinCoords.textContent = `${initialLat.toFixed(6)}°, ${initialLng.toFixed(6)}°`;
+            }
+
+            // Desabilita o botão confirmar durante a animação flyTo
+            isMapAnimating = true;
+            adjustModeConfirm.classList.add('disabled');
+
+            // Registra listeners para atualização em tempo real
+            // 'move' - atualiza coordenadas durante o movimento (feedback visual)
+            // 'movestart' - detecta início de animação
+            // 'moveend' - detecta fim de animação e habilita confirmação
+            map.on('move', updateAdjustedCoordinates);
+            map.on('movestart', onMapMoveStart);
+            map.on('moveend', onMapMoveEnd);
 
             // Show adjust mode UI
             adjustModeAddress.textContent = currentRecord.destination_address || 'Endereço';
@@ -7572,8 +7711,19 @@
                 longitude: initialLng
             };
 
-            // Listen to map moveend to update coordinates (more accurate than 'move')
-            map.on('moveend', updateAdjustedCoordinates);
+            // Inicializa o display de coordenadas
+            if (centerPinCoords) {
+                centerPinCoords.textContent = `${initialLat.toFixed(6)}°, ${initialLng.toFixed(6)}°`;
+            }
+
+            // Desabilita o botão confirmar durante a animação flyTo
+            isMapAnimating = true;
+            adjustModeConfirm.classList.add('disabled');
+
+            // Registra listeners para atualização em tempo real
+            map.on('move', updateAdjustedCoordinates);
+            map.on('movestart', onMapMoveStart);
+            map.on('moveend', onMapMoveEnd);
 
             // Create and add old position marker if we have existing coordinates
             if (existingClientRecord && existingClientRecord.latitude && existingClientRecord.longitude) {
@@ -7672,14 +7822,23 @@
 
         // Confirm adjust mode - save adjusted coordinates with quick success
         adjustModeConfirm.addEventListener('click', async () => {
+            // Não permite confirmação durante animação do mapa
+            if (isMapAnimating) {
+                return;
+            }
+
             // Capture the EXACT current map center at the moment of confirmation
-            // This ensures we save the precise position where the pin is
+            // Esta chamada é síncrona e independente de GPS ou qualquer evento assíncrono
+            // O map.getCenter() retorna as coordenadas exatas do centro visual do mapa
             const finalCoordinates = getCurrentMapCenterCoordinates();
+
+            // Log para debug - pode ser removido em produção
+            console.log('Coordenadas capturadas:', JSON.stringify(finalCoordinates));
 
             if (finalCoordinates && finalCoordinates.latitude && finalCoordinates.longitude) {
                 await saveClientLocationQuick(finalCoordinates);
             } else if (adjustedCoordinates) {
-                // Fallback to last tracked coordinates
+                // Fallback to last tracked coordinates (improvável de ocorrer)
                 await saveClientLocationQuick(adjustedCoordinates);
             }
             exitAdjustMode();
@@ -7860,12 +8019,23 @@
         // Exit adjust mode
         function exitAdjustMode() {
             isAdjustMode = false;
+            isMapAnimating = false;
 
-            // Remove map moveend listener
-            map.off('moveend', updateAdjustedCoordinates);
+            // Remove all map listeners
+            map.off('move', updateAdjustedCoordinates);
+            map.off('movestart', onMapMoveStart);
+            map.off('moveend', onMapMoveEnd);
 
             // Hide center pin
             centerPin.classList.remove('active');
+
+            // Reset coords display
+            if (centerPinCoords) {
+                centerPinCoords.textContent = '--.------°, --.------°';
+            }
+
+            // Remove disabled state from confirm button
+            adjustModeConfirm.classList.remove('disabled');
 
             // Remove old position marker if exists
             if (oldPositionMarker) {
