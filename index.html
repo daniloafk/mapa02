@@ -2016,9 +2016,6 @@
             position: fixed;
             top: 50%;
             left: 50%;
-            /* Alinha a ponta da sombra (bottom do pin) no centro do mapa */
-            /* head (16px) + needle (30px) + shadow offset (6px) = 52px */
-            transform: translate(-50%, calc(-100% - 6px));
             z-index: 1000;
             pointer-events: none;
             display: none;
@@ -2030,11 +2027,14 @@
 
         .center-pin-marker {
             width: 24px;
-            height: 50px;
             position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
+            /* Posiciona o ponto de precisão (bottom da needle - 3px) exatamente no centro do mapa */
+            /* head (16px) + needle (30px) = 46px total */
+            /* O ponto de precisão está 3px abaixo da needle, então compensamos com -3px adicional */
+            transform: translate(-50%, calc(-100% - 7px));
         }
 
         .center-pin-head {
@@ -2057,12 +2057,27 @@
 
         .center-pin-shadow {
             position: absolute;
-            bottom: -6px;
+            bottom: -3px; /* Ajustado para ficar logo abaixo da ponta da agulha */
             left: 50%;
             transform: translateX(-50%);
-            width: 10px;
+            width: 12px;
             height: 6px;
-            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.4) 0%, transparent 70%);
+            background: radial-gradient(ellipse, rgba(0, 0, 0, 0.5) 0%, transparent 70%);
+        }
+
+        /* Ponto de precisão no centro exato - indica onde as coordenadas serão salvas */
+        .center-pin-precision {
+            position: absolute;
+            bottom: -3px; /* Posicionado logo abaixo da ponta da agulha */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 8px;
+            height: 8px;
+            background: white;
+            border: 2px solid #dc2626;
+            border-radius: 50%;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.25), 0 1px 4px rgba(0, 0, 0, 0.4);
+            z-index: 10;
         }
 
         /* View Marker (for "Ver no mapa" button) */
@@ -3635,7 +3650,9 @@
     <div class="center-pin" id="centerPin">
         <div class="center-pin-marker">
             <div class="center-pin-head"></div>
-            <div class="center-pin-needle"></div>
+            <div class="center-pin-needle">
+                <div class="center-pin-precision"></div>
+            </div>
             <div class="center-pin-shadow"></div>
         </div>
     </div>
@@ -3768,7 +3785,7 @@
             });
         }
 
-        // Inicialização assíncrona de todos os recursos
+        // Inicialização ass��ncrona de todos os recursos
         async function initializeApp() {
             try {
                 updateLoader('scripts', 'Carregando recursos...');
