@@ -5720,6 +5720,10 @@
                     const normalizedPlanilhaBairro = normalizeBairro(planilhaBairro);
                     const normalizedPlanilhaCep = normalizeCep(planilhaZipcode);
 
+                    // Extrair componentes do endereço da planilha para verificar logradouros secundários
+                    const addrComponents = extractAddressComponents(addr);
+                    const addrHasSecondary = addrComponents.secondary && addrComponents.secondary.length > 0;
+
                     let bestMatch = null;
                     let bestScore = 0;
 
@@ -5728,6 +5732,26 @@
                         const clientHouseNum = extractHouseNumber(client.address);
                         const normalizedClientBairro = normalizeBairro(client.bairro);
                         const normalizedClientCep = normalizeCep(client.zipcode);
+
+                        // Extrair componentes do endereço cadastrado para verificar logradouros secundários
+                        const clientComponents = extractAddressComponents(client.address);
+                        const clientHasSecondary = clientComponents.secondary && clientComponents.secondary.length > 0;
+
+                        // VERIFICAÇÃO DE LOGRADOURO SECUNDÁRIO (Alameda, Passagem, Travessa, etc.)
+                        // Se um endereço tem logradouro secundário e o outro não, NÃO fazer match
+                        // Exemplo: "Rua Variante, 17" NÃO deve combinar com "Rua Variante, 17, Alameda X"
+                        if (addrHasSecondary !== clientHasSecondary) {
+                            continue; // Pular este cliente, não é compatível
+                        }
+
+                        // Se AMBOS têm logradouros secundários, eles devem ser similares
+                        if (addrHasSecondary && clientHasSecondary) {
+                            const secondarySimilarity = textSimilarity(addrComponents.clean, clientComponents.clean);
+                            // Se os logradouros secundários são muito diferentes, não fazer match
+                            if (secondarySimilarity < 0.65) {
+                                continue; // Pular, são logradouros secundários diferentes
+                            }
+                        }
 
                         const similarity = textSimilarity(normalizedAddr, normalizedClient);
 
