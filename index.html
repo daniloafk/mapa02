@@ -8464,22 +8464,72 @@
             );
         }
 
+        // Função para forçar re-renderização do centerPin e sincronizar o mapa
+        function resyncCenterPin() {
+            if (isAdjustMode && centerPin) {
+                // Força re-renderização removendo e re-adicionando a classe
+                centerPin.classList.remove('active');
+
+                // Força reflow do navegador
+                void centerPin.offsetHeight;
+
+                // Re-adiciona a classe
+                centerPin.classList.add('active');
+
+                // Força o mapa a re-renderizar
+                if (map) {
+                    map.resize();
+
+                    // Atualiza as coordenadas após resize
+                    setTimeout(() => {
+                        updateAdjustedCoordinates();
+                    }, 100);
+                }
+            }
+        }
+
         // Multiple event listeners for better mobile compatibility
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') {
                 // Small delay to ensure device is fully awake
-                setTimeout(recenterOnGPS, 500);
+                setTimeout(() => {
+                    // Re-sincroniza o centerPin se estiver em modo de ajuste
+                    if (isAdjustMode) {
+                        resyncCenterPin();
+                    } else {
+                        recenterOnGPS();
+                    }
+                }, 500);
             }
         });
 
         // Additional events for iOS and other mobile browsers
         window.addEventListener('focus', () => {
-            setTimeout(recenterOnGPS, 500);
+            setTimeout(() => {
+                if (isAdjustMode) {
+                    resyncCenterPin();
+                } else {
+                    recenterOnGPS();
+                }
+            }, 500);
         });
 
         window.addEventListener('pageshow', (event) => {
             if (event.persisted) {
-                setTimeout(recenterOnGPS, 500);
+                setTimeout(() => {
+                    if (isAdjustMode) {
+                        resyncCenterPin();
+                    } else {
+                        recenterOnGPS();
+                    }
+                }, 500);
+            }
+        });
+
+        // Listener adicional para resize da janela (rotação de tela)
+        window.addEventListener('resize', () => {
+            if (isAdjustMode && map) {
+                map.resize();
             }
         });
 
