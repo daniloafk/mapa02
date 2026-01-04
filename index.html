@@ -7048,6 +7048,18 @@
             }
         }
 
+        // Função para normalizar endereços para comparação (versão local para o modal)
+        function normalizeAddressForComparison(addr) {
+            if (!addr) return '';
+            return addr
+                .toLowerCase()
+                .trim()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Remove acentos
+                .replace(/[.,;:\-\/\\()]/g, ' ') // Substitui pontuação por espaço
+                .replace(/\s+/g, ' ') // Múltiplos espaços para um único
+                .trim();
+        }
+
         // Load addresses from planilha for manual selection
         // Only shows addresses that are NOT yet registered as clients
         async function loadPlanilhaAddresses() {
@@ -7055,7 +7067,8 @@
 
             try {
                 let addressData = [];
-                let registeredClients = [];
+                let registeredClientsRaw = []; // Endereços originais
+                let registeredClientsNormalized = []; // Endereços normalizados para comparação
                 let fromCache = false;
                 let loadedFromOnline = false;
 
@@ -7068,7 +7081,7 @@
                             .not('address', 'is', null);
 
                         if (!clientsError && clientsData) {
-                            registeredClients = clientsData.map(c => c.address);
+                            registeredClientsRaw = clientsData.map(c => c.address);
                             loadedFromOnline = true;
                         }
                     } catch (e) {}
@@ -7079,7 +7092,7 @@
                     try {
                         const cachedClients = await getAllFromOfflineDB('cachedClients');
                         if (cachedClients && cachedClients.length > 0) {
-                            registeredClients = cachedClients.map(c => c.address);
+                            registeredClientsRaw = cachedClients.map(c => c.address);
                         }
                     } catch (e) {}
                 }
@@ -7090,12 +7103,17 @@
                     const pendingClients = await getAllFromOfflineDB('pendingClients');
                     if (pendingClients && pendingClients.length > 0) {
                         pendingClients.forEach(c => {
-                            if (c.address && !registeredClients.includes(c.address)) {
-                                registeredClients.push(c.address);
+                            if (c.address && !registeredClientsRaw.includes(c.address)) {
+                                registeredClientsRaw.push(c.address);
                             }
                         });
                     }
                 } catch (e) {}
+
+                // Normaliza todos os endereços cadastrados para comparação
+                registeredClientsNormalized = registeredClientsRaw
+                    .filter(addr => addr)
+                    .map(addr => normalizeAddressForComparison(addr));
 
                 // Try online first if available
                 if (isOnline) {
@@ -7152,10 +7170,19 @@
                 }
 
                 // Filter out addresses that are already registered as clients
+                // Usa comparação normalizada para evitar falsos negativos por diferença de formatação
                 const unregisteredAddresses = addressData.filter(addr => {
                     if (!addr.destination_address) return false;
-                    // Check if this address is already registered
-                    return !registeredClients.includes(addr.destination_address);
+
+                    // Normaliza o endereço da planilha para comparação
+                    const normalizedPlanilhaAddr = normalizeAddressForComparison(addr.destination_address);
+
+                    // Verifica se já está cadastrado (comparação normalizada)
+                    const isRegistered = registeredClientsNormalized.some(registeredAddr =>
+                        registeredAddr === normalizedPlanilhaAddr
+                    );
+
+                    return !isRegistered;
                 });
 
                 if (unregisteredAddresses.length === 0) {
