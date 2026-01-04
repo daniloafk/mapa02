@@ -1158,7 +1158,7 @@
 
         .route-popup-actions {
             display: flex;
-            flex-wrap: wrap; /* Permite quebra de linha se necessário */
+            flex-wrap: nowrap; /* Mantém botões em uma linha */
             gap: 4px;
             margin-top: 10px;
             padding-top: 10px;
@@ -2551,8 +2551,10 @@
                 font-size: 9px !important;
                 padding: 6px 6px !important;
                 min-height: 32px !important;
+                max-height: 32px !important;
                 gap: 2px !important;
-                min-width: 65px !important; /* Ajuste para telas pequenas */
+                min-width: 60px !important;
+                flex: 1 1 auto !important;
             }
 
             .route-popup-btn svg {
@@ -2570,6 +2572,7 @@
             }
 
             .route-popup-actions {
+                flex-wrap: nowrap !important;
                 gap: 3px !important;
                 margin-top: 8px !important;
                 padding-top: 8px !important;
@@ -2836,10 +2839,17 @@
             }
 
             .route-popup-btn {
-                font-size: 11px !important;
-                padding: 8px 10px !important;
-                min-height: 38px !important;
-                min-width: 70px !important;
+                font-size: 10px !important;
+                padding: 6px 8px !important;
+                min-height: 34px !important;
+                max-height: 34px !important;
+                min-width: 65px !important;
+                flex: 1 1 auto !important;
+            }
+
+            .route-popup-actions {
+                flex-wrap: nowrap !important;
+                gap: 4px !important;
             }
 
             /* Botão fechar popup - tablet pequeno */
@@ -3142,14 +3152,22 @@
             }
 
             .route-popup-btn {
-                font-size: 13px;
-                padding: 10px 12px;
-                min-height: 44px; /* Tamanho mínimo para toque confortável */
+                font-size: 10px !important;
+                padding: 8px 10px !important;
+                min-height: 36px !important;
+                max-height: 36px !important;
+                min-width: 70px !important;
+                flex: 1 1 auto !important;
             }
 
             .route-popup-btn svg {
-                width: 14px;
-                height: 14px;
+                width: 12px !important;
+                height: 12px !important;
+            }
+
+            .route-popup-actions {
+                flex-wrap: nowrap !important;
+                gap: 4px !important;
             }
 
             /* Botão fechar popup - landscape */
@@ -3440,8 +3458,17 @@
             }
 
             .route-popup-btn {
-                min-height: 42px;
-                padding: 10px 12px;
+                font-size: 10px !important;
+                padding: 8px 10px !important;
+                min-height: 36px !important;
+                max-height: 36px !important;
+                min-width: 70px !important;
+                flex: 1 1 auto !important;
+            }
+
+            .route-popup-actions {
+                flex-wrap: nowrap !important;
+                gap: 4px !important;
             }
 
             .cadastrar-btn, .end-nav-btn {
@@ -7838,7 +7865,7 @@
                 longitude: initialLng
             };
 
-            // Desabilita o botão confirmar durante a animação flyTo
+            // Desabilita o botão confirmar durante a animaç��o flyTo
             isMapAnimating = true;
             adjustModeConfirm.classList.add('disabled');
 
