@@ -6074,7 +6074,69 @@
                     }
                 });
 
-                const stops = mergedGroups;
+                // Post-process: Merge groups that are at the EXACT same geographic location
+                // This handles cases where different addresses have identical coordinates in the spreadsheet
+                const finalGroups = [];
+                const coordKey = (lat, lng) => `${lat.toFixed(6)}_${lng.toFixed(6)}`;
+                const coordMap = new Map();
+
+                mergedGroups.forEach(group => {
+                    const key = coordKey(group.latitude, group.longitude);
+
+                    if (coordMap.has(key)) {
+                        // Merge with existing group at this location
+                        const existing = coordMap.get(key);
+
+                        // Merge all addresses
+                        group.allAddresses.forEach(addr => {
+                            if (!existing.allAddresses.includes(addr)) {
+                                existing.allAddresses.push(addr);
+                            }
+                        });
+
+                        // Merge address-sequence pairs
+                        group.addressSequencePairs.forEach(pair => {
+                            const exists = existing.addressSequencePairs.some(p =>
+                                p.sequence === pair.sequence && p.address === pair.address
+                            );
+                            if (!exists) {
+                                existing.addressSequencePairs.push(pair);
+                            }
+                        });
+
+                        // Merge sequences
+                        group.sequences.forEach(seq => {
+                            if (!existing.sequences.includes(seq)) {
+                                existing.sequences.push(seq);
+                            }
+                        });
+
+                        // Merge stops
+                        group.stops.forEach(stop => {
+                            if (!existing.stops.includes(stop)) {
+                                existing.stops.push(stop);
+                            }
+                        });
+
+                        // Merge ids
+                        group.ids.forEach(id => {
+                            if (!existing.ids.includes(id)) {
+                                existing.ids.push(id);
+                            }
+                        });
+
+                        // Use the most favorable registration status (if any is registered, show green)
+                        if (group.isRegistered) {
+                            existing.isRegistered = true;
+                        }
+                    } else {
+                        // New location - add to map
+                        coordMap.set(key, group);
+                        finalGroups.push(group);
+                    }
+                });
+
+                const stops = finalGroups;
 
                 // Determine icon color based on delivery status
                 function getIconColor(stop) {
