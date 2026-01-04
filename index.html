@@ -867,7 +867,7 @@
         /* End Navigation Button */
         .end-nav-btn {
             position: fixed;
-            bottom: 84px;
+            bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
@@ -2865,12 +2865,12 @@
                 height: 18px !important;
             }
 
-            /* Botão encerrar navegação - mobile */
+            /* Botão encerrar navegação - mobile (mesma posição do cadastrar) */
             .end-nav-btn {
                 min-width: 160px !important;
                 padding: 12px 20px !important;
                 font-size: 14px !important;
-                bottom: 80px !important;
+                bottom: 20px !important;
             }
 
             .end-nav-btn svg {
@@ -3054,7 +3054,7 @@
                 min-width: 180px !important;
                 padding: 14px 24px !important;
                 font-size: 14px !important;
-                bottom: 88px !important;
+                bottom: 24px !important;
             }
 
             /* Upload modal - tablets */
@@ -3221,12 +3221,12 @@
                 bottom: 24px !important;
             }
 
-            /* Botão encerrar navegação */
+            /* Botão encerrar navegação (mesma posição do cadastrar) */
             .end-nav-btn {
                 min-width: 200px !important;
                 padding: 16px 28px !important;
                 font-size: 15px !important;
-                bottom: 92px !important;
+                bottom: 24px !important;
             }
 
             /* Popups maiores para melhor legibilidade */
@@ -3514,7 +3514,7 @@
                 min-width: 200px;
                 padding: 16px 28px;
                 font-size: 16px;
-                bottom: 100px;
+                bottom: 28px;
             }
 
             .route-popup-content {
@@ -8681,6 +8681,8 @@
             removeRoute();
             currentNavigation = null;
             endNavBtn.classList.remove('active');
+            // Show cadastrar button again
+            document.getElementById('cadastrarBtn').style.display = 'flex';
         }
 
         // End navigation button event
@@ -8713,7 +8715,8 @@
                 // Draw route on map
                 drawRoute(route);
 
-                // Show end navigation button
+                // Hide cadastrar button and show end navigation button
+                document.getElementById('cadastrarBtn').style.display = 'none';
                 endNavBtn.classList.add('active');
 
                 // First, show entire route overview
