@@ -2625,7 +2625,10 @@
             .close-btn {
                 width: 40px !important;
                 height: 40px !important;
+                min-width: 40px !important;
                 min-height: 40px !important;
+                max-width: 40px !important;
+                max-height: 40px !important;
                 padding: 0 !important;
                 flex-shrink: 0;
             }
@@ -2639,7 +2642,10 @@
             .cliente-item-btn {
                 width: 32px !important;
                 height: 32px !important;
+                min-width: 32px !important;
                 min-height: 32px !important;
+                max-width: 32px !important;
+                max-height: 32px !important;
                 padding: 0 !important;
                 flex-shrink: 0;
             }
@@ -2721,6 +2727,8 @@
                 height: 36px !important;
                 min-width: 36px !important;
                 min-height: 36px !important;
+                max-width: 36px !important;
+                max-height: 36px !important;
                 padding: 0 !important;
             }
 
@@ -2738,6 +2746,8 @@
                 height: 44px !important;
                 min-width: 44px !important;
                 min-height: 44px !important;
+                max-width: 44px !important;
+                max-height: 44px !important;
                 padding: 0 !important;
             }
 
@@ -2759,6 +2769,7 @@
                 padding: 10px 16px !important;
                 font-size: 13px !important;
                 min-height: 40px !important;
+                max-height: 40px !important;
             }
 
             .adjust-mode-info p {
@@ -2875,7 +2886,10 @@
             .close-btn {
                 width: 38px !important;
                 height: 38px !important;
+                min-width: 38px !important;
                 min-height: 38px !important;
+                max-width: 38px !important;
+                max-height: 38px !important;
                 padding: 0 !important;
                 flex-shrink: 0;
             }
@@ -2889,7 +2903,10 @@
             .cliente-item-btn {
                 width: 30px !important;
                 height: 30px !important;
+                min-width: 30px !important;
                 min-height: 30px !important;
+                max-width: 30px !important;
+                max-height: 30px !important;
                 padding: 0 !important;
                 flex-shrink: 0;
             }
@@ -2999,6 +3016,8 @@
                 height: 38px !important;
                 min-width: 38px !important;
                 min-height: 38px !important;
+                max-width: 38px !important;
+                max-height: 38px !important;
                 padding: 0 !important;
             }
 
@@ -3008,6 +3027,8 @@
                 height: 44px !important;
                 min-width: 44px !important;
                 min-height: 44px !important;
+                max-width: 44px !important;
+                max-height: 44px !important;
                 padding: 0 !important;
             }
 
@@ -3020,6 +3041,7 @@
                 padding: 12px 20px !important;
                 font-size: 14px !important;
                 min-height: 44px !important;
+                max-height: 44px !important;
             }
         }
 
@@ -3219,8 +3241,8 @@
                 left: 14px !important;
             }
 
-            /* Botões gerais - exceto close-btn e cliente-item-btn */
-            button:not(.close-btn):not(.cliente-item-btn) {
+            /* Botões gerais - exceto close-btn, cliente-item-btn e route-popup-btn */
+            button:not(.close-btn):not(.cliente-item-btn):not(.route-popup-btn) {
                 min-height: 48px;
                 font-size: 15px;
             }
@@ -3230,6 +3252,7 @@
                 width: 42px !important;
                 height: 42px !important;
                 min-height: 42px !important;
+                max-height: 42px !important;
                 padding: 0 !important;
                 flex-shrink: 0;
             }
@@ -3243,7 +3266,10 @@
             .cliente-item-btn {
                 width: 36px !important;
                 height: 36px !important;
+                min-width: 36px !important;
                 min-height: 36px !important;
+                max-width: 36px !important;
+                max-height: 36px !important;
                 padding: 0 !important;
                 flex-shrink: 0;
             }
@@ -3269,6 +3295,19 @@
                 height: 40px !important;
                 min-width: 40px !important;
                 min-height: 40px !important;
+                max-width: 40px !important;
+                max-height: 40px !important;
+                padding: 0 !important;
+            }
+
+            /* QR modal close - veicular */
+            .qr-modal-close {
+                width: 44px !important;
+                height: 44px !important;
+                min-width: 44px !important;
+                min-height: 44px !important;
+                max-width: 44px !important;
+                max-height: 44px !important;
                 padding: 0 !important;
             }
 
@@ -3506,7 +3545,10 @@
             .cliente-item-btn {
                 width: 36px !important;
                 height: 36px !important;
+                min-width: 36px !important;
                 min-height: 36px !important;
+                max-width: 36px !important;
+                max-height: 36px !important;
                 padding: 0 !important;
             }
 
@@ -3521,6 +3563,8 @@
                 height: 40px !important;
                 min-width: 40px !important;
                 min-height: 40px !important;
+                max-width: 40px !important;
+                max-height: 40px !important;
                 padding: 0 !important;
             }
 
@@ -3530,13 +3574,21 @@
                 height: 48px !important;
                 min-width: 48px !important;
                 min-height: 48px !important;
+                max-width: 48px !important;
+                max-height: 48px !important;
                 padding: 0 !important;
             }
 
             /* Adjust mode buttons - touch */
             .adjust-mode-btn {
                 min-height: 48px !important;
+                max-height: 48px !important;
                 padding: 14px 24px !important;
+            }
+
+            /* Botão fechar sidebar - touch - garantir dimensões */
+            .close-btn {
+                max-height: 44px !important;
             }
         }
 
@@ -7865,7 +7917,7 @@
                 longitude: initialLng
             };
 
-            // Desabilita o botão confirmar durante a animaç��o flyTo
+            // Desabilita o botão confirmar durante a animação flyTo
             isMapAnimating = true;
             adjustModeConfirm.classList.add('disabled');
 
