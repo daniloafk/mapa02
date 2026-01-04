@@ -7261,21 +7261,25 @@
             };
 
             // Check if address already exists in clients table (online or offline)
+            // Usa comparação normalizada para identificar corretamente
             let existingClient = null;
             const addressToCheck = currentRecord.destination_address;
+            const normalizedAddressToCheck = normalizeAddressForComparison(addressToCheck);
 
             if (addressToCheck) {
-                // Try online first
+                // Try online first - busca todos e compara com normalização
                 if (isOnline) {
                     try {
                         const { data: clientData, error: clientError } = await db
                             .from('clients')
                             .select('*')
-                            .eq('address', addressToCheck)
-                            .limit(1);
+                            .not('address', 'is', null);
 
                         if (!clientError && clientData && clientData.length > 0) {
-                            existingClient = clientData[0];
+                            existingClient = clientData.find(client => {
+                                const normalizedClientAddr = normalizeAddressForComparison(client.address);
+                                return normalizedClientAddr === normalizedAddressToCheck;
+                            });
                         }
                     } catch (err) {
                         // Check offline on failure
@@ -7287,18 +7291,18 @@
                     try {
                         // Check in pending clients (offline data waiting to sync)
                         const pendingClients = await getAllFromOfflineDB('pendingClients');
-                        existingClient = pendingClients.find(client =>
-                            client.address === addressToCheck
-                        );
-
+                        existingClient = pendingClients.find(client => {
+                            const normalizedClientAddr = normalizeAddressForComparison(client.address);
+                            return normalizedClientAddr === normalizedAddressToCheck;
+                        });
 
                         // If not found in pending, check in cached clients
                         if (!existingClient) {
                             const cachedClients = await getAllFromOfflineDB('cachedClients');
-                            existingClient = cachedClients.find(client =>
-                                client.address === addressToCheck
-                            );
-
+                            existingClient = cachedClients.find(client => {
+                                const normalizedClientAddr = normalizeAddressForComparison(client.address);
+                                return normalizedClientAddr === normalizedAddressToCheck;
+                            });
                         }
                     } catch (err) {
                         // Silently handle offline check errors
@@ -7430,31 +7434,43 @@
                     // Check if address already exists in clients table (online or offline)
                     let existingClient = null;
                     const addressToCheck = foundRecord.destination_address;
+                    const normalizedAddressToCheck = normalizeAddressForComparison(addressToCheck);
 
                     if (addressToCheck) {
-                        // Try online first
+                        // Try online first - busca todos os clientes e compara com normalização
                         if (isOnline) {
                             try {
                                 const { data: clientData, error: clientError } = await db
                                     .from('clients')
                                     .select('*')
-                                    .eq('address', addressToCheck)
-                                    .limit(1);
+                                    .not('address', 'is', null);
 
                                 if (!clientError && clientData && clientData.length > 0) {
-                                    existingClient = clientData[0];
+                                    // Busca com comparação normalizada
+                                    existingClient = clientData.find(client => {
+                                        const normalizedClientAddr = normalizeAddressForComparison(client.address);
+                                        return normalizedClientAddr === normalizedAddressToCheck;
+                                    });
                                 }
                             } catch (err) {}
                         }
 
                         if (!existingClient) {
                             try {
+                                // Verifica em pendingClients com comparação normalizada
                                 const pendingClients = await getAllFromOfflineDB('pendingClients');
-                                existingClient = pendingClients.find(client => client.address === addressToCheck);
+                                existingClient = pendingClients.find(client => {
+                                    const normalizedClientAddr = normalizeAddressForComparison(client.address);
+                                    return normalizedClientAddr === normalizedAddressToCheck;
+                                });
 
                                 if (!existingClient) {
+                                    // Verifica em cachedClients com comparação normalizada
                                     const cachedClients = await getAllFromOfflineDB('cachedClients');
-                                    existingClient = cachedClients.find(client => client.address === addressToCheck);
+                                    existingClient = cachedClients.find(client => {
+                                        const normalizedClientAddr = normalizeAddressForComparison(client.address);
+                                        return normalizedClientAddr === normalizedAddressToCheck;
+                                    });
                                 }
                             } catch (err) {}
                         }
@@ -8036,10 +8052,14 @@
         function removeAddressFromManualList(address) {
             if (!address || !planilhaAddressData || planilhaAddressData.length === 0) return;
 
-            // Encontra e remove o endereço da lista
-            const index = planilhaAddressData.findIndex(item =>
-                item.destination_address === address
-            );
+            // Normaliza o endereço para comparação
+            const normalizedAddress = normalizeAddressForComparison(address);
+
+            // Encontra e remove o endereço da lista usando comparação normalizada
+            const index = planilhaAddressData.findIndex(item => {
+                const normalizedItemAddr = normalizeAddressForComparison(item.destination_address);
+                return normalizedItemAddr === normalizedAddress;
+            });
 
             if (index !== -1) {
                 planilhaAddressData.splice(index, 1);
