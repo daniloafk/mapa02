@@ -5793,18 +5793,6 @@
                     const comp1 = extractAddressComponents(addr1);
                     const comp2 = extractAddressComponents(addr2);
 
-                    // Debug for orders 12 and 13
-                    if ((addr1.includes('Coronel Juvêncio') && addr1.includes('99')) ||
-                        (addr2.includes('Coronel Juvêncio') && addr2.includes('99'))) {
-                        console.log('[MERGE DECISION]', {
-                            addr1: addr1.substring(0, 50),
-                            addr2: addr2.substring(0, 50),
-                            comp1: { primary: comp1.primary, secondary: comp1.secondary, number: comp1.number },
-                            comp2: { primary: comp2.primary, secondary: comp2.secondary, number: comp2.number },
-                            cep1, cep2, bairro1, bairro2
-                        });
-                    }
-
                     // If both have house numbers, they MUST match to merge
                     if (comp1.number && comp2.number) {
                         if (comp1.number !== comp2.number) {
@@ -5857,21 +5845,7 @@
                             threshold = 0.60;
                         }
 
-                        const willMerge = similarity >= threshold;
-
-                        // Debug for orders 12 and 13 - show final decision
-                        if ((addr1.includes('Coronel Juvêncio') && addr1.includes('99')) ||
-                            (addr2.includes('Coronel Juvêncio') && addr2.includes('99'))) {
-                            console.log('[MERGE RESULT]', {
-                                similarity: similarity.toFixed(3),
-                                threshold,
-                                hasCepMatch,
-                                hasBairroMatch,
-                                willMerge
-                            });
-                        }
-
-                        return willMerge;
+                        return similarity >= threshold;
                     }
 
                     // If only one has house number, don't merge (ambiguous)
@@ -6097,8 +6071,6 @@
                             bairro: group1.originalBairro || null,
                             zipcode: group1.originalZipcode || null
                         });
-                    } else {
-                        console.warn(`[RouteMarkers] Endereço sem coordenadas (ordem ${sequences.join(',')}): ${group1.originalAddress}`);
                     }
                 });
 
@@ -6911,9 +6883,6 @@
                         }
                     }
 
-                    if (geocodedCount > 0) {
-                        console.log(`Geocodificação concluída: ${geocodedCount} endereços geocodificados, ${failedCount} falhas`);
-                    }
                 }
 
                 // Step 3: Insert new data in batches
@@ -7069,7 +7038,6 @@
                 let addressData = [];
                 let registeredClientsRaw = []; // Endereços originais
                 let registeredClientsNormalized = []; // Endereços normalizados para comparação
-                let fromCache = false;
                 let loadedFromOnline = false;
 
                 // Load registered clients first (to filter out already registered addresses)
@@ -7139,7 +7107,6 @@
 
                     if (cachedData && cachedData.length > 0) {
                         addressData = cachedData;
-                        fromCache = true;
                     } else {
                         // Fallback to pending data if no cache
                         const offlineData = await getAllFromOfflineDB('pendingPlanilha');
@@ -7157,10 +7124,6 @@
                                 spx_tn: item.spx_tn
                             }))
                             .sort((a, b) => (a.sequence || 0) - (b.sequence || 0));
-
-                        if (addressData.length > 0) {
-                            fromCache = true;
-                        }
                     }
                 }
 
@@ -7524,7 +7487,6 @@
         let isAdjustMode = false;
         let isMapAnimating = false; // Flag para detectar se o mapa está em animação
         const centerPin = document.getElementById('centerPin');
-        const centerPinCoords = document.getElementById('centerPinCoords');
 
         // Address exists modal elements
         const addressExistsModal = document.getElementById('addressExistsModal');
@@ -7575,13 +7537,6 @@
                 latitude: center.lat,
                 longitude: center.lng
             };
-
-            // Atualiza o display de coordenadas em tempo real
-            if (centerPinCoords && isAdjustMode) {
-                const latStr = center.lat.toFixed(6);
-                const lngStr = center.lng.toFixed(6);
-                centerPinCoords.textContent = `${latStr}°, ${lngStr}°`;
-            }
         }
 
         // Function to get current map center coordinates (for immediate capture)
@@ -7655,11 +7610,6 @@
                 longitude: initialLng
             };
 
-            // Inicializa o display de coordenadas
-            if (centerPinCoords) {
-                centerPinCoords.textContent = `${initialLat.toFixed(6)}°, ${initialLng.toFixed(6)}°`;
-            }
-
             // Desabilita o botão confirmar durante a animação flyTo
             isMapAnimating = true;
             adjustModeConfirm.classList.add('disabled');
@@ -7731,11 +7681,6 @@
                 latitude: initialLat,
                 longitude: initialLng
             };
-
-            // Inicializa o display de coordenadas
-            if (centerPinCoords) {
-                centerPinCoords.textContent = `${initialLat.toFixed(6)}°, ${initialLng.toFixed(6)}°`;
-            }
 
             // Desabilita o botão confirmar durante a animação flyTo
             isMapAnimating = true;
@@ -7852,9 +7797,6 @@
             // Esta chamada é síncrona e independente de GPS ou qualquer evento assíncrono
             // O map.getCenter() retorna as coordenadas exatas do centro visual do mapa
             const finalCoordinates = getCurrentMapCenterCoordinates();
-
-            // Log para debug - pode ser removido em produção
-            console.log('Coordenadas capturadas:', JSON.stringify(finalCoordinates));
 
             if (finalCoordinates && finalCoordinates.latitude && finalCoordinates.longitude) {
                 await saveClientLocationQuick(finalCoordinates);
@@ -8089,11 +8031,6 @@
 
             // Hide center pin
             centerPin.classList.remove('active');
-
-            // Reset coords display
-            if (centerPinCoords) {
-                centerPinCoords.textContent = '--.------°, --.------°';
-            }
 
             // Remove disabled state from confirm button
             adjustModeConfirm.classList.remove('disabled');
