@@ -7057,6 +7057,7 @@
                 let addressData = [];
                 let registeredClients = [];
                 let fromCache = false;
+                let loadedFromOnline = false;
 
                 // Load registered clients first (to filter out already registered addresses)
                 if (isOnline) {
@@ -7068,29 +7069,33 @@
 
                         if (!clientsError && clientsData) {
                             registeredClients = clientsData.map(c => c.address);
+                            loadedFromOnline = true;
                         }
                     } catch (e) {}
                 }
 
-                // If offline or failed, load from cache
-                if (registeredClients.length === 0) {
+                // If offline or failed to load from online, load from cache
+                if (!loadedFromOnline) {
                     try {
                         const cachedClients = await getAllFromOfflineDB('cachedClients');
                         if (cachedClients && cachedClients.length > 0) {
                             registeredClients = cachedClients.map(c => c.address);
                         }
-
-                        // Also include pending clients (not yet synced)
-                        const pendingClients = await getAllFromOfflineDB('pendingClients');
-                        if (pendingClients && pendingClients.length > 0) {
-                            pendingClients.forEach(c => {
-                                if (c.address && !registeredClients.includes(c.address)) {
-                                    registeredClients.push(c.address);
-                                }
-                            });
-                        }
                     } catch (e) {}
                 }
+
+                // SEMPRE incluir pendingClients (clientes cadastrados mas ainda não sincronizados)
+                // Isso garante que endereços recém-cadastrados (mesmo offline) sejam filtrados
+                try {
+                    const pendingClients = await getAllFromOfflineDB('pendingClients');
+                    if (pendingClients && pendingClients.length > 0) {
+                        pendingClients.forEach(c => {
+                            if (c.address && !registeredClients.includes(c.address)) {
+                                registeredClients.push(c.address);
+                            }
+                        });
+                    }
+                } catch (e) {}
 
                 // Try online first if available
                 if (isOnline) {
@@ -7905,6 +7910,10 @@
 
                     showQuickSuccess();
                     updateOfflineIndicator();
+
+                    // Remove o endereço cadastrado da lista manual
+                    removeAddressFromManualList(clientData.address);
+
                     currentRecord = null;
                     existingClientRecord = null;
                     return;
@@ -7942,6 +7951,9 @@
 
                 // Show quick success icon
                 showQuickSuccess();
+
+                // Remove o endereço cadastrado da lista manual
+                removeAddressFromManualList(clientData.address);
 
                 // Refresh clients list
                 loadClientes();
@@ -7981,10 +7993,39 @@
 
                     showQuickSuccess();
                     updateOfflineIndicator();
+
+                    // Remove o endereço cadastrado da lista manual
+                    removeAddressFromManualList(clientData.address);
+
                     currentRecord = null;
                     existingClientRecord = null;
                 } catch (offlineErr) {
                     showErrorModal('Erro ao salvar o endereço. Tente novamente.');
+                }
+            }
+        }
+
+        // Função para remover um endereço da lista manual de cadastro
+        function removeAddressFromManualList(address) {
+            if (!address || !planilhaAddressData || planilhaAddressData.length === 0) return;
+
+            // Encontra e remove o endereço da lista
+            const index = planilhaAddressData.findIndex(item =>
+                item.destination_address === address
+            );
+
+            if (index !== -1) {
+                planilhaAddressData.splice(index, 1);
+
+                // Re-renderiza a lista se ainda houver endereços
+                if (planilhaAddressData.length > 0) {
+                    renderAddressList(planilhaAddressData);
+                } else {
+                    // Mostra mensagem de todos cadastrados
+                    const qrAddressList = document.getElementById('qrAddressList');
+                    if (qrAddressList) {
+                        qrAddressList.innerHTML = '<div class="qr-address-list-empty">Todos os endereços já foram cadastrados! 🎉</div>';
+                    }
                 }
             }
         }
