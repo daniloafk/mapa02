@@ -4734,6 +4734,7 @@
         mapboxgl.accessToken = 'pk.eyJ1IjoiZGFuaWxvYWZrIiwiYSI6ImNtajdra3l0aTA1MXUzZXB2bzByZjVjMXUifQ.RyPdNBII88Qk9xE3j8Rijw';
 
         let map;
+        let mapFullyInitialized = false; // Flag para indicar que inicialização completa terminou
         const locationError = document.getElementById('locationError');
         const errorMessage = document.getElementById('errorMessage');
         const retryBtn = document.getElementById('retryBtn');
@@ -4848,19 +4849,15 @@
                 // Setup click handler imediatamente (é leve)
                 setupMapClickHandler();
 
-                // Dispara geolocateControl apenas para mostrar a bola azul
+                // Dispara geolocateControl após delay para mostrar a bola azul
                 // O mapa já está na posição correta do GPS (obtido antes de inicializar)
-                // Não vai mover o mapa, apenas ativar o tracking e mostrar a bola azul
+                // O trigger é adiado para não competir com o carregamento inicial
                 if (geolocateControl) {
-                    // Usa requestIdleCallback para não competir com renderização
-                    const triggerGeo = () => {
+                    // Aguarda 1.5s para garantir que o mapa está completamente estável
+                    // antes de disparar o geolocateControl (que pode causar pequeno reajuste)
+                    setTimeout(() => {
                         if (geolocateControl) geolocateControl.trigger();
-                    };
-                    if ('requestIdleCallback' in window) {
-                        requestIdleCallback(triggerGeo, { timeout: 500 });
-                    } else {
-                        setTimeout(triggerGeo, 100);
-                    }
+                    }, 1500);
                 }
 
                 // PERFORMANCE: Adia ajustes de layers para não competir com renderização
@@ -4885,6 +4882,12 @@
                 setTimeout(() => {
                     loadClientes();
                 }, 2000);
+
+                // Marca inicialização como completa após 3s
+                // Isso evita que recenterOnGPS seja chamado durante a inicialização
+                setTimeout(() => {
+                    mapFullyInitialized = true;
+                }, 3000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -9010,8 +9013,8 @@
 
         // Re-center map on GPS when returning to the app (after screen off, tab switch, etc.)
         function recenterOnGPS() {
-            // Skip if map not ready, in adjust mode, or navigation is active
-            if (!map || isAdjustMode || currentNavigation) return;
+            // Skip if map not ready, still initializing, in adjust mode, or navigation is active
+            if (!map || !mapFullyInitialized || isAdjustMode || currentNavigation) return;
 
             // Remove view marker if any
             if (typeof removeViewMarker === 'function') {
