@@ -4773,31 +4773,6 @@
 
             // PERFORMANCE: Desativa collision detection durante interações
             let interactionTimeout = null;
-            let initialLoadPhase = true; // Flag para fase inicial de carregamento
-
-            // PERFORMANCE: Durante fase inicial, mantém qualidade reduzida
-            map.getCanvas().style.imageRendering = 'optimizeSpeed';
-
-            // PERFORMANCE: Esconde labels temporariamente durante carregamento inicial
-            // Isso reduz drasticamente o trabalho de renderização
-            map.on('load', () => {
-                const style = map.getStyle();
-                if (style && style.layers) {
-                    const labelLayers = style.layers.filter(l =>
-                        l.type === 'symbol' && l.id.includes('label')
-                    ).map(l => l.id);
-
-                    // Guarda layers para restaurar depois
-                    window._hiddenLabelLayers = labelLayers;
-
-                    // Esconde labels temporariamente
-                    labelLayers.forEach(layerId => {
-                        try {
-                            map.setLayoutProperty(layerId, 'visibility', 'none');
-                        } catch (e) {}
-                    });
-                }
-            });
 
             // Otimizações de performance durante interações
             map.on('movestart', () => {
@@ -4814,12 +4789,10 @@
             map.on('moveend', () => {
                 // PERFORMANCE: Aguarda um pouco antes de restaurar qualidade
                 // Isso evita flickering em movimentos rápidos consecutivos
-                // Durante fase inicial, mantém otimizado por mais tempo
-                const delay = initialLoadPhase ? 500 : 150;
                 interactionTimeout = setTimeout(() => {
                     map.getCanvas().style.imageRendering = 'auto';
                     interactionTimeout = null;
-                }, delay);
+                }, 150);
             });
 
             // Bloqueia o "double-tap drag zoom" mas permite arrastar o mapa
@@ -4866,9 +4839,7 @@
             });
 
             // PERFORMANCE: Todas as operações pesadas são adiadas para depois do mapa ficar idle
-            // Usa 'on' ao invés de 'once' para garantir que sempre executa
             let initialSetupDone = false;
-            let gpsStabilized = false; // Flag para indicar que GPS já estabilizou
 
             map.on('idle', () => {
                 if (initialSetupDone) return;
@@ -4877,57 +4848,18 @@
                 // Setup click handler imediatamente (é leve)
                 setupMapClickHandler();
 
-                // PERFORMANCE: Dispara geolocateControl usando requestIdleCallback
-                // Isso mostra a bola azul e centraliza no GPS sem causar lag
-                // O geolocateControl já está configurado com duration: 0 (sem animação)
+                // Dispara geolocateControl apenas para mostrar a bola azul
+                // O mapa já está na posição correta do GPS (obtido antes de inicializar)
+                // Não vai mover o mapa, apenas ativar o tracking e mostrar a bola azul
                 if (geolocateControl) {
+                    // Usa requestIdleCallback para não competir com renderização
                     const triggerGeo = () => {
-                        if (geolocateControl) {
-                            geolocateControl.trigger();
-
-                            // PERFORMANCE: Aguarda segundo idle após GPS para marcar como estabilizado
-                            // Só após isso as operações pesadas são liberadas
-                            map.once('idle', () => {
-                                // Aguarda mais um frame para garantir estabilidade
-                                requestAnimationFrame(() => {
-                                    gpsStabilized = true;
-                                    initialLoadPhase = false; // Encerra fase inicial
-                                    // Restaura qualidade de renderização
-                                    map.getCanvas().style.imageRendering = 'auto';
-
-                                    // PERFORMANCE: Restaura labels gradualmente
-                                    if (window._hiddenLabelLayers && window._hiddenLabelLayers.length > 0) {
-                                        setTimeout(() => {
-                                            window._hiddenLabelLayers.forEach(layerId => {
-                                                try {
-                                                    map.setLayoutProperty(layerId, 'visibility', 'visible');
-                                                } catch (e) {}
-                                            });
-                                            delete window._hiddenLabelLayers;
-                                        }, 300);
-                                    }
-                                });
-                            });
-                        }
+                        if (geolocateControl) geolocateControl.trigger();
                     };
                     if ('requestIdleCallback' in window) {
                         requestIdleCallback(triggerGeo, { timeout: 500 });
                     } else {
                         setTimeout(triggerGeo, 100);
-                    }
-                } else {
-                    gpsStabilized = true; // Se não há geolocate, marca como pronto
-                    initialLoadPhase = false;
-                    map.getCanvas().style.imageRendering = 'auto';
-
-                    // Restaura labels
-                    if (window._hiddenLabelLayers && window._hiddenLabelLayers.length > 0) {
-                        window._hiddenLabelLayers.forEach(layerId => {
-                            try {
-                                map.setLayoutProperty(layerId, 'visibility', 'visible');
-                            } catch (e) {}
-                        });
-                        delete window._hiddenLabelLayers;
                     }
                 }
 
@@ -4970,9 +4902,30 @@
 
             updateLoader('gps', 'Obtendo localização...');
 
-            // Inicia o mapa com localização padrão
-            // O geolocateControl vai centralizar na posição real do GPS e mostrar a bola azul
-            initMapWithCoords(defaultLat, defaultLng, 12);
+            // PERFORMANCE: Obtém GPS PRIMEIRO, depois inicializa mapa na posição correta
+            // Isso evita carregar tiles de Belém e depois carregar tiles da posição GPS
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    // Sucesso: inicia mapa na posição do GPS
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        initMapWithCoords(lat, lng, 15);
+                    },
+                    // Erro: usa posição padrão
+                    () => {
+                        initMapWithCoords(defaultLat, defaultLng, 12);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 8000,        // 8 segundos de timeout
+                        maximumAge: 60000     // Aceita posição em cache de até 1 minuto
+                    }
+                );
+            } else {
+                // Navegador não suporta geolocation
+                initMapWithCoords(defaultLat, defaultLng, 12);
+            }
         }
 
         let geolocateControl = null;
