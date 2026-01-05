@@ -5795,6 +5795,12 @@
                     // Also remove everything after "Bairro:" as it may contain CEP
                     cleanAddr = cleanAddr.split(/bairro:/i)[0];
 
+                    // IMPORTANTE: Remover números que fazem parte de NOMES de ruas históricas
+                    // Exemplos: "Avenida 16 De Novembro", "Rua 7 De Setembro", "Avenida 1 De Maio"
+                    // Esses números são parte do NOME da rua, NÃO são números de casa
+                    // Isso permite que "Avenida 16 De Novembro 1026" extraia 1026, não 16
+                    cleanAddr = cleanAddr.replace(/\b(\d{1,2})\s+de\s+(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/gi, 'RUA_HISTORICA');
+
                     // Match patterns like: ", 123", ", 1b", "nº 123", "n 123a", "numero 123"
                     // Captures numbers with optional letter suffix (1b, 61 b, 772A)
                     const patterns = [
@@ -5904,6 +5910,12 @@
                         secondary = beforeComma.trim();
                     }
 
+                    // Identificar o TIPO do logradouro secundário (alameda, passagem, travessa, etc.)
+                    let secondaryType = null;
+                    if (secondary && matches.length >= 2) {
+                        secondaryType = matches[1].type; // O segundo match é o tipo do logradouro secundário
+                    }
+
                     // Create clean identifier: primary + secondary (if exists) + number
                     let clean = normalizeAddress(primary);
                     if (secondary) {
@@ -5916,6 +5928,7 @@
                     return {
                         primary: primary,
                         secondary: secondary,
+                        secondaryType: secondaryType, // Tipo do logradouro secundário (alameda, passagem, travessa, etc.)
                         number: houseNum,
                         clean: clean.trim()
                     };
@@ -5980,10 +5993,21 @@
                             continue; // Pular este cliente, não é compatível
                         }
 
-                        // Se AMBOS têm logradouros secundários, verificar se os NOMES são compatíveis
+                        // Se AMBOS têm logradouros secundários, verificar TIPO e NOME
                         // O número principal (ex: 1026) já foi verificado, aqui verificamos apenas os termos do secundário
                         // Números dentro do secundário (Casa 05, Casa 01) são ignorados - o importante é identificar a alameda
                         if (addrHasSecondary && clientHasSecondary) {
+                            // PRIMEIRO: Verificar se os TIPOS de logradouros secundários são iguais
+                            // "Alameda X" só deve combinar com "Alameda X", não com "Passagem X" ou "Travessa X"
+                            const addrSecType = addrComponents.secondaryType;
+                            const clientSecType = clientComponents.secondaryType;
+
+                            // Se ambos têm tipo identificado, eles DEVEM ser iguais
+                            if (addrSecType && clientSecType && addrSecType !== clientSecType) {
+                                continue; // Tipos diferentes: Alameda ≠ Passagem, Travessa ≠ Alameda, etc.
+                            }
+
+                            // SEGUNDO: Verificar se os NOMES são compatíveis
                             // Normalize both secondary streets for comparison (normalizeAddress already removes numbers)
                             const normalizedAddrSecondary = normalizeAddress(addrComponents.secondary);
                             const normalizedClientSecondary = normalizeAddress(clientComponents.secondary);
