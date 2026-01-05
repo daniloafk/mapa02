@@ -5637,6 +5637,16 @@
 
         async function loadRouteMarkers(skipFitBounds = false) {
             try {
+                // PERFORMANCE: Mostrar indicador de carregamento
+                const routeBtn = document.getElementById('routeMarkersBtn');
+                if (routeBtn) {
+                    routeBtn.style.opacity = '0.6';
+                    routeBtn.style.pointerEvents = 'none';
+                }
+
+                // PERFORMANCE: Função para liberar o thread principal periodicamente
+                const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+
                 let data = null;
                 let registeredClients = [];
 
@@ -6043,18 +6053,6 @@
                     const normalizedPlanilhaBairro = normalizeBairro(planilhaBairro);
                     const normalizedPlanilhaCep = normalizeCep(planilhaZipcode);
 
-                    // DEBUG: Log para Travessa Mosqueiro, 66
-                    const isOrdem7 = addr && addr.toLowerCase().includes('mosqueiro') && addr.includes('66');
-                    if (isOrdem7) {
-                        console.log('🔍 DEBUG ORDEM 7 - findRegisteredClient');
-                        console.log('  📋 Endereço buscado:', addr);
-                        console.log('  🔤 Normalizado:', normalizedAddr);
-                        console.log('  🔢 Número extraído:', addrHouseNum);
-                        console.log('  🏘️ Bairro:', planilhaBairro, '→', normalizedPlanilhaBairro);
-                        console.log('  📮 CEP:', planilhaZipcode, '→', normalizedPlanilhaCep);
-                        console.log('  📊 Total de clientes registrados:', registeredClients.length);
-                    }
-
                     // Extrair componentes do endereço da planilha para verificar logradouros secundários
                     const addrComponents = extractAddressComponents(addr);
                     const addrHasSecondary = addrComponents.secondary && addrComponents.secondary.length > 0;
@@ -6067,15 +6065,6 @@
                         const clientHouseNum = extractHouseNumber(client.address);
                         const normalizedClientBairro = normalizeBairro(client.bairro);
                         const normalizedClientCep = normalizeCep(client.zipcode);
-
-                        // DEBUG: Log clientes sendo comparados com Ordem 7
-                        if (isOrdem7 && client.address && client.address.toLowerCase().includes('mosqueiro')) {
-                            console.log('  🔍 Comparando com cliente:', client.address);
-                            console.log('    Normalizado:', normalizedClient);
-                            console.log('    Número:', clientHouseNum);
-                            console.log('    Bairro:', normalizedClientBairro);
-                            console.log('    CEP:', normalizedClientCep);
-                        }
 
                         // Extrair componentes do endereço cadastrado para verificar logradouros secundários
                         const clientComponents = extractAddressComponents(client.address);
@@ -6151,14 +6140,6 @@
                         // Combined score
                         const totalScore = similarity + bonusScore;
 
-                        // DEBUG: Log comparação de scores para Ordem 7
-                        if (isOrdem7 && client.address && client.address.toLowerCase().includes('mosqueiro')) {
-                            console.log('    📊 Similaridade:', similarity.toFixed(3));
-                            console.log('    🎯 CEP match:', hasCepMatch, '(bonus:', hasCepMatch ? 0.4 : 0, ')');
-                            console.log('    🎯 Bairro match:', hasBairroMatch, '(bonus:', hasBairroMatch ? 0.25 : 0, ')');
-                            console.log('    📈 Score total:', totalScore.toFixed(3));
-                        }
-
                         // If both have house numbers, they must match EXACTLY
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
@@ -6176,21 +6157,9 @@
                                     threshold = 0.70; // Sem match de localização, precisa alta similaridade
                                 }
 
-                                // DEBUG: Log decisão de match para Ordem 7
-                                if (isOrdem7 && client.address && client.address.toLowerCase().includes('mosqueiro')) {
-                                    console.log('    ✅ Números iguais:', addrHouseNum, '=', clientHouseNum);
-                                    console.log('    📏 Threshold:', threshold);
-                                    console.log('    🎯 Match?', similarity >= threshold && totalScore > bestScore ? 'SIM' : 'NÃO');
-                                }
-
                                 if (similarity >= threshold && totalScore > bestScore) {
                                     bestMatch = client;
                                     bestScore = totalScore;
-                                }
-                            } else {
-                                // DEBUG: Números diferentes
-                                if (isOrdem7 && client.address && client.address.toLowerCase().includes('mosqueiro')) {
-                                    console.log('    ❌ Números DIFERENTES:', addrHouseNum, '≠', clientHouseNum, '- SEM MATCH');
                                 }
                             }
                             // IMPORTANTE: Se os números de casa são DIFERENTES, NÃO fazer match
@@ -6207,18 +6176,6 @@
                         // IMPORTANTE: Se UM tem número e o OUTRO não, NÃO fazer match
                         // Exemplo: "Rua X, 99" não deve combinar com "Rua X" (sem número)
                         // Pois o cliente sem número pode ser qualquer endereço daquela rua
-                    }
-
-                    // DEBUG: Log resultado final para Ordem 7
-                    if (isOrdem7) {
-                        if (bestMatch) {
-                            console.log('  ✅ MATCH ENCONTRADO!');
-                            console.log('    Cliente:', bestMatch.address);
-                            console.log('    Score:', bestScore.toFixed(3));
-                            console.log('    Coordenadas:', bestMatch.latitude, bestMatch.longitude);
-                        } else {
-                            console.log('  ❌ NENHUM MATCH ENCONTRADO - Marcador será VERMELHO');
-                        }
                     }
 
                     return bestMatch;
@@ -6295,6 +6252,18 @@
                     return similarity >= 0.7;
                 }
 
+                // PERFORMANCE: Cache para evitar recálculos de findRegisteredClient
+                const clientMatchCache = new Map();
+                function getCachedClientMatch(addr, bairro, zipcode) {
+                    const cacheKey = `${addr}|${bairro || ''}|${zipcode || ''}`;
+                    if (clientMatchCache.has(cacheKey)) {
+                        return clientMatchCache.get(cacheKey);
+                    }
+                    const result = findRegisteredClient(addr, bairro, zipcode);
+                    clientMatchCache.set(cacheKey, result);
+                    return result;
+                }
+
                 // First pass: Group by exact normalized address
                 const initialGroups = {};
                 data.forEach(row => {
@@ -6312,23 +6281,67 @@
                     initialGroups[normalizedAddr].items.push(row);
                 });
 
+                // PERFORMANCE: Pré-calcular componentes dos endereços para evitar recálculos
+                const addressComponentsCache = new Map();
+                function getCachedComponents(addr) {
+                    if (addressComponentsCache.has(addr)) {
+                        return addressComponentsCache.get(addr);
+                    }
+                    const components = extractAddressComponents(addr);
+                    addressComponentsCache.set(addr, components);
+                    return components;
+                }
+
                 // Second pass: Merge similar addresses regardless of distance
                 // Then use clustering to find correct coordinates (outliers get corrected)
                 const mergedGroups = [];
                 const processedKeys = new Set();
 
+                // PERFORMANCE: Pré-calcular número de casa e normalização para todos os grupos
+                const groupKeys = Object.keys(initialGroups);
+                const groupMetadata = new Map();
+                groupKeys.forEach(key => {
+                    const group = initialGroups[key];
+                    groupMetadata.set(key, {
+                        houseNumber: extractHouseNumber(group.originalAddress),
+                        components: getCachedComponents(group.originalAddress),
+                        normalizedBairro: normalizeBairro(group.originalBairro),
+                        normalizedCep: normalizeCep(group.originalZipcode)
+                    });
+                });
 
-                Object.keys(initialGroups).forEach(key1 => {
-                    if (processedKeys.has(key1)) return;
+                // PERFORMANCE: Agrupar por número de casa para reduzir comparações O(n²) → O(n)
+                const byHouseNumber = new Map();
+                groupKeys.forEach(key => {
+                    const meta = groupMetadata.get(key);
+                    const houseNum = meta.houseNumber || 'NO_NUMBER';
+                    if (!byHouseNumber.has(houseNum)) {
+                        byHouseNumber.set(houseNum, []);
+                    }
+                    byHouseNumber.get(houseNum).push(key);
+                });
+
+                // PERFORMANCE: Liberar thread antes do loop de merge
+                await yieldToMain();
+
+                // PERFORMANCE: Processar em lotes para evitar travamento
+                let processedCount = 0;
+                const BATCH_SIZE = 20;
+
+                for (const key1 of groupKeys) {
+                    if (processedKeys.has(key1)) continue;
 
                     const group1 = initialGroups[key1];
+                    const meta1 = groupMetadata.get(key1);
                     const mergedItems = [...group1.items];
                     processedKeys.add(key1);
 
                     let mergeCount = 0;
 
-                    // Find similar addresses to merge (must have same house number)
-                    Object.keys(initialGroups).forEach(key2 => {
+                    // PERFORMANCE: Só comparar com endereços que têm o MESMO número de casa
+                    const sameHouseKeys = byHouseNumber.get(meta1.houseNumber || 'NO_NUMBER') || [];
+
+                    sameHouseKeys.forEach(key2 => {
                         if (processedKeys.has(key2)) return;
                         if (key1 === key2) return;
 
@@ -6347,8 +6360,9 @@
 
                         if (shouldMerge) {
                             // Check if both have registered clients with distant coordinates
-                            const client1 = findRegisteredClient(group1.originalAddress, group1.originalBairro, group1.originalZipcode);
-                            const client2 = findRegisteredClient(group2.originalAddress, group2.originalBairro, group2.originalZipcode);
+                            // PERFORMANCE: Usar cache para evitar recálculos
+                            const client1 = getCachedClientMatch(group1.originalAddress, group1.originalBairro, group1.originalZipcode);
+                            const client2 = getCachedClientMatch(group2.originalAddress, group2.originalBairro, group2.originalZipcode);
 
                             if (client1 && client2) {
                                 // Check if they are DIFFERENT clients
@@ -6451,9 +6465,10 @@
 
                     // Check if ANY address in this group has a registered client (Option 1: at least one)
                     // Collect ALL registered clients for this group, then cluster their coordinates
+                    // PERFORMANCE: Usar cache para evitar recálculos
                     const registeredClients = [];
                     for (const addrDetails of allAddressesWithDetails) {
-                        const client = findRegisteredClient(addrDetails.address, addrDetails.bairro, addrDetails.zipcode);
+                        const client = getCachedClientMatch(addrDetails.address, addrDetails.bairro, addrDetails.zipcode);
                         if (client) {
                             registeredClients.push(client);
                         }
@@ -6509,7 +6524,13 @@
                             zipcode: group1.originalZipcode || null
                         });
                     }
-                });
+
+                    // PERFORMANCE: Liberar thread a cada lote processado
+                    processedCount++;
+                    if (processedCount % BATCH_SIZE === 0) {
+                        await yieldToMain();
+                    }
+                }
 
                 // Post-process: Merge groups that are at the EXACT same geographic location
                 // This handles cases where different addresses have identical coordinates in the spreadsheet
@@ -6572,6 +6593,9 @@
                         finalGroups.push(group);
                     }
                 });
+
+                // PERFORMANCE: Liberar thread após processamento pesado
+                await yieldToMain();
 
                 const stops = finalGroups;
 
@@ -6878,7 +6902,19 @@
                     map.fitBounds(bounds, { padding: 50, duration: 1500 });
                 }
 
+                // PERFORMANCE: Restaurar botão após carregamento
+                if (routeBtn) {
+                    routeBtn.style.opacity = '1';
+                    routeBtn.style.pointerEvents = 'auto';
+                }
+
             } catch (error) {
+                // PERFORMANCE: Restaurar botão em caso de erro
+                const routeBtn = document.getElementById('routeMarkersBtn');
+                if (routeBtn) {
+                    routeBtn.style.opacity = '1';
+                    routeBtn.style.pointerEvents = 'auto';
+                }
                 showErrorModal('Erro ao carregar as paradas da planilha.');
             }
         }
