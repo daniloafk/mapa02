@@ -6515,8 +6515,10 @@
 
                         // Only show order section at bottom if single address (multiple addresses show order inline)
                         const orderSection = hasMultipleAddresses ? '' : `
-                            <div style="font-size: 11px; color: #64748b; margin-bottom: 6px;">Ordem:</div>
-                            <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
+                                <span style="font-size: 11px; color: #64748b;">Ordem:</span>
+                                <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                            </div>
                         `;
 
                         // Responsive maxWidth for popup - aumentado para acomodar 3 botões
@@ -6876,7 +6878,7 @@
                 }
 
                 // Show success and hide geocode option
-                geocodeInfoText.innerHTML = `✅ Geocodificação concluída! <strong>${geocodedCount}</strong> endereços geocodificados${failedCount > 0 ? `, ${failedCount} falhas` : ''}.`;
+                geocodeInfoText.innerHTML = `✅ Geocodificaç��o concluída! <strong>${geocodedCount}</strong> endereços geocodificados${failedCount > 0 ? `, ${failedCount} falhas` : ''}.`;
 
                 setTimeout(() => {
                     geocodeInfo.classList.remove('active');
