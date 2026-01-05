@@ -4848,6 +4848,20 @@
                 // Setup click handler imediatamente (é leve)
                 setupMapClickHandler();
 
+                // PERFORMANCE: Dispara geolocateControl usando requestIdleCallback
+                // Isso mostra a bola azul e centraliza no GPS sem causar lag
+                // O geolocateControl já está configurado com duration: 0 (sem animação)
+                if (geolocateControl) {
+                    const triggerGeo = () => {
+                        if (geolocateControl) geolocateControl.trigger();
+                    };
+                    if ('requestIdleCallback' in window) {
+                        requestIdleCallback(triggerGeo, { timeout: 500 });
+                    } else {
+                        setTimeout(triggerGeo, 100);
+                    }
+                }
+
                 // PERFORMANCE: Adia ajustes de layers para não competir com renderização
                 setTimeout(() => {
                     const roadLayers = [
@@ -4903,29 +4917,17 @@
                 },
                 trackUserLocation: true,
                 showUserHeading: true,
-                showAccuracyCircle: false
+                showAccuracyCircle: false,
+                fitBoundsOptions: {
+                    duration: 0,
+                    maxZoom: 15
+                }
             });
 
             map.addControl(geolocateControl, 'top-right');
 
-            // SEMPRE dispara o geolocateControl para mostrar a bola azul
-            // O geolocateControl é responsável por:
-            // 1. Mostrar a bola azul de posição do usuário
-            // 2. Centralizar o mapa na posição GPS
-            // 3. Acompanhar o usuário em tempo real
-            const triggerGeolocate = () => {
-                if (geolocateControl) {
-                    geolocateControl.trigger();
-                }
-            };
-
-            if (map.loaded()) {
-                setTimeout(triggerGeolocate, 300);
-            } else {
-                map.once('load', () => {
-                    setTimeout(triggerGeolocate, 300);
-                });
-            }
+            // O trigger do geolocateControl será feito pelo handler 'idle' em initMapWithCoords
+            // Isso garante que o mapa já terminou de carregar antes de mudar de posição
         }
 
         retryBtn.addEventListener('click', getUserLocationAndInitMap);
@@ -8133,7 +8135,7 @@
                 longitude: initialLng
             };
 
-            // Desabilita o botão confirmar durante a animação flyTo
+            // Desabilita o bot��o confirmar durante a animação flyTo
             isMapAnimating = true;
             adjustModeConfirm.classList.add('disabled');
 
