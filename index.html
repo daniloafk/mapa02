@@ -5666,10 +5666,15 @@
 
                     if (!clientsError && clientsData) {
                         registeredClients = clientsData;
+                        // DEBUG: Log clientes carregados
+                        console.log(`[DEBUG] Clientes carregados do Supabase: ${clientsData.length}`);
+                        clientsData.forEach(c => console.log(`  - ${c.address} (lat: ${c.latitude}, lng: ${c.longitude})`));
                         // Update cache with fresh data
                         try {
                             await saveCacheToDB('cachedClients', clientsData);
                         } catch (e) {}
+                    } else if (clientsError) {
+                        console.error('[DEBUG] Erro ao carregar clientes:', clientsError);
                     }
 
                     // Also include pending clients (not yet synced) when online
