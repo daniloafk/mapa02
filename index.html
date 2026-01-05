@@ -5804,7 +5804,7 @@
                         .replace(/\s+/g, ' ') // Multiple spaces to single
                         .replace(/\b(rua|r|av|avenida|travessa|tv|alameda|al|praca|pca|largo|lg|rod|rodovia|est|estrada)\b/gi, '')
                         .replace(/\b(apt|apto|apartamento|bloco|bl|lote|lt|qd|quadra|conj|conjunto)\b/gi, '')
-                        .replace(/\b(belem|mosqueiro|para|pa)\b/gi, '') // Remove city/state names
+                        .replace(/\b(belem|para|pa)\b/gi, '') // Remove city/state names (removed 'mosqueiro' - it's a street name!)
                         .replace(/\d{5}\s*\-?\s*\d{3}/g, '') // Remove CEP
                         .replace(/\s+/g, ' ')
                         .trim();
@@ -6043,6 +6043,18 @@
                     const normalizedPlanilhaBairro = normalizeBairro(planilhaBairro);
                     const normalizedPlanilhaCep = normalizeCep(planilhaZipcode);
 
+                    // DEBUG: Log para Travessa Mosqueiro, 66
+                    const isOrdem7 = addr && addr.toLowerCase().includes('mosqueiro') && addr.includes('66');
+                    if (isOrdem7) {
+                        console.log('🔍 DEBUG ORDEM 7 - findRegisteredClient');
+                        console.log('  📋 Endereço buscado:', addr);
+                        console.log('  🔤 Normalizado:', normalizedAddr);
+                        console.log('  🔢 Número extraído:', addrHouseNum);
+                        console.log('  🏘️ Bairro:', planilhaBairro, '→', normalizedPlanilhaBairro);
+                        console.log('  📮 CEP:', planilhaZipcode, '→', normalizedPlanilhaCep);
+                        console.log('  📊 Total de clientes registrados:', registeredClients.length);
+                    }
+
                     // Extrair componentes do endereço da planilha para verificar logradouros secundários
                     const addrComponents = extractAddressComponents(addr);
                     const addrHasSecondary = addrComponents.secondary && addrComponents.secondary.length > 0;
@@ -6055,6 +6067,15 @@
                         const clientHouseNum = extractHouseNumber(client.address);
                         const normalizedClientBairro = normalizeBairro(client.bairro);
                         const normalizedClientCep = normalizeCep(client.zipcode);
+
+                        // DEBUG: Log clientes sendo comparados com Ordem 7
+                        if (isOrdem7 && client.address && client.address.toLowerCase().includes('mosqueiro')) {
+                            console.log('  🔍 Comparando com cliente:', client.address);
+                            console.log('    Normalizado:', normalizedClient);
+                            console.log('    Número:', clientHouseNum);
+                            console.log('    Bairro:', normalizedClientBairro);
+                            console.log('    CEP:', normalizedClientCep);
+                        }
 
                         // Extrair componentes do endereço cadastrado para verificar logradouros secundários
                         const clientComponents = extractAddressComponents(client.address);
@@ -6130,6 +6151,14 @@
                         // Combined score
                         const totalScore = similarity + bonusScore;
 
+                        // DEBUG: Log comparação de scores para Ordem 7
+                        if (isOrdem7 && client.address && client.address.toLowerCase().includes('mosqueiro')) {
+                            console.log('    📊 Similaridade:', similarity.toFixed(3));
+                            console.log('    🎯 CEP match:', hasCepMatch, '(bonus:', hasCepMatch ? 0.4 : 0, ')');
+                            console.log('    🎯 Bairro match:', hasBairroMatch, '(bonus:', hasBairroMatch ? 0.25 : 0, ')');
+                            console.log('    📈 Score total:', totalScore.toFixed(3));
+                        }
+
                         // If both have house numbers, they must match EXACTLY
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
@@ -6146,9 +6175,22 @@
                                 } else {
                                     threshold = 0.70; // Sem match de localização, precisa alta similaridade
                                 }
+
+                                // DEBUG: Log decisão de match para Ordem 7
+                                if (isOrdem7 && client.address && client.address.toLowerCase().includes('mosqueiro')) {
+                                    console.log('    ✅ Números iguais:', addrHouseNum, '=', clientHouseNum);
+                                    console.log('    📏 Threshold:', threshold);
+                                    console.log('    🎯 Match?', similarity >= threshold && totalScore > bestScore ? 'SIM' : 'NÃO');
+                                }
+
                                 if (similarity >= threshold && totalScore > bestScore) {
                                     bestMatch = client;
                                     bestScore = totalScore;
+                                }
+                            } else {
+                                // DEBUG: Números diferentes
+                                if (isOrdem7 && client.address && client.address.toLowerCase().includes('mosqueiro')) {
+                                    console.log('    ❌ Números DIFERENTES:', addrHouseNum, '≠', clientHouseNum, '- SEM MATCH');
                                 }
                             }
                             // IMPORTANTE: Se os números de casa são DIFERENTES, NÃO fazer match
@@ -6165,6 +6207,18 @@
                         // IMPORTANTE: Se UM tem número e o OUTRO não, NÃO fazer match
                         // Exemplo: "Rua X, 99" não deve combinar com "Rua X" (sem número)
                         // Pois o cliente sem número pode ser qualquer endereço daquela rua
+                    }
+
+                    // DEBUG: Log resultado final para Ordem 7
+                    if (isOrdem7) {
+                        if (bestMatch) {
+                            console.log('  ✅ MATCH ENCONTRADO!');
+                            console.log('    Cliente:', bestMatch.address);
+                            console.log('    Score:', bestScore.toFixed(3));
+                            console.log('    Coordenadas:', bestMatch.latitude, bestMatch.longitude);
+                        } else {
+                            console.log('  ❌ NENHUM MATCH ENCONTRADO - Marcador será VERMELHO');
+                        }
                     }
 
                     return bestMatch;
