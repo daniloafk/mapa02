@@ -6048,6 +6048,18 @@
                     const normalizedPlanilhaBairro = normalizeBairro(planilhaBairro);
                     const normalizedPlanilhaCep = normalizeCep(planilhaZipcode);
 
+                    // DEBUG: Log para endereços específicos
+                    const isDebugAddr = addr.toLowerCase().includes('mosqueiro') ||
+                                        addr.toLowerCase().includes('lemos') ||
+                                        addr.toLowerCase().includes('maroja');
+                    if (isDebugAddr) {
+                        console.log(`[DEBUG findRegisteredClient] Buscando: "${addr}"`);
+                        console.log(`  Número extraído: ${addrHouseNum}`);
+                        console.log(`  Bairro planilha: ${normalizedPlanilhaBairro}`);
+                        console.log(`  CEP planilha: ${normalizedPlanilhaCep}`);
+                        console.log(`  Total de clientes para comparar: ${registeredClients.length}`);
+                    }
+
                     // Extrair componentes do endereço da planilha para verificar logradouros secundários
                     const addrComponents = extractAddressComponents(addr);
                     const addrHasSecondary = addrComponents.secondary && addrComponents.secondary.length > 0;
@@ -6065,10 +6077,25 @@
                         const clientComponents = extractAddressComponents(client.address);
                         const clientHasSecondary = clientComponents.secondary && clientComponents.secondary.length > 0;
 
+                        // DEBUG: Log para clientes que podem ser match
+                        const isDebugClient = client.address.toLowerCase().includes('mosqueiro') ||
+                                              client.address.toLowerCase().includes('lemos') ||
+                                              client.address.toLowerCase().includes('maroja');
+                        if (isDebugAddr && isDebugClient) {
+                            console.log(`  [DEBUG] Comparando com cliente: "${client.address}"`);
+                            console.log(`    Número cliente: ${clientHouseNum}, Número addr: ${addrHouseNum}`);
+                            console.log(`    Bairro cliente: ${normalizedClientBairro}`);
+                            console.log(`    CEP cliente: ${normalizedClientCep}`);
+                            console.log(`    Addr has secondary: ${addrHasSecondary}, Client has secondary: ${clientHasSecondary}`);
+                        }
+
                         // VERIFICAÇÃO DE LOGRADOURO SECUNDÁRIO (Alameda, Passagem, Travessa, etc.)
                         // Se um endereço tem logradouro secundário e o outro não, NÃO fazer match
                         // Exemplo: "Rua Variante, 17" NÃO deve combinar com "Rua Variante, 17, Alameda X"
                         if (addrHasSecondary !== clientHasSecondary) {
+                            if (isDebugAddr && isDebugClient) {
+                                console.log(`    ❌ REJEITADO: secundário diferente`);
+                            }
                             continue; // Pular este cliente, não é compatível
                         }
 
@@ -6135,6 +6162,13 @@
                         // Combined score
                         const totalScore = similarity + bonusScore;
 
+                        // DEBUG: Log similarity info
+                        if (isDebugAddr && isDebugClient) {
+                            console.log(`    Similaridade: ${similarity.toFixed(2)}`);
+                            console.log(`    CEP match: ${hasCepMatch}, Bairro match: ${hasBairroMatch}`);
+                            console.log(`    Total score: ${totalScore.toFixed(2)}`);
+                        }
+
                         // If both have house numbers, they must match EXACTLY
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
@@ -6151,9 +6185,19 @@
                                 } else {
                                     threshold = 0.70; // Sem match de localização, precisa alta similaridade
                                 }
+                                if (isDebugAddr && isDebugClient) {
+                                    console.log(`    Threshold: ${threshold}, Passa? ${similarity >= threshold}`);
+                                }
                                 if (similarity >= threshold && totalScore > bestScore) {
+                                    if (isDebugAddr && isDebugClient) {
+                                        console.log(`    ✅ MATCH ENCONTRADO!`);
+                                    }
                                     bestMatch = client;
                                     bestScore = totalScore;
+                                }
+                            } else {
+                                if (isDebugAddr && isDebugClient) {
+                                    console.log(`    ❌ REJEITADO: números diferentes (${addrHouseNum} vs ${clientHouseNum})`);
                                 }
                             }
                             // IMPORTANTE: Se os números de casa são DIFERENTES, NÃO fazer match
