@@ -6059,9 +6059,19 @@
                         // If both have house numbers, they must match EXACTLY
                         if (addrHouseNum && clientHouseNum) {
                             if (addrHouseNum === clientHouseNum) {
-                                // Same house number - BUT we need high similarity unless CEP/bairro also match
-                                // This prevents "Rua A, 10" from matching "Rua B, 10" (different streets!)
-                                const threshold = (hasCepMatch || hasBairroMatch) ? 0.10 : 0.70;
+                                // Same house number - BUT we need high similarity to confirm it's the same street
+                                // Different thresholds based on what matches:
+                                // - CEP match (most reliable): 0.10 (CEP identifies exact location)
+                                // - Only bairro match: 0.40 (bairro is too broad, need street similarity)
+                                // - Neither matches: 0.70 (require high similarity)
+                                let threshold;
+                                if (hasCepMatch) {
+                                    threshold = 0.10; // CEP é muito específico, confia
+                                } else if (hasBairroMatch) {
+                                    threshold = 0.40; // Bairro é amplo, precisa verificar a rua
+                                } else {
+                                    threshold = 0.70; // Sem match de localização, precisa alta similaridade
+                                }
                                 if (similarity >= threshold && totalScore > bestScore) {
                                     bestMatch = client;
                                     bestScore = totalScore;
