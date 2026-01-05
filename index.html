@@ -4638,14 +4638,17 @@
         // Initialize offline system
         initOfflineDB().then(() => {
             updateOfflineIndicator();
-            // Try to sync on startup if online
+            // PERFORMANCE: Adia sync para não competir com inicialização do mapa
+            // O sync inicial é feito após 5s para garantir que o mapa está estável
             if (isOnline) {
-                syncAllPendingData();
-                // Start periodic cache refresh when online
+                setTimeout(() => {
+                    syncAllPendingData();
+                }, 5000);
+                // Start periodic cache refresh when online (já tem delay interno de 8s)
                 startPeriodicCacheRefresh();
             }
-        }).catch(err => {
-            // Falha ao inicializar sistema offline
+        }).catch(() => {
+            // Falha ao inicializar sistema offline (silencioso)
         });
 
         // ============================================
@@ -4695,8 +4698,12 @@
                 clearInterval(cacheRefreshInterval);
             }
 
-            // Immediate refresh on start
-            refreshAllCaches();
+            // PERFORMANCE: Adia o primeiro refresh para não competir com inicialização do mapa
+            // O loadClientes() já carrega os dados necessários após 2s
+            // Este refresh serve apenas para manter o cache offline atualizado
+            setTimeout(() => {
+                if (isOnline) refreshAllCaches();
+            }, 8000); // Aguarda 8s para garantir que o mapa está estável
 
             // Then refresh every CACHE_REFRESH_INTERVAL
             cacheRefreshInterval = setInterval(() => {
@@ -4876,18 +4883,20 @@
                             } catch (e) {}
                         }
                     });
-                }, 2000);
 
-                // PERFORMANCE: Carrega clientes após 2s para não competir com GPS
-                setTimeout(() => {
-                    loadClientes();
-                }, 2000);
-
-                // Marca inicialização como completa após 3s
-                // Isso evita que recenterOnGPS seja chamado durante a inicialização
-                setTimeout(() => {
+                    // Marca inicialização como completa após ajustes de layers
                     mapFullyInitialized = true;
                 }, 3000);
+
+                // PERFORMANCE: Carrega clientes após 4s para não competir com mapa
+                // Usa requestIdleCallback para garantir que não causa lag
+                setTimeout(() => {
+                    if ('requestIdleCallback' in window) {
+                        requestIdleCallback(() => loadClientes(), { timeout: 2000 });
+                    } else {
+                        loadClientes();
+                    }
+                }, 4000);
             });
 
             // Fallback: esconde loader após 5 segundos
