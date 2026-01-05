@@ -5716,12 +5716,46 @@
                     return;
                 }
 
+                // Convert written numbers to digits for comparison
+                function convertWrittenNumbers(text) {
+                    if (!text) return text;
+                    const numberMap = {
+                        'zero': '0', 'um': '1', 'uma': '1', 'dois': '2', 'duas': '2', 'tres': '3',
+                        'quatro': '4', 'cinco': '5', 'seis': '6', 'sete': '7', 'oito': '8', 'nove': '9',
+                        'dez': '10', 'onze': '11', 'doze': '12', 'treze': '13', 'quatorze': '14', 'catorze': '14',
+                        'quinze': '15', 'dezesseis': '16', 'dessesseis': '16', 'dezessete': '17', 'dezoito': '18',
+                        'dezenove': '19', 'vinte': '20', 'trinta': '30', 'quarenta': '40', 'cinquenta': '50',
+                        'sessenta': '60', 'setenta': '70', 'oitenta': '80', 'noventa': '90',
+                        'cem': '100', 'primeiro': '1', 'primeira': '1', 'segundo': '2', 'segunda': '2',
+                        'terceiro': '3', 'terceira': '3'
+                    };
+                    let result = text.toLowerCase();
+                    // Handle compound numbers like "vinte e um" -> "21"
+                    result = result.replace(/vinte\s*e?\s*(um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove)/gi, (match, unit) => {
+                        const unitValue = numberMap[unit.toLowerCase()] || unit;
+                        return '2' + unitValue;
+                    });
+                    result = result.replace(/trinta\s*e?\s*(um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove)/gi, (match, unit) => {
+                        const unitValue = numberMap[unit.toLowerCase()] || unit;
+                        return '3' + unitValue;
+                    });
+                    // Replace simple written numbers
+                    for (const [word, digit] of Object.entries(numberMap)) {
+                        const regex = new RegExp(`\\b${word}\\b`, 'gi');
+                        result = result.replace(regex, digit);
+                    }
+                    return result;
+                }
+
                 // Normalize address text for comparison
                 function normalizeAddress(addr) {
                     if (!addr) return '';
 
                     // Remove everything after "Bairro:" (client addresses have extra info)
                     let cleanAddr = addr.split(/bairro:/i)[0];
+
+                    // Convert written numbers to digits (Dezesseis -> 16)
+                    cleanAddr = convertWrittenNumbers(cleanAddr);
 
                     return cleanAddr
                         .toLowerCase()
@@ -5730,7 +5764,7 @@
                         .replace(/[.,;:\-\/\\()]/g, ' ') // Replace punctuation with space
                         .replace(/\s+/g, ' ') // Multiple spaces to single
                         .replace(/\b(rua|r|av|avenida|travessa|tv|alameda|al|praca|pca|largo|lg|rod|rodovia|est|estrada)\b/gi, '')
-                        .replace(/\b(apt|apto|apartamento|bloco|bl|casa|cs|lote|lt|qd|quadra|conj|conjunto)\b/gi, '')
+                        .replace(/\b(apt|apto|apartamento|bloco|bl|lote|lt|qd|quadra|conj|conjunto)\b/gi, '')
                         .replace(/\b(belem|mosqueiro|para|pa)\b/gi, '') // Remove city/state names
                         .replace(/\d{5}\s*\-?\s*\d{3}/g, '') // Remove CEP
                         .replace(/\s+/g, ' ')
@@ -5783,21 +5817,30 @@
                 function extractAddressComponents(addr) {
                     if (!addr) return { primary: '', secondary: '', number: '', clean: '' };
 
-                    // Reference words that indicate start of complement (not part of address)
-                    const referenceWords = [
-                        'proximo', 'próximo', 'prox', 'próx',
-                        'ao lado', 'em frente', 'atras', 'atrás',
-                        'entre', 'perto',
-                        'casa', 'fundos', 'frente',
-                        'referencia', 'referência', 'ref',
-                        'descendo', 'subindo',
-                        'esquina', 'esq'
+                    // Reference patterns that indicate start of complement (not part of address)
+                    // Note: "casa" followed by number is part of address (Casa 05), but "casa de" or "casa do" is reference
+                    const referencePatterns = [
+                        /\b(proximo|próximo|prox\.?|próx\.?)\b/i,
+                        /\b(ao lado|em frente|atras|atrás)\b/i,
+                        /\b(entre|perto)\b/i,
+                        /\b(fundos|frente)\b/i,
+                        /\b(referencia|referência|ref\.?)\b/i,
+                        /\b(descendo|subindo)\b/i,
+                        /\b(esquina|esq\.?)\b/i,
+                        /\bpx\.?\b/i  // Px. or Px for "próximo"
                     ];
 
-                    // CRITICAL FIX: Remove reference words and everything after them FIRST
-                    // This prevents "Descendo a rua" from having "rua" matched as a street type
-                    const refPattern = new RegExp(`\\b(${referenceWords.join('|')})\\b.*$`, 'i');
-                    let cleanAddr = addr.replace(refPattern, '').trim();
+                    // Remove reference patterns and everything after them
+                    let cleanAddr = addr;
+                    for (const pattern of referencePatterns) {
+                        const match = cleanAddr.match(pattern);
+                        if (match) {
+                            cleanAddr = cleanAddr.substring(0, match.index).trim();
+                        }
+                    }
+
+                    // Convert written numbers to digits for better comparison
+                    cleanAddr = convertWrittenNumbers(cleanAddr);
 
                     // Extract house number from cleaned address
                     const houseNum = extractHouseNumber(cleanAddr);
@@ -5861,6 +5904,12 @@
                         secondary = beforeComma.trim();
                     }
 
+                    // Identificar o TIPO do logradouro secundário (alameda, passagem, travessa, etc.)
+                    let secondaryType = null;
+                    if (secondary && matches.length >= 2) {
+                        secondaryType = matches[1].type; // O segundo match é o tipo do logradouro secundário
+                    }
+
                     // Create clean identifier: primary + secondary (if exists) + number
                     let clean = normalizeAddress(primary);
                     if (secondary) {
@@ -5873,6 +5922,7 @@
                     return {
                         primary: primary,
                         secondary: secondary,
+                        secondaryType: secondaryType, // Tipo do logradouro secundário (alameda, passagem, travessa, etc.)
                         number: houseNum,
                         clean: clean.trim()
                     };
@@ -5937,11 +5987,37 @@
                             continue; // Pular este cliente, não é compatível
                         }
 
-                        // Se AMBOS têm logradouros secundários, eles devem ser similares
+                        // Se AMBOS têm logradouros secundários, verificar TIPO e NOME
+                        // O número principal (ex: 1026) já foi verificado, aqui verificamos apenas os termos do secundário
+                        // Números dentro do secundário (Casa 05, Casa 01) são ignorados - o importante é identificar a alameda
                         if (addrHasSecondary && clientHasSecondary) {
-                            const secondarySimilarity = textSimilarity(addrComponents.clean, clientComponents.clean);
-                            // Se os logradouros secundários são muito diferentes, não fazer match
-                            if (secondarySimilarity < 0.65) {
+                            // PRIMEIRO: Verificar se os TIPOS de logradouros secundários são iguais
+                            // "Alameda X" só deve combinar com "Alameda X", não com "Passagem X" ou "Travessa X"
+                            const addrSecType = addrComponents.secondaryType;
+                            const clientSecType = clientComponents.secondaryType;
+
+                            // Se ambos têm tipo identificado, eles DEVEM ser iguais
+                            if (addrSecType && clientSecType && addrSecType !== clientSecType) {
+                                continue; // Tipos diferentes: Alameda ≠ Passagem, Travessa ≠ Alameda, etc.
+                            }
+
+                            // SEGUNDO: Verificar se os NOMES são compatíveis
+                            // Normalize both secondary streets for comparison (normalizeAddress already removes numbers)
+                            const normalizedAddrSecondary = normalizeAddress(addrComponents.secondary);
+                            const normalizedClientSecondary = normalizeAddress(clientComponents.secondary);
+
+                            // Compare secondary street NAMES specifically
+                            const secondarySimilarity = textSimilarity(normalizedAddrSecondary, normalizedClientSecondary);
+
+                            // Also check if one contains keywords from the other (more flexible)
+                            // This helps match "Alameda Escrava Anastácia" with "Al. Anastácia"
+                            const addrSecondaryWords = normalizedAddrSecondary.split(' ').filter(w => w.length > 2);
+                            const clientSecondaryWords = normalizedClientSecondary.split(' ').filter(w => w.length > 2);
+                            const hasCommonWord = addrSecondaryWords.some(w => clientSecondaryWords.includes(w)) ||
+                                                  clientSecondaryWords.some(w => addrSecondaryWords.includes(w));
+
+                            // Accept if similarity >= 0.35 OR if they share a significant word (like "anastacia", "escrava")
+                            if (secondarySimilarity < 0.35 && !hasCommonWord) {
                                 continue; // Pular, são logradouros secundários diferentes
                             }
                         }
@@ -6878,7 +6954,7 @@
                 }
 
                 // Show success and hide geocode option
-                geocodeInfoText.innerHTML = `✅ Geocodificaç��o concluída! <strong>${geocodedCount}</strong> endereços geocodificados${failedCount > 0 ? `, ${failedCount} falhas` : ''}.`;
+                geocodeInfoText.innerHTML = `✅ Geocodificação concluída! <strong>${geocodedCount}</strong> endereços geocodificados${failedCount > 0 ? `, ${failedCount} falhas` : ''}.`;
 
                 setTimeout(() => {
                     geocodeInfo.classList.remove('active');
