@@ -4827,6 +4827,45 @@
             map.on('load', () => {
                 updateLoader('ready', 'Pronto!');
                 setTimeout(hideLoader, 300);
+
+                // Ajustar visibilidade das ruas para aparecerem em zoom mais baixo
+                // Isso faz as ruas menores aparecerem mais cedo
+                const roadLayers = [
+                    'road-street',
+                    'road-street-low',
+                    'road-minor',
+                    'road-minor-low',
+                    'road-minor-case',
+                    'road-residential',
+                    'road-local',
+                    'road-path',
+                    'road-steps',
+                    'road-pedestrian',
+                    'road-label',
+                    'road-label-small',
+                    'road-number-shield'
+                ];
+
+                roadLayers.forEach(layerId => {
+                    if (map.getLayer(layerId)) {
+                        try {
+                            // Diminui o minzoom para mostrar ruas mais cedo
+                            map.setLayerZoomRange(layerId, 10, 24);
+                        } catch (e) {
+                            // Ignora erros de camadas que não existem
+                        }
+                    }
+                });
+
+                // Também ajustar labels de ruas
+                const labelLayers = map.getStyle().layers.filter(layer =>
+                    layer.id.includes('road') && layer.id.includes('label')
+                );
+                labelLayers.forEach(layer => {
+                    try {
+                        map.setLayerZoomRange(layer.id, 12, 24);
+                    } catch (e) {}
+                });
                 loadClientes();
                 setupMapClickHandler();
             });
