@@ -5904,12 +5904,6 @@
                         secondary = beforeComma.trim();
                     }
 
-                    // Identificar o TIPO do logradouro secundário (alameda, passagem, travessa, etc.)
-                    let secondaryType = null;
-                    if (secondary && matches.length >= 2) {
-                        secondaryType = matches[1].type; // O segundo match é o tipo do logradouro secundário
-                    }
-
                     // Create clean identifier: primary + secondary (if exists) + number
                     let clean = normalizeAddress(primary);
                     if (secondary) {
@@ -5922,7 +5916,6 @@
                     return {
                         primary: primary,
                         secondary: secondary,
-                        secondaryType: secondaryType, // Tipo do logradouro secundário (alameda, passagem, travessa, etc.)
                         number: houseNum,
                         clean: clean.trim()
                     };
@@ -5987,21 +5980,10 @@
                             continue; // Pular este cliente, não é compatível
                         }
 
-                        // Se AMBOS têm logradouros secundários, verificar TIPO e NOME
+                        // Se AMBOS têm logradouros secundários, verificar se os NOMES são compatíveis
                         // O número principal (ex: 1026) já foi verificado, aqui verificamos apenas os termos do secundário
                         // Números dentro do secundário (Casa 05, Casa 01) são ignorados - o importante é identificar a alameda
                         if (addrHasSecondary && clientHasSecondary) {
-                            // PRIMEIRO: Verificar se os TIPOS de logradouros secundários são iguais
-                            // "Alameda X" só deve combinar com "Alameda X", não com "Passagem X" ou "Travessa X"
-                            const addrSecType = addrComponents.secondaryType;
-                            const clientSecType = clientComponents.secondaryType;
-
-                            // Se ambos têm tipo identificado, eles DEVEM ser iguais
-                            if (addrSecType && clientSecType && addrSecType !== clientSecType) {
-                                continue; // Tipos diferentes: Alameda ≠ Passagem, Travessa ≠ Alameda, etc.
-                            }
-
-                            // SEGUNDO: Verificar se os NOMES são compatíveis
                             // Normalize both secondary streets for comparison (normalizeAddress already removes numbers)
                             const normalizedAddrSecondary = normalizeAddress(addrComponents.secondary);
                             const normalizedClientSecondary = normalizeAddress(clientComponents.secondary);
