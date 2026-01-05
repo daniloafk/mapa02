@@ -5921,23 +5921,58 @@
                     // Sort by position in string
                     matches.sort((a, b) => a.index - b.index);
 
+                    // Filtrar matches que aparecem DEPOIS do número da casa e em contexto de complemento
+                    // Exemplo: "Rua X, 59, Rua de frente com bar" - o segundo "Rua" é complemento, não logradouro
+                    // Logradouros secundários legítimos: Alameda, Passagem, Travessa (não Rua repetida)
+                    const filteredMatches = [];
+                    if (matches.length > 0) {
+                        filteredMatches.push(matches[0]); // Primeiro sempre é o principal
+
+                        for (let i = 1; i < matches.length; i++) {
+                            const match = matches[i];
+
+                            // Se o segundo tipo é o MESMO que o primeiro, provavelmente é complemento
+                            // Exemplo: "Rua X, 59, Rua de frente" - segundo "Rua" não é logradouro secundário
+                            if (match.type === matches[0].type) {
+                                continue; // Ignorar, é complemento
+                            }
+
+                            // Verificar se aparece depois de uma vírgula seguida de número (indica complemento)
+                            // Padrão: ", 123, <tipo>" ou ", 123 <tipo>"
+                            const textBefore = cleanAddr.substring(0, match.index);
+                            const hasNumberBeforePattern = /,\s*\d+[a-zA-Z]?\s*[,\s]*$/;
+
+                            // Se aparece logo após número + vírgula, E é tipo comum (rua), ignorar
+                            if (hasNumberBeforePattern.test(textBefore) && match.type === 'rua') {
+                                continue; // Provavelmente é "Casa na rua de trás" ou similar
+                            }
+
+                            // Tipos que são legítimos como secundários: alameda, passagem, travessa, viela, beco
+                            const legitimateSecondaryTypes = ['alameda', 'passagem', 'travessa', 'viela', 'beco'];
+                            if (legitimateSecondaryTypes.includes(match.type)) {
+                                filteredMatches.push(match);
+                                break; // Só um secundário
+                            }
+                        }
+                    }
+
                     let primary = '';
                     let secondary = '';
 
-                    if (matches.length === 0) {
+                    if (filteredMatches.length === 0) {
                         // No street type found, use the whole cleaned address
                         primary = cleanAddr.trim();
-                    } else if (matches.length === 1) {
+                    } else if (filteredMatches.length === 1) {
                         // Only one street type - it's the primary
-                        const match = matches[0];
+                        const match = filteredMatches[0];
                         // Extract from street type to number or end
                         const afterType = cleanAddr.substring(match.index);
                         const beforeComma = afterType.split(',')[0];
                         primary = beforeComma.trim();
                     } else {
                         // Multiple street types - first is primary, second is secondary
-                        const first = matches[0];
-                        const second = matches[1];
+                        const first = filteredMatches[0];
+                        const second = filteredMatches[1];
 
                         // Primary: from first type to just before second type
                         const primaryText = cleanAddr.substring(first.index, second.index).replace(/[,\s]+$/, '').trim();
@@ -5951,8 +5986,8 @@
 
                     // Identificar o TIPO do logradouro secundário (alameda, passagem, travessa, etc.)
                     let secondaryType = null;
-                    if (secondary && matches.length >= 2) {
-                        secondaryType = matches[1].type; // O segundo match é o tipo do logradouro secundário
+                    if (secondary && filteredMatches.length >= 2) {
+                        secondaryType = filteredMatches[1].type; // O segundo match filtrado é o tipo do logradouro secundário
                     }
 
                     // Create clean identifier: primary + secondary (if exists) + number
