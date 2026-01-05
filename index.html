@@ -4636,14 +4636,27 @@
         }
 
         // Initialize offline system
-        initOfflineDB().then(() => {
+        initOfflineDB().then(async () => {
             updateOfflineIndicator();
-            // PERFORMANCE: Adia sync para não competir com inicialização do mapa
-            // O sync inicial é feito após 5s para garantir que o mapa está estável
+
             if (isOnline) {
-                setTimeout(() => {
-                    syncAllPendingData();
+                // PERFORMANCE: Só executa sync se houver dados pendentes
+                // Evita operações desnecessárias na inicialização
+                setTimeout(async () => {
+                    try {
+                        const pendingClients = await countPendingItems('pendingClients');
+                        const pendingPlanilha = await countPendingItems('pendingPlanilha');
+                        const pendingStatus = await countPendingItems('pendingDeliveryStatus');
+
+                        // Só sincroniza se houver dados pendentes
+                        if (pendingClients > 0 || pendingPlanilha > 0 || pendingStatus > 0) {
+                            syncAllPendingData();
+                        }
+                    } catch (e) {
+                        // Silencioso
+                    }
                 }, 5000);
+
                 // Start periodic cache refresh when online (já tem delay interno de 8s)
                 startPeriodicCacheRefresh();
             }
@@ -4657,31 +4670,37 @@
 
         let cacheRefreshInterval = null;
         let lastCacheRefresh = 0;
-        const CACHE_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutos (era 30s - causava engasgos)
+        let lastClientsLoad = 0; // Timestamp do último load de clients
+        const CACHE_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutos
+        const SKIP_CLIENTS_IF_RECENT = 60 * 1000; // Pula clients se carregado há menos de 1 minuto
 
         // Refresh all caches with fresh data from Supabase
-        // PERFORMANCE: Usa requestIdleCallback para não interferir na interação do usuário
-        async function refreshAllCaches() {
+        // PERFORMANCE: Usa requestIdleCallback e pula clients se foi carregado recentemente
+        async function refreshAllCaches(skipClients = false) {
             if (!isOnline || !offlineDB) return;
 
             // Função interna que faz o refresh real
             const doRefresh = async () => {
                 try {
-                    // Refresh clients cache
-                    const { data: freshClients, error: clientsError } = await db
-                        .from('clients')
-                        .select('id, address, bairro, city, zipcode, latitude, longitude')
-                        .not('latitude', 'is', null)
-                        .not('longitude', 'is', null);
+                    // Pula clients se foi carregado recentemente por loadClientes()
+                    const shouldSkipClients = skipClients || (Date.now() - lastClientsLoad < SKIP_CLIENTS_IF_RECENT);
 
-                    if (!clientsError && freshClients && freshClients.length > 0) {
-                        await saveCacheToDB('cachedClients', freshClients);
+                    if (!shouldSkipClients) {
+                        const { data: freshClients, error: clientsError } = await db
+                            .from('clients')
+                            .select('id, address, bairro, city, zipcode, latitude, longitude')
+                            .not('latitude', 'is', null)
+                            .not('longitude', 'is', null);
+
+                        if (!clientsError && freshClients && freshClients.length > 0) {
+                            await saveCacheToDB('cachedClients', freshClients);
+                        }
+
+                        // Pequeno delay entre requisições
+                        await new Promise(r => setTimeout(r, 300));
                     }
 
-                    // Pequeno delay entre requisições para não sobrecarregar
-                    await new Promise(r => setTimeout(r, 500));
-
-                    // Refresh planilha cache
+                    // Refresh planilha cache (sempre necessário para cache offline)
                     const { data: freshPlanilha, error: planilhaError } = await db
                         .from('planilha')
                         .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
@@ -4712,17 +4731,16 @@
                 clearInterval(cacheRefreshInterval);
             }
 
-            // PERFORMANCE: Adia o primeiro refresh para não competir com inicialização do mapa
-            // O loadClientes() já carrega os dados necessários após 2s
-            // Este refresh serve apenas para manter o cache offline atualizado
+            // PERFORMANCE: No refresh inicial, pula clients pois loadClientes() já carregou
+            // Apenas carrega planilha para cache offline
             setTimeout(() => {
-                if (isOnline) refreshAllCaches();
-            }, 8000); // Aguarda 8s para garantir que o mapa está estável
+                if (isOnline) refreshAllCaches(true); // true = skipClients
+            }, 8000);
 
-            // Then refresh every CACHE_REFRESH_INTERVAL
+            // Refresh periódico a cada 5 minutos (carrega tudo)
             cacheRefreshInterval = setInterval(() => {
                 if (isOnline) {
-                    refreshAllCaches();
+                    refreshAllCaches(false);
                 }
             }, CACHE_REFRESH_INTERVAL);
         }
@@ -5056,6 +5074,9 @@
                             data: data || [],
                             timestamp: Date.now()
                         };
+
+                        // Marca timestamp para evitar refresh duplicado
+                        lastClientsLoad = Date.now();
 
                         // Save to IndexedDB cache for offline use
                         await saveCacheToDB('cachedClients', data);
