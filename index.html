@@ -4898,15 +4898,6 @@
                     } catch (e) {}
                 });
 
-                // PERFORMANCE: Processa GPS pendente após o mapa carregar
-                if (pendingGpsCenter) {
-                    // Aguarda um pouco para o mapa estabilizar antes de animar
-                    setTimeout(() => {
-                        smoothFlyTo(pendingGpsCenter.lng, pendingGpsCenter.lat, 14);
-                        pendingGpsCenter = null;
-                    }, 300);
-                }
-
                 // PERFORMANCE: Adia carregamento de clientes para não competir com animação
                 // Usa requestIdleCallback se disponível, senão setTimeout
                 const loadClientsDeferred = () => {
@@ -4930,10 +4921,6 @@
             }, 5000);
         }
 
-        // PERFORMANCE: Variável para evitar dupla requisição de GPS
-        let initialGpsObtained = false;
-        let pendingGpsCenter = null;
-
         function getUserLocationAndInitMap() {
             // Default location (Belém, PA, Brazil)
             const defaultLat = -1.4558;
@@ -4941,58 +4928,9 @@
 
             updateLoader('gps', 'Obtendo localização...');
 
-            // OTIMIZAÇÃO: Inicia o mapa IMEDIATAMENTE com localização padrão
-            // e atualiza para GPS quando disponível
+            // Inicia o mapa com localização padrão
+            // O geolocateControl vai centralizar na posição real do GPS e mostrar a bola azul
             initMapWithCoords(defaultLat, defaultLng, 12);
-
-            // Tenta obter GPS em paralelo (não bloqueia o carregamento)
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        // PERFORMANCE: Marca que já obteve GPS para evitar dupla animação
-                        initialGpsObtained = true;
-
-                        // GPS obtido - centraliza suavemente no usuário
-                        if (map) {
-                            // PERFORMANCE: Aguarda o mapa estar idle antes de animar
-                            // Isso evita travamento durante carregamento de tiles
-                            if (map.loaded() && map.isStyleLoaded()) {
-                                smoothFlyTo(position.coords.longitude, position.coords.latitude, 14);
-                            } else {
-                                // Agenda para quando o mapa estiver pronto
-                                pendingGpsCenter = {
-                                    lng: position.coords.longitude,
-                                    lat: position.coords.latitude
-                                };
-                            }
-                        }
-                    },
-                    (error) => {
-                        // GPS falhou - mantém localização padrão (mapa já carregado)
-                        // GPS não disponível, usando localização padrão
-                    },
-                    {
-                        enableHighAccuracy: false, // PERFORMANCE: Primeiro usa GPS rápido
-                        timeout: 5000,
-                        maximumAge: 300000 // Aceita posição em cache de até 5 minutos
-                    }
-                );
-            }
-        }
-
-        // PERFORMANCE: Função de flyTo otimizada que aguarda o mapa estar idle
-        function smoothFlyTo(lng, lat, zoom, duration = 1200) {
-            if (!map) return;
-
-            // Usa requestAnimationFrame para não bloquear o thread principal
-            requestAnimationFrame(() => {
-                map.flyTo({
-                    center: [lng, lat],
-                    zoom: zoom,
-                    duration: duration,
-                    essential: true // Indica que é animação essencial (prioridade)
-                });
-            });
         }
 
         let geolocateControl = null;
@@ -5011,21 +4949,23 @@
 
             map.addControl(geolocateControl, 'top-right');
 
-            // PERFORMANCE: Só dispara geolocalização automática se não obtivemos GPS antes
-            // Isso evita dupla requisição e dupla animação
-            if (!initialGpsObtained) {
-                if (map.loaded()) {
-                    setTimeout(() => geolocateControl.trigger(), 500);
-                } else {
-                    map.once('load', () => {
-                        // Aguarda um pouco mais para o mapa estabilizar
-                        setTimeout(() => {
-                            if (!initialGpsObtained) {
-                                geolocateControl.trigger();
-                            }
-                        }, 500);
-                    });
+            // SEMPRE dispara o geolocateControl para mostrar a bola azul
+            // O geolocateControl é responsável por:
+            // 1. Mostrar a bola azul de posição do usuário
+            // 2. Centralizar o mapa na posição GPS
+            // 3. Acompanhar o usuário em tempo real
+            const triggerGeolocate = () => {
+                if (geolocateControl) {
+                    geolocateControl.trigger();
                 }
+            };
+
+            if (map.loaded()) {
+                setTimeout(triggerGeolocate, 300);
+            } else {
+                map.once('load', () => {
+                    setTimeout(triggerGeolocate, 300);
+                });
             }
         }
 
