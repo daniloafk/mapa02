@@ -4829,88 +4829,47 @@
                 }
             }, { passive: true, capture: true });
 
-            // PERFORMANCE: "Warm-up" do mapa - pré-carrega tiles ao redor
-            // Isso reduz gargalos no primeiro arrasto
-            map.once('idle', () => {
-                // Após o mapa ficar idle pela primeira vez, faz um pequeno pan
-                // para pré-carregar tiles adjacentes
-                const center = map.getCenter();
-                const bounds = map.getBounds();
-                const latDiff = (bounds.getNorth() - bounds.getSouth()) * 0.1;
-                const lngDiff = (bounds.getEast() - bounds.getWest()) * 0.1;
-
-                // Pré-carrega tiles em volta do centro atual (silenciosamente)
-                setTimeout(() => {
-                    if (map) {
-                        // Força o carregamento de tiles adjacentes
-                        map.panBy([1, 0], { duration: 0 });
-                        setTimeout(() => {
-                            if (map) map.panBy([-1, 0], { duration: 0 });
-                        }, 50);
-                    }
-                }, 500);
-            });
-
             // Add map controls
             initializeMapControls();
 
-            // Single load event for all initialization
+            // Esconde loader quando o mapa carregar
             map.on('load', () => {
                 updateLoader('ready', 'Pronto!');
                 setTimeout(hideLoader, 300);
+            });
 
-                // Ajustar visibilidade das ruas para aparecerem em zoom mais baixo
-                // Isso faz as ruas menores aparecerem mais cedo
-                const roadLayers = [
-                    'road-street',
-                    'road-street-low',
-                    'road-minor',
-                    'road-minor-low',
-                    'road-minor-case',
-                    'road-residential',
-                    'road-local',
-                    'road-path',
-                    'road-steps',
-                    'road-pedestrian',
-                    'road-label',
-                    'road-label-small',
-                    'road-number-shield'
-                ];
+            // PERFORMANCE: Todas as operações pesadas são adiadas para depois do mapa ficar idle
+            // Usa 'on' ao invés de 'once' para garantir que sempre executa
+            let initialSetupDone = false;
+            map.on('idle', () => {
+                if (initialSetupDone) return;
+                initialSetupDone = true;
 
-                roadLayers.forEach(layerId => {
-                    if (map.getLayer(layerId)) {
-                        try {
-                            // Diminui o minzoom para mostrar ruas mais cedo
-                            map.setLayerZoomRange(layerId, 10, 24);
-                        } catch (e) {
-                            // Ignora erros de camadas que não existem
-                        }
-                    }
-                });
-
-                // Também ajustar labels de ruas
-                const labelLayers = map.getStyle().layers.filter(layer =>
-                    layer.id.includes('road') && layer.id.includes('label')
-                );
-                labelLayers.forEach(layer => {
-                    try {
-                        map.setLayerZoomRange(layer.id, 12, 24);
-                    } catch (e) {}
-                });
-
-                // PERFORMANCE: Adia carregamento de clientes para não competir com animação
-                // Usa requestIdleCallback se disponível, senão setTimeout
-                const loadClientsDeferred = () => {
-                    loadClientes();
-                };
-
-                if ('requestIdleCallback' in window) {
-                    requestIdleCallback(loadClientsDeferred, { timeout: 2000 });
-                } else {
-                    setTimeout(loadClientsDeferred, 500);
-                }
-
+                // Setup click handler imediatamente (é leve)
                 setupMapClickHandler();
+
+                // PERFORMANCE: Adia ajustes de layers para não competir com renderização
+                setTimeout(() => {
+                    const roadLayers = [
+                        'road-street',
+                        'road-minor',
+                        'road-residential',
+                        'road-local'
+                    ];
+
+                    roadLayers.forEach(layerId => {
+                        if (map && map.getLayer(layerId)) {
+                            try {
+                                map.setLayerZoomRange(layerId, 10, 24);
+                            } catch (e) {}
+                        }
+                    });
+                }, 2000);
+
+                // PERFORMANCE: Carrega clientes após 2s para não competir com GPS
+                setTimeout(() => {
+                    loadClientes();
+                }, 2000);
             });
 
             // Fallback: esconde loader após 5 segundos
