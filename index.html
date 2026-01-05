@@ -4758,33 +4758,41 @@
                 // Performance optimizations
                 fadeDuration: 0,                    // Remove fade animation dos tiles (mais rápido)
                 trackResize: true,                  // Mantém responsivo
-                renderWorldCopies: true,            // Mantém mundo contínuo
-                maxTileCacheSize: 100,              // Cache maior = menos recarregamento
+                renderWorldCopies: false,           // PERFORMANCE: Desativa cópias do mundo (menos renderização)
+                maxTileCacheSize: 150,              // Cache maior = menos recarregamento
                 collectResourceTiming: false,       // Desativa coleta de métricas
                 crossSourceCollisions: false,       // Menos cálculos de colisão
                 localIdeographFontFamily: false,    // Usa fontes do servidor
                 pitchWithRotate: false,             // Desativa pitch com rotação (mais leve)
                 dragRotate: false,                  // Desativa rotação com drag (mais leve)
                 touchPitch: false,                  // Desativa pitch com touch
+                antialias: false,                   // PERFORMANCE: Desativa antialiasing (mais rápido)
+                refreshExpiredTiles: false,         // PERFORMANCE: Não recarrega tiles expirados automaticamente
+                maxParallelImageRequests: 8,        // PERFORMANCE: Limita requisições paralelas
             });
+
+            // PERFORMANCE: Desativa collision detection durante interações
+            let interactionTimeout = null;
 
             // Otimizações de performance durante interações
-            map.on('dragstart', () => {
-                // Reduz qualidade durante drag para mais fluidez
+            map.on('movestart', () => {
+                // PERFORMANCE: Reduz qualidade e desativa features pesadas durante movimento
                 map.getCanvas().style.imageRendering = 'optimizeSpeed';
+
+                // Limpa timeout anterior se existir
+                if (interactionTimeout) {
+                    clearTimeout(interactionTimeout);
+                    interactionTimeout = null;
+                }
             });
 
-            map.on('dragend', () => {
-                // Restaura qualidade após drag
-                map.getCanvas().style.imageRendering = 'auto';
-            });
-
-            map.on('zoomstart', () => {
-                map.getCanvas().style.imageRendering = 'optimizeSpeed';
-            });
-
-            map.on('zoomend', () => {
-                map.getCanvas().style.imageRendering = 'auto';
+            map.on('moveend', () => {
+                // PERFORMANCE: Aguarda um pouco antes de restaurar qualidade
+                // Isso evita flickering em movimentos rápidos consecutivos
+                interactionTimeout = setTimeout(() => {
+                    map.getCanvas().style.imageRendering = 'auto';
+                    interactionTimeout = null;
+                }, 150);
             });
 
             // Bloqueia o "double-tap drag zoom" mas permite arrastar o mapa
@@ -4792,6 +4800,7 @@
             let blockingDragZoom = false;
             const mapContainer = map.getContainer();
 
+            // PERFORMANCE: Event listeners otimizados com passive: true quando possível
             mapContainer.addEventListener('touchstart', function(e) {
                 const now = Date.now();
                 const timeSinceLastTap = now - lastTap;
@@ -4804,7 +4813,7 @@
                     map.touchZoomRotate.disable();
                 }
                 lastTap = now;
-            }, { passive: false, capture: true });
+            }, { passive: true, capture: true }); // PERFORMANCE: Mudado para passive: true
 
             mapContainer.addEventListener('touchmove', function(e) {
                 if (e.touches.length >= 2 && blockingDragZoom) {
@@ -4819,6 +4828,28 @@
                     map.touchZoomRotate.enable();
                 }
             }, { passive: true, capture: true });
+
+            // PERFORMANCE: "Warm-up" do mapa - pré-carrega tiles ao redor
+            // Isso reduz gargalos no primeiro arrasto
+            map.once('idle', () => {
+                // Após o mapa ficar idle pela primeira vez, faz um pequeno pan
+                // para pré-carregar tiles adjacentes
+                const center = map.getCenter();
+                const bounds = map.getBounds();
+                const latDiff = (bounds.getNorth() - bounds.getSouth()) * 0.1;
+                const lngDiff = (bounds.getEast() - bounds.getWest()) * 0.1;
+
+                // Pré-carrega tiles em volta do centro atual (silenciosamente)
+                setTimeout(() => {
+                    if (map) {
+                        // Força o carregamento de tiles adjacentes
+                        map.panBy([1, 0], { duration: 0 });
+                        setTimeout(() => {
+                            if (map) map.panBy([-1, 0], { duration: 0 });
+                        }, 50);
+                    }
+                }, 500);
+            });
 
             // Add map controls
             initializeMapControls();
