@@ -4866,7 +4866,28 @@
                         map.setLayerZoomRange(layer.id, 12, 24);
                     } catch (e) {}
                 });
-                loadClientes();
+
+                // PERFORMANCE: Processa GPS pendente após o mapa carregar
+                if (pendingGpsCenter) {
+                    // Aguarda um pouco para o mapa estabilizar antes de animar
+                    setTimeout(() => {
+                        smoothFlyTo(pendingGpsCenter.lng, pendingGpsCenter.lat, 14);
+                        pendingGpsCenter = null;
+                    }, 300);
+                }
+
+                // PERFORMANCE: Adia carregamento de clientes para não competir com animação
+                // Usa requestIdleCallback se disponível, senão setTimeout
+                const loadClientsDeferred = () => {
+                    loadClientes();
+                };
+
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(loadClientsDeferred, { timeout: 2000 });
+                } else {
+                    setTimeout(loadClientsDeferred, 500);
+                }
+
                 setupMapClickHandler();
             });
 
@@ -4877,6 +4898,10 @@
                 }
             }, 5000);
         }
+
+        // PERFORMANCE: Variável para evitar dupla requisição de GPS
+        let initialGpsObtained = false;
+        let pendingGpsCenter = null;
 
         function getUserLocationAndInitMap() {
             // Default location (Belém, PA, Brazil)
@@ -4893,13 +4918,22 @@
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
+                        // PERFORMANCE: Marca que já obteve GPS para evitar dupla animação
+                        initialGpsObtained = true;
+
                         // GPS obtido - centraliza suavemente no usuário
                         if (map) {
-                            map.flyTo({
-                                center: [position.coords.longitude, position.coords.latitude],
-                                zoom: 14,
-                                duration: 1500
-                            });
+                            // PERFORMANCE: Aguarda o mapa estar idle antes de animar
+                            // Isso evita travamento durante carregamento de tiles
+                            if (map.loaded() && map.isStyleLoaded()) {
+                                smoothFlyTo(position.coords.longitude, position.coords.latitude, 14);
+                            } else {
+                                // Agenda para quando o mapa estiver pronto
+                                pendingGpsCenter = {
+                                    lng: position.coords.longitude,
+                                    lat: position.coords.latitude
+                                };
+                            }
                         }
                     },
                     (error) => {
@@ -4907,12 +4941,27 @@
                         // GPS não disponível, usando localização padrão
                     },
                     {
-                        enableHighAccuracy: true,
-                        timeout: 8000,
-                        maximumAge: 60000 // Aceita posição em cache de até 1 minuto
+                        enableHighAccuracy: false, // PERFORMANCE: Primeiro usa GPS rápido
+                        timeout: 5000,
+                        maximumAge: 300000 // Aceita posição em cache de até 5 minutos
                     }
                 );
             }
+        }
+
+        // PERFORMANCE: Função de flyTo otimizada que aguarda o mapa estar idle
+        function smoothFlyTo(lng, lat, zoom, duration = 1200) {
+            if (!map) return;
+
+            // Usa requestAnimationFrame para não bloquear o thread principal
+            requestAnimationFrame(() => {
+                map.flyTo({
+                    center: [lng, lat],
+                    zoom: zoom,
+                    duration: duration,
+                    essential: true // Indica que é animação essencial (prioridade)
+                });
+            });
         }
 
         let geolocateControl = null;
@@ -4931,14 +4980,21 @@
 
             map.addControl(geolocateControl, 'top-right');
 
-            // Auto-trigger geolocation on load
-            if (map.loaded()) {
-                // Map already loaded, trigger immediately
-                setTimeout(() => geolocateControl.trigger(), 100);
-            } else {
-                map.once('load', () => {
-                    setTimeout(() => geolocateControl.trigger(), 100);
-                });
+            // PERFORMANCE: Só dispara geolocalização automática se não obtivemos GPS antes
+            // Isso evita dupla requisição e dupla animação
+            if (!initialGpsObtained) {
+                if (map.loaded()) {
+                    setTimeout(() => geolocateControl.trigger(), 500);
+                } else {
+                    map.once('load', () => {
+                        // Aguarda um pouco mais para o mapa estabilizar
+                        setTimeout(() => {
+                            if (!initialGpsObtained) {
+                                geolocateControl.trigger();
+                            }
+                        }, 500);
+                    });
+                }
             }
         }
 
