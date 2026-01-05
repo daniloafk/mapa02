@@ -4657,38 +4657,52 @@
 
         let cacheRefreshInterval = null;
         let lastCacheRefresh = 0;
-        const CACHE_REFRESH_INTERVAL = 30 * 1000; // 30 seconds
+        const CACHE_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutos (era 30s - causava engasgos)
 
         // Refresh all caches with fresh data from Supabase
+        // PERFORMANCE: Usa requestIdleCallback para não interferir na interação do usuário
         async function refreshAllCaches() {
             if (!isOnline || !offlineDB) return;
 
-            try {
-                // Refresh clients cache
-                const { data: freshClients, error: clientsError } = await db
-                    .from('clients')
-                    .select('id, address, bairro, city, zipcode, latitude, longitude')
-                    .not('latitude', 'is', null)
-                    .not('longitude', 'is', null);
+            // Função interna que faz o refresh real
+            const doRefresh = async () => {
+                try {
+                    // Refresh clients cache
+                    const { data: freshClients, error: clientsError } = await db
+                        .from('clients')
+                        .select('id, address, bairro, city, zipcode, latitude, longitude')
+                        .not('latitude', 'is', null)
+                        .not('longitude', 'is', null);
 
-                if (!clientsError && freshClients && freshClients.length > 0) {
-                    await saveCacheToDB('cachedClients', freshClients);
+                    if (!clientsError && freshClients && freshClients.length > 0) {
+                        await saveCacheToDB('cachedClients', freshClients);
+                    }
+
+                    // Pequeno delay entre requisições para não sobrecarregar
+                    await new Promise(r => setTimeout(r, 500));
+
+                    // Refresh planilha cache
+                    const { data: freshPlanilha, error: planilhaError } = await db
+                        .from('planilha')
+                        .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
+                        .not('destination_address', 'is', null)
+                        .order('sequence', { ascending: true });
+
+                    if (!planilhaError && freshPlanilha && freshPlanilha.length > 0) {
+                        await saveCacheToDB('cachedPlanilha', freshPlanilha);
+                    }
+
+                    lastCacheRefresh = Date.now();
+                } catch (err) {
+                    // Cache refresh failed silently
                 }
+            };
 
-                // Refresh planilha cache
-                const { data: freshPlanilha, error: planilhaError } = await db
-                    .from('planilha')
-                    .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
-                    .not('destination_address', 'is', null)
-                    .order('sequence', { ascending: true });
-
-                if (!planilhaError && freshPlanilha && freshPlanilha.length > 0) {
-                    await saveCacheToDB('cachedPlanilha', freshPlanilha);
-                }
-
-                lastCacheRefresh = Date.now();
-            } catch (err) {
-                // Cache refresh failed silently
+            // Usa requestIdleCallback para executar quando o browser estiver idle
+            if ('requestIdleCallback' in window) {
+                requestIdleCallback(() => doRefresh(), { timeout: 10000 });
+            } else {
+                doRefresh();
             }
         }
 
