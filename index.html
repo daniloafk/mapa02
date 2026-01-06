@@ -1882,8 +1882,8 @@
             color: #22c55e;
         }
 
-        .fixed-stat-item.unregistered .fixed-stat-number {
-            color: #ef4444;
+        .fixed-stat-item.pending .fixed-stat-number {
+            color: #f59e0b;
         }
 
         .fixed-stat-item.delivered .fixed-stat-number {
@@ -1900,6 +1900,41 @@
 
         body.dark .fixed-stat-label {
             color: var(--text-muted-dark);
+        }
+
+        /* Unregistered addresses list */
+        .unregistered-addr-list {
+            display: none;
+            max-height: 120px;
+            overflow-y: auto;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 2px solid #ef4444;
+            border-radius: 4px;
+            padding: 4px 6px;
+            margin-left: 4px;
+        }
+
+        body.dark .unregistered-addr-list {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .unregistered-addr-item {
+            font-size: 8px;
+            color: #dc2626;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 140px;
+        }
+
+        body.dark .unregistered-addr-item {
+            color: #f87171;
+        }
+
+        .unregistered-addr-item:last-child {
+            border-bottom: none;
         }
 
         /* Pulse animation for updates */
@@ -1932,6 +1967,14 @@
 
             .fixed-stat-label {
                 font-size: 8px;
+            }
+
+            .unregistered-addr-list {
+                max-height: 80px;
+            }
+
+            .unregistered-addr-item {
+                max-width: 120px;
             }
         }
 
@@ -3921,16 +3964,18 @@
 
     <!-- Fixed Stats Panel -->
     <div class="fixed-stats-panel" id="fixedStatsPanel">
-        <div class="fixed-stat-item total" title="Total de paradas">
+        <div class="fixed-stat-item total" title="Marcadores verdes + vermelhos">
             <span class="fixed-stat-number" id="fixedStatTotal">0</span>
             <span class="fixed-stat-label">Paradas</span>
         </div>
-        <div class="fixed-stat-item registered" title="Endereços cadastrados">
+        <div class="fixed-stat-item registered" title="Marcadores verdes (cadastrados)">
             <span class="fixed-stat-number" id="fixedStatRegistered">0</span>
             <span class="fixed-stat-label">Cadastrados</span>
         </div>
-        <div class="fixed-stat-item unregistered" title="Endereços não cadastrados">
-            <span class="fixed-stat-number" id="fixedStatUnregistered">0</span>
+        <!-- Lista de endereços não cadastrados (vermelhos) -->
+        <div class="unregistered-addr-list" id="unregisteredAddressList"></div>
+        <div class="fixed-stat-item pending" title="Pacotes pendentes de entrega">
+            <span class="fixed-stat-number" id="fixedStatPending">0</span>
             <span class="fixed-stat-label">Pendentes</span>
         </div>
         <div class="fixed-stat-item delivered" title="Entregas realizadas">
@@ -6153,6 +6198,8 @@
             const panel = document.getElementById('fixedStatsPanel');
             if (!panel) return;
 
+            let unregisteredAddresses = [];
+
             // If no stats provided, calculate from current markers
             if (!stats) {
                 try {
@@ -6161,26 +6208,48 @@
                         const data = source._data;
 
                         if (data && data.features) {
-                            let total = 0;
-                            let registered = 0;
-                            let unregistered = 0;
-                            let delivered = 0;
+                            let markersCount = 0; // Total de marcadores verdes + vermelhos
+                            let registered = 0; // Marcadores verdes (cadastrados)
+                            let pending = 0; // Pacotes pendentes de entrega
+                            let delivered = 0; // Entregas realizadas
 
                             data.features.forEach(feature => {
                                 const props = feature.properties;
                                 const count = props.packageCount || 1;
-                                total += count;
+                                const isDelivered = props.deliveryStatus === 'delivered' || props.deliveryStatus === 'not_delivered';
 
-                                if (props.deliveryStatus === 'delivered' || props.deliveryStatus === 'not_delivered') {
+                                if (isDelivered) {
+                                    // Entregue ou não entregue (cinza)
                                     delivered += count;
-                                } else if (props.isRegistered) {
-                                    registered += count;
                                 } else {
-                                    unregistered += count;
+                                    // Marcador ativo (verde ou vermelho)
+                                    markersCount++;
+
+                                    if (props.isRegistered) {
+                                        // Verde - cadastrado
+                                        registered++;
+                                    } else {
+                                        // Vermelho - não cadastrado
+                                        // Coleta endereços para exibir
+                                        const addr = props.address || props.originalAddress || 'Endereço desconhecido';
+                                        unregisteredAddresses.push({
+                                            address: addr,
+                                            sequence: props.sequences || ''
+                                        });
+                                    }
+
+                                    // Pendentes = pacotes que faltam entregar
+                                    pending += count;
                                 }
                             });
 
-                            stats = { total, registered, unregistered, delivered };
+                            stats = {
+                                total: markersCount, // Verde + vermelho
+                                registered: registered, // Verdes
+                                pending: pending, // Pacotes a entregar
+                                delivered: delivered,
+                                unregisteredAddresses: unregisteredAddresses
+                            };
                         }
                     }
                 } catch (e) {
@@ -6210,8 +6279,23 @@
 
             updateStat('fixedStatTotal', stats.total);
             updateStat('fixedStatRegistered', stats.registered);
-            updateStat('fixedStatUnregistered', stats.unregistered);
+            updateStat('fixedStatPending', stats.pending);
             updateStat('fixedStatDelivered', stats.delivered);
+
+            // Update unregistered addresses list
+            const addressList = document.getElementById('unregisteredAddressList');
+            if (addressList && stats.unregisteredAddresses) {
+                const addrs = stats.unregisteredAddresses || unregisteredAddresses;
+                if (addrs.length > 0) {
+                    addressList.innerHTML = addrs.map(item =>
+                        `<div class="unregistered-addr-item" title="${item.address}">${item.address}</div>`
+                    ).join('');
+                    addressList.style.display = 'block';
+                } else {
+                    addressList.innerHTML = '';
+                    addressList.style.display = 'none';
+                }
+            }
         }
 
         // Hide fixed stats panel
