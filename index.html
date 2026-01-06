@@ -4821,29 +4821,6 @@
             });
         }
 
-        // Get data from cache by index
-        function getFromCacheByIndex(storeName, indexName, value) {
-            return new Promise((resolve, reject) => {
-                if (!offlineDB) {
-                    reject(new Error('IndexedDB não inicializado'));
-                    return;
-                }
-
-                const transaction = offlineDB.transaction([storeName], 'readonly');
-                const store = transaction.objectStore(storeName);
-                const index = store.index(indexName);
-                const request = index.get(value);
-
-                request.onsuccess = () => {
-                    resolve(request.result || null);
-                };
-
-                request.onerror = () => {
-                    reject(request.error);
-                };
-            });
-        }
-
         // Initialize offline system
         initOfflineDB().then(async () => {
             updateOfflineIndicator();
@@ -5913,9 +5890,6 @@
                     routeBtn.style.opacity = '0.6';
                     routeBtn.style.pointerEvents = 'none';
                 }
-
-                // PERFORMANCE: Função para liberar o thread principal periodicamente
-                const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
                 let data = null;
                 let registeredClients = [];
