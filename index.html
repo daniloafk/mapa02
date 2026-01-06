@@ -4487,56 +4487,77 @@
             isOnline = true;
             updateOfflineIndicator();
 
-            // Auto-sync when back online
-            setTimeout(async () => {
-                // Step 1: Sync pending data WITHOUT reloading markers yet
-                await syncAllPendingData(true);
-
-                // Step 2: Refresh caches with fresh data from Supabase BEFORE reloading markers
-                // Store fresh data in variables first
-                let freshClientsData = null;
-                let freshPlanilhaData = null;
-
+            // PERFORMANCE: Sincronização otimizada para não travar o mapa
+            // Usa delays e requestIdleCallback para distribuir a carga
+            const performOnlineSync = async () => {
                 try {
-                    // Fetch fresh clients data
-                    const { data: freshClients } = await db
-                        .from('clients')
-                        .select('id, address, bairro, city, zipcode, latitude, longitude')
-                        .not('latitude', 'is', null)
-                        .not('longitude', 'is', null);
+                    // Step 1: Verifica se há dados pendentes antes de sincronizar
+                    const pendingClients = await countPendingItems('pendingClients');
+                    const pendingPlanilha = await countPendingItems('pendingPlanilha');
+                    const pendingStatus = await countPendingItems('pendingDeliveryStatus');
+                    const hasPendingData = pendingClients > 0 || pendingPlanilha > 0 || pendingStatus > 0;
 
-                    if (freshClients && freshClients.length > 0) {
-                        freshClientsData = freshClients;
-                        await saveCacheToDB('cachedClients', freshClients);
+                    // Step 2: Só sincroniza se houver dados pendentes
+                    if (hasPendingData) {
+                        await syncAllPendingData(true);
+                        // Delay após sync para não sobrecarregar
+                        await new Promise(r => setTimeout(r, 500));
                     }
 
-                    // Fetch fresh planilha data
-                    const { data: freshPlanilha } = await db
-                        .from('planilha')
-                        .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
-                        .not('destination_address', 'is', null)
-                        .order('sequence', { ascending: true });
+                    // Step 3: Refresh caches de forma espaçada (só planilha, clients será feito por loadClientes)
+                    await new Promise(r => setTimeout(r, 300));
 
-                    if (freshPlanilha && freshPlanilha.length > 0) {
-                        freshPlanilhaData = freshPlanilha;
-                        await saveCacheToDB('cachedPlanilha', freshPlanilha);
+                    try {
+                        const { data: freshPlanilha } = await db
+                            .from('planilha')
+                            .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
+                            .not('destination_address', 'is', null)
+                            .order('sequence', { ascending: true });
+
+                        if (freshPlanilha && freshPlanilha.length > 0) {
+                            await saveCacheToDB('cachedPlanilha', freshPlanilha);
+                        }
+                    } catch (e) {
+                        // Silencioso
                     }
-                } catch (refreshError) {
-                    // Silently fail cache refresh
+
+                    // Step 4: Delay antes de recarregar UI
+                    await new Promise(r => setTimeout(r, 500));
+
+                    // Step 5: Recarrega clientes (já inclui clients do Supabase)
+                    if ('requestIdleCallback' in window) {
+                        requestIdleCallback(() => loadClientes(), { timeout: 3000 });
+                    } else {
+                        loadClientes();
+                    }
+
+                    // Step 6: Só recarrega marcadores se estiverem visíveis E se teve dados sincronizados
+                    if (hasPendingData && routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
+                        await new Promise(r => setTimeout(r, 1000));
+                        if ('requestIdleCallback' in window) {
+                            requestIdleCallback(() => loadRouteMarkers(true), { timeout: 5000 });
+                        } else {
+                            await loadRouteMarkers(true);
+                        }
+                    }
+
+                    // Step 7: Inicia refresh periódico
+                    startPeriodicCacheRefresh();
+
+                } catch (err) {
+                    // Sync failed silently
+                    startPeriodicCacheRefresh();
                 }
+            };
 
-                // Small delay to ensure IndexedDB writes are complete
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                // Step 3: NOW reload clientes and markers with fresh synchronized data
-                loadClientes();
-                if (routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
-                    await loadRouteMarkers(true);
+            // Aguarda 1.5s antes de iniciar sync para não competir com reconexão
+            setTimeout(() => {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(() => performOnlineSync(), { timeout: 5000 });
+                } else {
+                    performOnlineSync();
                 }
-
-                // Step 4: Start periodic cache refresh to keep data updated
-                startPeriodicCacheRefresh();
-            }, 1000);
+            }, 1500);
         });
 
         window.addEventListener('offline', () => {
