@@ -3679,7 +3679,7 @@
     </div>
 
     <!-- Offline Indicator -->
-    <div class="offline-indicator" id="offlineIndicator" title="Online" onclick="syncAllPendingData()">
+    <div class="offline-indicator" id="offlineIndicator" title="Online" onclick="manualSync()">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
         </svg>
@@ -4254,10 +4254,12 @@
         }
 
         // Sync pending clients to Supabase
+        // Retorna array de endereços que foram sincronizados com sucesso
         async function syncPendingClients() {
+            const syncedAddresses = [];
             try {
                 const pendingClients = await getPendingFromOfflineDB('pendingClients');
-                if (pendingClients.length === 0) return;
+                if (pendingClients.length === 0) return syncedAddresses;
 
                 for (let i = 0; i < pendingClients.length; i++) {
                     const client = pendingClients[i];
@@ -4276,21 +4278,16 @@
                         let error = null;
 
                         if (existingData && existingData.length > 0) {
-                            // Client already exists - only update missing fields, preserve existing coordinates
+                            // Client already exists - only update missing fields
                             const existingClient = existingData[0];
                             const updateData = {};
 
-                            // Only update fields that are empty in Supabase but have values in pending
                             if (!existingClient.bairro && client.bairro) updateData.bairro = client.bairro;
                             if (!existingClient.city && client.city) updateData.city = client.city;
                             if (!existingClient.zipcode && client.zipcode) updateData.zipcode = client.zipcode;
-
-                            // Only update coordinates if they don't exist in Supabase
-                            // This prevents overwriting verified coordinates with potentially less accurate ones
                             if (!existingClient.latitude && client.latitude) updateData.latitude = client.latitude;
                             if (!existingClient.longitude && client.longitude) updateData.longitude = client.longitude;
 
-                            // Only do the update if there's something to update
                             if (Object.keys(updateData).length > 0) {
                                 const updateResult = await db
                                     .from('clients')
@@ -4299,7 +4296,7 @@
                                 error = updateResult.error;
                             }
                         } else {
-                            // New client - insert with all data
+                            // New client - insert
                             const insertResult = await db
                                 .from('clients')
                                 .insert({
@@ -4315,36 +4312,26 @@
 
                         if (!error) {
                             await deleteSyncedFromOfflineDB('pendingClients', client.localId);
+                            syncedAddresses.push(client.address);
                         }
                     } catch (err) {
                         // Erro na sincronização, mantém pendente
                     }
                 }
-
-                // After sync, refresh the clients cache with fresh data from Supabase
-                try {
-                    const { data: freshClients } = await db
-                        .from('clients')
-                        .select('id, address, bairro, city, zipcode, latitude, longitude')
-                        .not('latitude', 'is', null)
-                        .not('longitude', 'is', null);
-
-                    if (freshClients && freshClients.length > 0) {
-                        await saveCacheToDB('cachedClients', freshClients);
-                    }
-                } catch (cacheErr) {
-                    // Erro ao atualizar cache
-                }
+                // NÃO faz refresh do cache completo - quem chamou decide se precisa
             } catch (err) {
                 // Erro ao obter clientes pendentes
             }
+            return syncedAddresses;
         }
 
         // Sync pending planilha data to Supabase
+        // Retorna array de endereços que foram sincronizados com sucesso
         async function syncPendingPlanilha() {
+            const syncedAddresses = [];
             try {
                 const pendingPlanilha = await getPendingFromOfflineDB('pendingPlanilha');
-                if (pendingPlanilha.length === 0) return;
+                if (pendingPlanilha.length === 0) return syncedAddresses;
 
                 const batchData = pendingPlanilha.map(item => ({
                     destination_address: item.destination_address,
@@ -4369,36 +4356,26 @@
                             await yieldToMain();
                         }
                         await deleteSyncedFromOfflineDB('pendingPlanilha', pendingPlanilha[i].localId);
-                    }
-
-                    // PERFORMANCE: Yield antes do fetch
-                    await yieldToMain();
-
-                    // After sync, refresh the planilha cache with fresh data from Supabase
-                    try {
-                        const { data: freshPlanilha } = await db
-                            .from('planilha')
-                            .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
-                            .not('destination_address', 'is', null)
-                            .order('sequence', { ascending: true });
-
-                        if (freshPlanilha && freshPlanilha.length > 0) {
-                            await saveCacheToDB('cachedPlanilha', freshPlanilha);
+                        // Coleta os endereços sincronizados
+                        if (pendingPlanilha[i].destination_address) {
+                            syncedAddresses.push(pendingPlanilha[i].destination_address);
                         }
-                    } catch (cacheErr) {
-                        // Erro ao atualizar cache
                     }
+                    // NÃO faz refresh do cache completo - quem chamou decide se precisa
                 }
             } catch (err) {
                 // Erro na sincronização de planilha
             }
+            return syncedAddresses;
         }
 
         // Sync pending delivery status updates to Supabase
+        // Retorna objeto com IDs sincronizados por status: { delivered: [ids], pending: [ids], ... }
         async function syncPendingDeliveryStatus() {
+            const syncedStatusChanges = {};
             try {
                 const pendingStatus = await getPendingFromOfflineDB('pendingDeliveryStatus');
-                if (pendingStatus.length === 0) return;
+                if (pendingStatus.length === 0) return syncedStatusChanges;
 
                 for (let i = 0; i < pendingStatus.length; i++) {
                     const item = pendingStatus[i];
@@ -4416,6 +4393,11 @@
 
                         if (!error) {
                             await deleteSyncedFromOfflineDB('pendingDeliveryStatus', item.localId);
+                            // Coleta os IDs sincronizados agrupados por status
+                            if (!syncedStatusChanges[item.status]) {
+                                syncedStatusChanges[item.status] = [];
+                            }
+                            syncedStatusChanges[item.status].push(...item.ids);
                         }
                     } catch (err) {
                         // Erro na sincronização de status
@@ -4424,74 +4406,46 @@
             } catch (err) {
                 // Erro ao obter status pendentes
             }
+            return syncedStatusChanges;
         }
 
         // Main sync function - syncs all pending data
-        // skipReload: if true, won't reload markers/clients (caller will handle it)
-        async function syncAllPendingData(skipReload = false) {
-            if (!isOnline || isSyncing) return;
+        // Retorna objeto com o que foi sincronizado para atualização incremental
+        async function syncAllPendingData() {
+            const syncResult = {
+                syncedClientAddresses: [],
+                syncedPlanilhaAddresses: [],
+                syncedStatusChanges: {},
+                hadChanges: false
+            };
+
+            if (!isOnline || isSyncing) return syncResult;
 
             isSyncing = true;
             updateOfflineIndicator();
 
             try {
                 // PERFORMANCE: Usa longYield entre syncs para não travar o mapa durante interação
-                await syncPendingClients();
+                const clientAddresses = await syncPendingClients();
+                syncResult.syncedClientAddresses = clientAddresses || [];
                 await longYield();
 
-                await syncPendingPlanilha();
+                const planilhaAddresses = await syncPendingPlanilha();
+                syncResult.syncedPlanilhaAddresses = planilhaAddresses || [];
                 await longYield();
 
-                await syncPendingDeliveryStatus();
+                const statusChanges = await syncPendingDeliveryStatus();
+                syncResult.syncedStatusChanges = statusChanges || {};
                 await longYield();
 
-                if (!skipReload) {
-                    // When not skipping reload, first refresh the caches to ensure consistency
-                    try {
-                        const { data: freshClients } = await db
-                            .from('clients')
-                            .select('id, address, bairro, city, zipcode, latitude, longitude')
-                            .not('latitude', 'is', null)
-                            .not('longitude', 'is', null);
+                // Verifica se houve alguma mudança
+                syncResult.hadChanges =
+                    syncResult.syncedClientAddresses.length > 0 ||
+                    syncResult.syncedPlanilhaAddresses.length > 0 ||
+                    Object.keys(syncResult.syncedStatusChanges).length > 0;
 
-                        if (freshClients && freshClients.length > 0) {
-                            await saveCacheToDB('cachedClients', freshClients);
-                        }
-
-                        await longYield();
-
-                        const { data: freshPlanilha } = await db
-                            .from('planilha')
-                            .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
-                            .not('destination_address', 'is', null)
-                            .order('sequence', { ascending: true });
-
-                        if (freshPlanilha && freshPlanilha.length > 0) {
-                            await saveCacheToDB('cachedPlanilha', freshPlanilha);
-                        }
-                    } catch (cacheErr) {
-                        // Cache refresh failed, continue anyway
-                    }
-
-                    // Delay to ensure writes complete
-                    await new Promise(resolve => setTimeout(resolve, 100));
-
-                    // PERFORMANCE: Usa requestIdleCallback para recarregar UI
-                    if ('requestIdleCallback' in window) {
-                        requestIdleCallback(() => loadClientes(), { timeout: 2000 });
-                    } else {
-                        loadClientes();
-                    }
-
-                    if (routeMarkersVisible) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        if ('requestIdleCallback' in window) {
-                            requestIdleCallback(() => loadRouteMarkers(true), { timeout: 3000 });
-                        } else {
-                            loadRouteMarkers(true);
-                        }
-                    }
-                }
+                // NÃO baixa tudo novamente - retorna o que foi sincronizado
+                // O código que chamou esta função decidirá o que atualizar
 
                 // Update pending count
                 updateOfflineIndicator();
@@ -4501,6 +4455,241 @@
             } finally {
                 isSyncing = false;
                 updateOfflineIndicator();
+            }
+
+            return syncResult;
+        }
+
+        // PERFORMANCE: Atualiza apenas os marcadores de rota que tiveram status alterado
+        // Em vez de recarregar todos os marcadores, só atualiza as cores/dados dos afetados
+        function updateRouteMarkersStatus(statusChanges) {
+            if (!map || !map.getSource || !map.getSource('route-stops')) return;
+
+            try {
+                const source = map.getSource('route-stops');
+                const currentData = source._data;
+                if (!currentData || !currentData.features) return;
+
+                // Cria mapa de ID -> novo status
+                const idToStatus = {};
+                for (const [status, ids] of Object.entries(statusChanges)) {
+                    for (const id of ids) {
+                        idToStatus[id] = status;
+                    }
+                }
+
+                // Se não há alterações, retorna
+                if (Object.keys(idToStatus).length === 0) return;
+
+                // Atualiza apenas os features afetados
+                let updated = false;
+                const updatedFeatures = currentData.features.map(feature => {
+                    const featureId = feature.properties.id;
+                    if (idToStatus[featureId] !== undefined) {
+                        updated = true;
+                        // Cria novo objeto com status atualizado
+                        return {
+                            ...feature,
+                            properties: {
+                                ...feature.properties,
+                                delivery_status: idToStatus[featureId],
+                                color: idToStatus[featureId] === 'delivered' ? '#10B981' :
+                                       idToStatus[featureId] === 'cancelled' ? '#EF4444' : '#F59E0B'
+                            }
+                        };
+                    }
+                    return feature;
+                });
+
+                // Só atualiza o mapa se houve mudanças reais
+                if (updated) {
+                    source.setData({
+                        type: 'FeatureCollection',
+                        features: updatedFeatures
+                    });
+                }
+            } catch (err) {
+                // Erro ao atualizar marcadores - falha silenciosa
+            }
+        }
+
+        // PERFORMANCE: Adiciona novos clientes ao cache e marcadores sem recarregar tudo
+        async function addSyncedClientsToCache(syncedAddresses) {
+            if (!syncedAddresses || syncedAddresses.length === 0) return;
+
+            try {
+                // Busca apenas os clientes recém-sincronizados do Supabase
+                const { data: newClients, error } = await db
+                    .from('clients')
+                    .select('id, address, bairro, city, zipcode, latitude, longitude')
+                    .in('address', syncedAddresses);
+
+                if (error || !newClients || newClients.length === 0) return;
+
+                // Atualiza o cache em memória
+                if (clientesCache.data) {
+                    // Remove duplicatas e adiciona os novos
+                    const existingAddresses = new Set(clientesCache.data.map(c => c.address));
+                    const toAdd = newClients.filter(c => !existingAddresses.has(c.address));
+                    clientesCache.data = [...clientesCache.data, ...toAdd];
+                    clientesCache.timestamp = Date.now();
+                }
+
+                // Atualiza allClientes
+                if (allClientes) {
+                    const existingAddresses = new Set(allClientes.map(c => c.address));
+                    const toAdd = newClients.filter(c => !existingAddresses.has(c.address));
+                    allClientes = [...allClientes, ...toAdd];
+                }
+
+                // Atualiza o IndexedDB cache incrementalmente
+                const cachedClients = await getAllFromOfflineDB('cachedClients');
+                if (cachedClients) {
+                    const existingAddresses = new Set(cachedClients.map(c => c.address));
+                    const toAdd = newClients.filter(c => !existingAddresses.has(c.address));
+                    if (toAdd.length > 0) {
+                        await saveCacheToDB('cachedClients', [...cachedClients, ...toAdd]);
+                    }
+                }
+
+                // Atualiza marcadores de clientes se estiverem visíveis
+                if (markersVisible && map && map.getSource && map.getSource('clientes')) {
+                    const source = map.getSource('clientes');
+                    const currentData = source._data;
+                    if (currentData && currentData.features) {
+                        // Adiciona novos features
+                        const existingIds = new Set(currentData.features.map(f => f.properties.id));
+                        const newFeatures = newClients
+                            .filter(c => c.latitude && c.longitude && !existingIds.has(c.id))
+                            .map(cliente => ({
+                                type: 'Feature',
+                                geometry: {
+                                    type: 'Point',
+                                    coordinates: [cliente.longitude, cliente.latitude]
+                                },
+                                properties: {
+                                    id: cliente.id,
+                                    address: cliente.address,
+                                    latitude: cliente.latitude,
+                                    longitude: cliente.longitude
+                                }
+                            }));
+
+                        if (newFeatures.length > 0) {
+                            source.setData({
+                                type: 'FeatureCollection',
+                                features: [...currentData.features, ...newFeatures]
+                            });
+                        }
+                    }
+                }
+
+                // Re-renderiza a lista de clientes na UI
+                if (allClientes && allClientes.length > 0) {
+                    renderClientes(allClientes);
+                }
+            } catch (err) {
+                // Erro ao adicionar clientes - falha silenciosa
+            }
+        }
+
+        // PERFORMANCE: Adiciona novos itens de planilha ao cache sem recarregar tudo
+        async function addSyncedPlanilhaToCache(syncedAddresses) {
+            if (!syncedAddresses || syncedAddresses.length === 0) return;
+
+            try {
+                // Busca apenas os itens recém-sincronizados do Supabase
+                const { data: newItems, error } = await db
+                    .from('planilha')
+                    .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
+                    .in('destination_address', syncedAddresses);
+
+                if (error || !newItems || newItems.length === 0) return;
+
+                // Atualiza o IndexedDB cache incrementalmente
+                const cachedPlanilha = await getAllFromOfflineDB('cachedPlanilha');
+                if (cachedPlanilha) {
+                    const existingAddresses = new Set(cachedPlanilha.map(c => c.destination_address));
+                    const toAdd = newItems.filter(c => !existingAddresses.has(c.destination_address));
+                    if (toAdd.length > 0) {
+                        await saveCacheToDB('cachedPlanilha', [...cachedPlanilha, ...toAdd]);
+                    }
+                }
+
+                // Se os marcadores de rota estiverem visíveis, atualiza incrementalmente
+                if (routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
+                    // Nota: para itens novos de planilha, pode precisar de geocodificação
+                    // Por simplicidade, só adicionamos os que já têm coordenadas
+                    const source = map.getSource('route-stops');
+                    const currentData = source._data;
+                    if (currentData && currentData.features) {
+                        const existingAddresses = new Set(
+                            currentData.features.map(f => f.properties.destination_address)
+                        );
+                        const newFeatures = newItems
+                            .filter(item => item.latitude && item.longitude &&
+                                   !existingAddresses.has(item.destination_address))
+                            .map(item => ({
+                                type: 'Feature',
+                                geometry: {
+                                    type: 'Point',
+                                    coordinates: [item.longitude, item.latitude]
+                                },
+                                properties: {
+                                    id: item.id,
+                                    destination_address: item.destination_address,
+                                    sequence: item.sequence,
+                                    stop: item.stop,
+                                    delivery_status: item.delivery_status || 'pending',
+                                    bairro: item.bairro,
+                                    city: item.city,
+                                    spx_tn: item.spx_tn,
+                                    color: item.delivery_status === 'delivered' ? '#10B981' :
+                                           item.delivery_status === 'cancelled' ? '#EF4444' : '#F59E0B'
+                                }
+                            }));
+
+                        if (newFeatures.length > 0) {
+                            source.setData({
+                                type: 'FeatureCollection',
+                                features: [...currentData.features, ...newFeatures]
+                            });
+                        }
+                    }
+                }
+            } catch (err) {
+                // Erro ao adicionar planilha - falha silenciosa
+            }
+        }
+
+        // Função para sincronização manual (click no indicador offline)
+        // Faz sync e atualização incremental dos dados
+        async function manualSync() {
+            if (!isOnline || isSyncing) return;
+
+            try {
+                // Sincroniza e obtém o que foi alterado
+                const syncResult = await syncAllPendingData();
+
+                // Se houve mudanças, faz atualização incremental
+                if (syncResult.hadChanges) {
+                    // Atualiza clientes sincronizados
+                    if (syncResult.syncedClientAddresses.length > 0) {
+                        await addSyncedClientsToCache(syncResult.syncedClientAddresses);
+                    }
+
+                    // Atualiza planilha sincronizada
+                    if (syncResult.syncedPlanilhaAddresses.length > 0) {
+                        await addSyncedPlanilhaToCache(syncResult.syncedPlanilhaAddresses);
+                    }
+
+                    // Atualiza status dos marcadores
+                    if (Object.keys(syncResult.syncedStatusChanges).length > 0) {
+                        updateRouteMarkersStatus(syncResult.syncedStatusChanges);
+                    }
+                }
+            } catch (err) {
+                // Sync falhou silenciosamente
             }
         }
 
@@ -4544,8 +4733,8 @@
             isOnline = true;
             updateOfflineIndicator();
 
-            // PERFORMANCE: Sincronização otimizada para não travar o mapa
-            // Usa longYield que detecta interação com o mapa e pausa mais tempo
+            // PERFORMANCE: Sincronização otimizada - só atualiza o que mudou
+            // Não baixa tudo novamente, não recarrega todos os marcadores
             const performOnlineSync = async () => {
                 try {
                     // Step 1: Verifica se há dados pendentes antes de sincronizar
@@ -4555,67 +4744,51 @@
                     const hasPendingData = pendingClients > 0 || pendingPlanilha > 0 || pendingStatus > 0;
 
                     // Step 2: Só sincroniza se houver dados pendentes
+                    // syncAllPendingData agora retorna o que foi sincronizado
+                    let syncResult = { hadChanges: false };
                     if (hasPendingData) {
-                        await syncAllPendingData(true);
-                        // Pausa adaptativa após sync
+                        syncResult = await syncAllPendingData();
                         await longYield();
                     }
 
-                    // Step 3: Pausa adaptativa antes de refresh
-                    await longYield();
+                    // Step 3: Atualização INCREMENTAL baseada no que foi sincronizado
+                    // NÃO baixa tudo do servidor - só adiciona os novos itens ao cache local
 
-                    // Refresh planilha cache (clients será feito por loadClientes)
-                    try {
-                        const { data: freshPlanilha } = await db
-                            .from('planilha')
-                            .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
-                            .not('destination_address', 'is', null)
-                            .order('sequence', { ascending: true });
-
-                        if (freshPlanilha && freshPlanilha.length > 0) {
-                            await saveCacheToDB('cachedPlanilha', freshPlanilha);
-                        }
-                    } catch (e) {
-                        // Silencioso
-                    }
-
-                    // Step 4: Pausa adaptativa antes de recarregar UI
-                    await longYield();
-
-                    // Step 5: Recarrega clientes somente quando mapa não está em uso
-                    const waitForIdle = () => new Promise(resolve => {
-                        const checkAndRun = () => {
-                            if (!isMapInteracting) {
-                                loadClientes();
-                                resolve();
-                            } else {
-                                setTimeout(checkAndRun, 300);
-                            }
-                        };
-                        setTimeout(checkAndRun, 100);
-                    });
-                    await waitForIdle();
-
-                    // Step 6: Só recarrega marcadores se estiverem visíveis E se teve dados sincronizados
-                    // Aguarda mapa ficar livre antes de recarregar
-                    if (hasPendingData && routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
-                        await longYield();
-                        // Aguarda mapa parar de ser movido
-                        const waitForIdleMarkers = () => new Promise(resolve => {
+                    if (syncResult.hadChanges) {
+                        // Aguarda mapa parar de ser movido antes de atualizar
+                        const waitForIdle = () => new Promise(resolve => {
                             const check = () => {
                                 if (!isMapInteracting) {
-                                    loadRouteMarkers(true);
                                     resolve();
                                 } else {
-                                    setTimeout(check, 500);
+                                    setTimeout(check, 200);
                                 }
                             };
-                            setTimeout(check, 300);
+                            setTimeout(check, 50);
                         });
-                        await waitForIdleMarkers();
+
+                        // Step 3a: Atualiza clientes sincronizados (apenas os novos)
+                        if (syncResult.syncedClientAddresses.length > 0) {
+                            await waitForIdle();
+                            await addSyncedClientsToCache(syncResult.syncedClientAddresses);
+                            await longYield();
+                        }
+
+                        // Step 3b: Atualiza planilha sincronizada (apenas os novos)
+                        if (syncResult.syncedPlanilhaAddresses.length > 0) {
+                            await waitForIdle();
+                            await addSyncedPlanilhaToCache(syncResult.syncedPlanilhaAddresses);
+                            await longYield();
+                        }
+
+                        // Step 3c: Atualiza status dos marcadores (apenas muda cores, não recarrega)
+                        if (Object.keys(syncResult.syncedStatusChanges).length > 0) {
+                            await waitForIdle();
+                            updateRouteMarkersStatus(syncResult.syncedStatusChanges);
+                        }
                     }
 
-                    // Step 7: Inicia refresh periódico
+                    // Step 4: Inicia refresh periódico (para manter cache atualizado ao longo do tempo)
                     startPeriodicCacheRefresh();
 
                 } catch (err) {
