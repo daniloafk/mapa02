@@ -4235,16 +4235,22 @@
             });
         }
 
-        // PERFORMANCE: Função para ceder controle ao main thread durante loops pesados
-        // Isso evita travamento do mapa durante sincronização
-        function yieldToMain() {
+        // PERFORMANCE: Flag para detectar quando o usuário está interagindo com o mapa
+        let isMapInteracting = false;
+
+        // Função para ceder controle ao main thread durante loops pesados
+        // Usa setTimeout com delay real para garantir renderização de frames
+        function yieldToMain(minDelay = 50) {
             return new Promise(resolve => {
-                if ('requestIdleCallback' in window) {
-                    requestIdleCallback(resolve, { timeout: 100 });
-                } else {
-                    setTimeout(resolve, 0);
-                }
+                // Se o mapa está sendo movido, aguarda mais tempo para não competir
+                const delay = isMapInteracting ? 300 : minDelay;
+                setTimeout(resolve, delay);
             });
+        }
+
+        // Pausa mais longa entre operações pesadas
+        function longYield() {
+            return new Promise(resolve => setTimeout(resolve, isMapInteracting ? 600 : 200));
         }
 
         // Sync pending clients to Supabase
@@ -4429,15 +4435,15 @@
             updateOfflineIndicator();
 
             try {
-                // PERFORMANCE: Yield entre cada sync para não travar o mapa
+                // PERFORMANCE: Usa longYield entre syncs para não travar o mapa durante interação
                 await syncPendingClients();
-                await yieldToMain();
+                await longYield();
 
                 await syncPendingPlanilha();
-                await yieldToMain();
+                await longYield();
 
                 await syncPendingDeliveryStatus();
-                await yieldToMain();
+                await longYield();
 
                 if (!skipReload) {
                     // When not skipping reload, first refresh the caches to ensure consistency
@@ -4452,7 +4458,7 @@
                             await saveCacheToDB('cachedClients', freshClients);
                         }
 
-                        await yieldToMain();
+                        await longYield();
 
                         const { data: freshPlanilha } = await db
                             .from('planilha')
@@ -4539,7 +4545,7 @@
             updateOfflineIndicator();
 
             // PERFORMANCE: Sincronização otimizada para não travar o mapa
-            // Usa delays e requestIdleCallback para distribuir a carga
+            // Usa longYield que detecta interação com o mapa e pausa mais tempo
             const performOnlineSync = async () => {
                 try {
                     // Step 1: Verifica se há dados pendentes antes de sincronizar
@@ -4551,13 +4557,14 @@
                     // Step 2: Só sincroniza se houver dados pendentes
                     if (hasPendingData) {
                         await syncAllPendingData(true);
-                        // Delay após sync para não sobrecarregar
-                        await new Promise(r => setTimeout(r, 500));
+                        // Pausa adaptativa após sync
+                        await longYield();
                     }
 
-                    // Step 3: Refresh caches de forma espaçada (só planilha, clients será feito por loadClientes)
-                    await new Promise(r => setTimeout(r, 300));
+                    // Step 3: Pausa adaptativa antes de refresh
+                    await longYield();
 
+                    // Refresh planilha cache (clients será feito por loadClientes)
                     try {
                         const { data: freshPlanilha } = await db
                             .from('planilha')
@@ -4572,24 +4579,40 @@
                         // Silencioso
                     }
 
-                    // Step 4: Delay antes de recarregar UI
-                    await new Promise(r => setTimeout(r, 500));
+                    // Step 4: Pausa adaptativa antes de recarregar UI
+                    await longYield();
 
-                    // Step 5: Recarrega clientes (já inclui clients do Supabase)
-                    if ('requestIdleCallback' in window) {
-                        requestIdleCallback(() => loadClientes(), { timeout: 3000 });
-                    } else {
-                        loadClientes();
-                    }
+                    // Step 5: Recarrega clientes somente quando mapa não está em uso
+                    const waitForIdle = () => new Promise(resolve => {
+                        const checkAndRun = () => {
+                            if (!isMapInteracting) {
+                                loadClientes();
+                                resolve();
+                            } else {
+                                setTimeout(checkAndRun, 300);
+                            }
+                        };
+                        setTimeout(checkAndRun, 100);
+                    });
+                    await waitForIdle();
 
                     // Step 6: Só recarrega marcadores se estiverem visíveis E se teve dados sincronizados
+                    // Aguarda mapa ficar livre antes de recarregar
                     if (hasPendingData && routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
-                        await new Promise(r => setTimeout(r, 1000));
-                        if ('requestIdleCallback' in window) {
-                            requestIdleCallback(() => loadRouteMarkers(true), { timeout: 5000 });
-                        } else {
-                            await loadRouteMarkers(true);
-                        }
+                        await longYield();
+                        // Aguarda mapa parar de ser movido
+                        const waitForIdleMarkers = () => new Promise(resolve => {
+                            const check = () => {
+                                if (!isMapInteracting) {
+                                    loadRouteMarkers(true);
+                                    resolve();
+                                } else {
+                                    setTimeout(check, 500);
+                                }
+                            };
+                            setTimeout(check, 300);
+                        });
+                        await waitForIdleMarkers();
                     }
 
                     // Step 7: Inicia refresh periódico
@@ -4888,7 +4911,11 @@
 
             // Otimizações de performance durante interações
             map.on('movestart', () => {
-                // PERFORMANCE: Reduz qualidade durante movimento
+                // PERFORMANCE: Marca que o mapa está sendo movido
+                // Isso faz a sincronização pausar/desacelerar
+                isMapInteracting = true;
+
+                // Reduz qualidade durante movimento
                 map.getCanvas().style.imageRendering = 'optimizeSpeed';
 
                 // Limpa timeout anterior se existir
@@ -4899,12 +4926,12 @@
             });
 
             map.on('moveend', () => {
-                // PERFORMANCE: Aguarda um pouco antes de restaurar qualidade
-                // Isso evita flickering em movimentos rápidos consecutivos
+                // PERFORMANCE: Aguarda um pouco antes de restaurar qualidade e liberar sync
                 interactionTimeout = setTimeout(() => {
                     map.getCanvas().style.imageRendering = 'auto';
+                    isMapInteracting = false; // Libera sincronização
                     interactionTimeout = null;
-                }, 150);
+                }, 200);
             });
 
             // Bloqueia o "double-tap drag zoom" mas permite arrastar o mapa
