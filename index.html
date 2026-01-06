@@ -4235,13 +4235,31 @@
             });
         }
 
+        // PERFORMANCE: Função para ceder controle ao main thread durante loops pesados
+        // Isso evita travamento do mapa durante sincronização
+        function yieldToMain() {
+            return new Promise(resolve => {
+                if ('requestIdleCallback' in window) {
+                    requestIdleCallback(resolve, { timeout: 100 });
+                } else {
+                    setTimeout(resolve, 0);
+                }
+            });
+        }
+
         // Sync pending clients to Supabase
         async function syncPendingClients() {
             try {
                 const pendingClients = await getPendingFromOfflineDB('pendingClients');
                 if (pendingClients.length === 0) return;
 
-                for (const client of pendingClients) {
+                for (let i = 0; i < pendingClients.length; i++) {
+                    const client = pendingClients[i];
+
+                    // PERFORMANCE: Cede controle a cada 2 itens para não travar o mapa
+                    if (i > 0 && i % 2 === 0) {
+                        await yieldToMain();
+                    }
                     try {
                         const { data: existingData } = await db
                             .from('clients')
@@ -4339,9 +4357,16 @@
                     .insert(batchData);
 
                 if (!error) {
-                    for (const item of pendingPlanilha) {
-                        await deleteSyncedFromOfflineDB('pendingPlanilha', item.localId);
+                    // PERFORMANCE: Deleta itens com yield para não travar
+                    for (let i = 0; i < pendingPlanilha.length; i++) {
+                        if (i > 0 && i % 5 === 0) {
+                            await yieldToMain();
+                        }
+                        await deleteSyncedFromOfflineDB('pendingPlanilha', pendingPlanilha[i].localId);
                     }
+
+                    // PERFORMANCE: Yield antes do fetch
+                    await yieldToMain();
 
                     // After sync, refresh the planilha cache with fresh data from Supabase
                     try {
@@ -4369,7 +4394,14 @@
                 const pendingStatus = await getPendingFromOfflineDB('pendingDeliveryStatus');
                 if (pendingStatus.length === 0) return;
 
-                for (const item of pendingStatus) {
+                for (let i = 0; i < pendingStatus.length; i++) {
+                    const item = pendingStatus[i];
+
+                    // PERFORMANCE: Cede controle a cada item para não travar o mapa
+                    if (i > 0) {
+                        await yieldToMain();
+                    }
+
                     try {
                         const { error } = await db
                             .from('planilha')
@@ -4397,9 +4429,15 @@
             updateOfflineIndicator();
 
             try {
+                // PERFORMANCE: Yield entre cada sync para não travar o mapa
                 await syncPendingClients();
+                await yieldToMain();
+
                 await syncPendingPlanilha();
+                await yieldToMain();
+
                 await syncPendingDeliveryStatus();
+                await yieldToMain();
 
                 if (!skipReload) {
                     // When not skipping reload, first refresh the caches to ensure consistency
@@ -4414,6 +4452,8 @@
                             await saveCacheToDB('cachedClients', freshClients);
                         }
 
+                        await yieldToMain();
+
                         const { data: freshPlanilha } = await db
                             .from('planilha')
                             .select('id, sequence, destination_address, bairro, city, zipcode, latitude, longitude, spx_tn, stop, delivery_status')
@@ -4427,12 +4467,23 @@
                         // Cache refresh failed, continue anyway
                     }
 
-                    // Small delay to ensure writes complete
+                    // Delay to ensure writes complete
                     await new Promise(resolve => setTimeout(resolve, 100));
 
-                    loadClientes();
+                    // PERFORMANCE: Usa requestIdleCallback para recarregar UI
+                    if ('requestIdleCallback' in window) {
+                        requestIdleCallback(() => loadClientes(), { timeout: 2000 });
+                    } else {
+                        loadClientes();
+                    }
+
                     if (routeMarkersVisible) {
-                        loadRouteMarkers(true);
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        if ('requestIdleCallback' in window) {
+                            requestIdleCallback(() => loadRouteMarkers(true), { timeout: 3000 });
+                        } else {
+                            loadRouteMarkers(true);
+                        }
                     }
                 }
 
