@@ -6183,8 +6183,8 @@
             // If no stats provided, calculate from current markers
             if (!stats) {
                 try {
-                    if (map && map.getSource && map.getSource('route-markers')) {
-                        const source = map.getSource('route-markers');
+                    if (map && map.getSource && map.getSource('route-stops')) {
+                        const source = map.getSource('route-stops');
                         const data = source._data;
 
                         if (data && data.features) {
