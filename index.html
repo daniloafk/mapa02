@@ -1622,51 +1622,6 @@
             box-shadow: none;
         }
 
-        .upload-btn-geocode {
-            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-            color: white;
-        }
-
-        .upload-btn-geocode:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
-        }
-
-        .upload-btn-geocode:disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        .geocode-info {
-            display: none;
-            padding: 12px 16px;
-            margin-bottom: 16px;
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(124, 58, 237, 0.1) 100%);
-            border: 1px solid rgba(139, 92, 246, 0.3);
-            border-radius: 12px;
-            font-size: 13px;
-            color: #7c3aed;
-        }
-
-        body.dark .geocode-info {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(124, 58, 237, 0.2) 100%);
-            color: #a78bfa;
-        }
-
-        .geocode-info.active {
-            display: block;
-        }
-
-        .geocode-info strong {
-            font-weight: 700;
-        }
-
-        .geocode-info-icon {
-            display: inline-flex;
-            margin-right: 6px;
-        }
 
         .upload-btn svg {
             width: 18px;
@@ -3816,12 +3771,6 @@
             </div>
 
             <div class="upload-modal-body">
-                <!-- Geocode info box -->
-                <div class="geocode-info" id="geocodeInfo">
-                    <span class="geocode-info-icon">📍</span>
-                    <span id="geocodeInfoText">Existem <strong>0</strong> endereços sem coordenadas na planilha atual. Clique em "Geocodificar" para obter as coordenadas automaticamente.</span>
-                </div>
-
                 <!-- Dropzone -->
                 <div class="upload-dropzone" id="uploadDropzone">
                     <div class="upload-dropzone-icon">
@@ -3883,13 +3832,6 @@
 
             <div class="upload-modal-footer" id="uploadModalFooter">
                 <button class="upload-btn upload-btn-secondary" id="uploadCancel">Cancelar</button>
-                <button class="upload-btn upload-btn-geocode" id="geocodeExisting" style="display: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Geocodificar
-                </button>
                 <button class="upload-btn upload-btn-primary" id="uploadConfirm" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -4618,8 +4560,7 @@
 
                 // Se os marcadores de rota estiverem visíveis, atualiza incrementalmente
                 if (routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
-                    // Nota: para itens novos de planilha, pode precisar de geocodificação
-                    // Por simplicidade, só adicionamos os que já têm coordenadas
+                    // Só adicionamos os que já têm coordenadas
                     const source = map.getSource('route-stops');
                     const currentData = source._data;
                     if (currentData && currentData.features) {
@@ -5981,8 +5922,8 @@
 
                 // Try online first, fallback to offline cache
                 if (isOnline) {
-                    // Fetch ALL data from planilha table (including those without coordinates)
-                    // We'll try to get coordinates from registered clients or geocoding
+                    // Fetch ALL data from planilha table
+                    // Coordinates come from registered clients matching
                     const { data: onlineData, error } = await db
                         .from('planilha')
                         .select('id, destination_address, bairro, city, zipcode, latitude, longitude, sequence, stop, delivery_status')
@@ -7282,215 +7223,12 @@
         const uploadCancel = document.getElementById('uploadCancel');
         const uploadConfirm = document.getElementById('uploadConfirm');
         const uploadModalFooter = document.getElementById('uploadModalFooter');
-        const geocodeExisting = document.getElementById('geocodeExisting');
-        const geocodeInfo = document.getElementById('geocodeInfo');
-        const geocodeInfoText = document.getElementById('geocodeInfoText');
-
         let parsedData = [];
-
-        // Geocode function (reusable)
-        async function geocodeAddressMapbox(address, bairro, city, zipcode) {
-            try {
-                // Build full address for better geocoding
-                let fullAddress = address;
-                if (bairro) fullAddress += `, ${bairro}`;
-                if (city) fullAddress += `, ${city}`;
-                if (zipcode) fullAddress += `, ${zipcode}`;
-                fullAddress += ', Pará, Brasil';
-
-                const encodedAddress = encodeURIComponent(fullAddress);
-                const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodedAddress}.json?access_token=${mapboxgl.accessToken}&country=br&limit=1&types=address,poi`;
-
-                const response = await fetch(url);
-                if (!response.ok) return null;
-
-                const data = await response.json();
-
-                if (data.features && data.features.length > 0) {
-                    const [lng, lat] = data.features[0].center;
-                    return { latitude: lat, longitude: lng };
-                }
-
-                // Try with just the main address if full address fails
-                const simpleEncodedAddress = encodeURIComponent(`${address}, Belém, Pará, Brasil`);
-                const simpleUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${simpleEncodedAddress}.json?access_token=${mapboxgl.accessToken}&country=br&limit=1&types=address,poi`;
-
-                const simpleResponse = await fetch(simpleUrl);
-                if (!simpleResponse.ok) return null;
-
-                const simpleData = await simpleResponse.json();
-
-                if (simpleData.features && simpleData.features.length > 0) {
-                    const [lng, lat] = simpleData.features[0].center;
-                    return { latitude: lat, longitude: lng };
-                }
-
-                return null;
-            } catch (err) {
-                return null;
-            }
-        }
-
-        // Check for addresses without coordinates when opening modal
-        async function checkAddressesWithoutCoords() {
-            if (!isOnline) {
-                geocodeInfo.classList.remove('active');
-                geocodeExisting.style.display = 'none';
-                return;
-            }
-
-            try {
-                // Check planilha for addresses without coordinates
-                const { data, error } = await db
-                    .from('planilha')
-                    .select('id, destination_address, bairro, city, zipcode, latitude, longitude')
-                    .not('destination_address', 'is', null);
-
-                if (error || !data || data.length === 0) {
-                    geocodeInfo.classList.remove('active');
-                    geocodeExisting.style.display = 'none';
-                    return;
-                }
-
-                const withoutCoords = data.filter(row =>
-                    row.destination_address && (row.latitude === null || row.longitude === null)
-                );
-
-                if (withoutCoords.length > 0) {
-                    geocodeInfoText.innerHTML = `Existem <strong>${withoutCoords.length}</strong> endereços sem coordenadas na planilha atual. Clique em "Geocodificar" para obter as coordenadas automaticamente.`;
-                    geocodeInfo.classList.add('active');
-                    geocodeExisting.style.display = 'flex';
-                } else {
-                    geocodeInfo.classList.remove('active');
-                    geocodeExisting.style.display = 'none';
-                }
-            } catch (err) {
-                geocodeInfo.classList.remove('active');
-                geocodeExisting.style.display = 'none';
-            }
-        }
-
-        // Geocode existing addresses button
-        geocodeExisting.addEventListener('click', async () => {
-            if (!isOnline) {
-                showErrorModal('A geocodificação requer conexão com a internet.');
-                return;
-            }
-
-            // Disable button and show progress
-            geocodeExisting.disabled = true;
-            geocodeExisting.innerHTML = `
-                <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"></circle>
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Geocodificando...
-            `;
-
-            try {
-                // Get all addresses without coordinates
-                const { data, error } = await db
-                    .from('planilha')
-                    .select('id, destination_address, bairro, city, zipcode, latitude, longitude')
-                    .not('destination_address', 'is', null);
-
-                if (error) throw error;
-
-                const addressesToGeocode = data.filter(row =>
-                    row.destination_address && (row.latitude === null || row.longitude === null)
-                );
-
-                if (addressesToGeocode.length === 0) {
-                    geocodeInfo.classList.remove('active');
-                    geocodeExisting.style.display = 'none';
-                    return;
-                }
-
-                let geocodedCount = 0;
-                let failedCount = 0;
-                const batchSizeGeo = 5;
-
-                for (let i = 0; i < addressesToGeocode.length; i += batchSizeGeo) {
-                    const batch = addressesToGeocode.slice(i, Math.min(i + batchSizeGeo, addressesToGeocode.length));
-
-                    // Process batch in parallel
-                    const results = await Promise.all(batch.map(row =>
-                        geocodeAddressMapbox(row.destination_address, row.bairro, row.city, row.zipcode)
-                    ));
-
-                    // Update each row in Supabase
-                    for (let j = 0; j < results.length; j++) {
-                        const coords = results[j];
-                        const row = batch[j];
-
-                        if (coords) {
-                            const { error: updateError } = await db
-                                .from('planilha')
-                                .update({ latitude: coords.latitude, longitude: coords.longitude })
-                                .eq('id', row.id);
-
-                            if (!updateError) {
-                                geocodedCount++;
-                            } else {
-                                failedCount++;
-                            }
-                        } else {
-                            failedCount++;
-                        }
-                    }
-
-                    // Update button text
-                    geocodeExisting.innerHTML = `
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="animation: spin 1s linear infinite;">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none" opacity="0.25"></circle>
-                            <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        ${Math.min(i + batchSizeGeo, addressesToGeocode.length)}/${addressesToGeocode.length}
-                    `;
-
-                    // Small delay to respect rate limits
-                    if (i + batchSizeGeo < addressesToGeocode.length) {
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                    }
-                }
-
-                // Refresh cache
-                await refreshAllCaches();
-
-                // Reload route markers if visible
-                if (routeMarkersVisible) {
-                    await loadRouteMarkers(true);
-                }
-
-                // Show success and hide geocode option
-                geocodeInfoText.innerHTML = `✅ Geocodificação concluída! <strong>${geocodedCount}</strong> endereços geocodificados${failedCount > 0 ? `, ${failedCount} falhas` : ''}.`;
-
-                setTimeout(() => {
-                    geocodeInfo.classList.remove('active');
-                    geocodeExisting.style.display = 'none';
-                }, 3000);
-
-            } catch (err) {
-                geocodeInfoText.innerHTML = `❌ Erro na geocodificação. Tente novamente.`;
-            } finally {
-                // Restore button
-                geocodeExisting.disabled = false;
-                geocodeExisting.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Geocodificar
-                `;
-            }
-        });
 
         // Open modal
         spreadsheetBtn.addEventListener('click', () => {
             resetUploadModal();
             uploadModal.classList.add('active');
-            // Check for addresses without coordinates
-            checkAddressesWithoutCoords();
         });
 
         // Close modal
@@ -7518,9 +7256,6 @@
             uploadConfirm.disabled = true;
             parsedData = [];
             fileInput.value = '';
-            // Reset geocode info (will be checked when modal opens)
-            geocodeInfo.classList.remove('active');
-            geocodeExisting.style.display = 'none';
         }
 
         // Drag and drop
@@ -7703,55 +7438,7 @@
 
                 if (deleteError) throw deleteError;
 
-                // Step 2: Geocode addresses without coordinates
-                const addressesWithoutCoords = parsedData.filter(row =>
-                    row.destination_address && (row.latitude === null || row.longitude === null)
-                );
-
-                if (addressesWithoutCoords.length > 0) {
-                    document.getElementById('progressText').textContent = `Geocodificando ${addressesWithoutCoords.length} endereços...`;
-
-                    // Process geocoding with rate limiting (max 10 per second for Mapbox)
-                    let geocodedCount = 0;
-                    let failedCount = 0;
-                    const batchSizeGeo = 5; // Process 5 at a time
-
-                    for (let i = 0; i < addressesWithoutCoords.length; i += batchSizeGeo) {
-                        const batch = addressesWithoutCoords.slice(i, Math.min(i + batchSizeGeo, addressesWithoutCoords.length));
-
-                        // Process batch in parallel using reusable geocode function
-                        const results = await Promise.all(batch.map(row =>
-                            geocodeAddressMapbox(row.destination_address, row.bairro, row.city, row.zipcode)
-                        ));
-
-                        // Apply results to parsedData
-                        results.forEach((coords, idx) => {
-                            const originalRow = batch[idx];
-                            const parsedIdx = parsedData.findIndex(r =>
-                                r.destination_address === originalRow.destination_address &&
-                                r.sequence === originalRow.sequence
-                            );
-
-                            if (parsedIdx !== -1 && coords) {
-                                parsedData[parsedIdx].latitude = coords.latitude;
-                                parsedData[parsedIdx].longitude = coords.longitude;
-                                geocodedCount++;
-                            } else if (!coords) {
-                                failedCount++;
-                            }
-                        });
-
-                        document.getElementById('progressText').textContent = `Geocodificando... ${Math.min(i + batchSizeGeo, addressesWithoutCoords.length)}/${addressesWithoutCoords.length} (${geocodedCount} OK, ${failedCount} falhas)`;
-
-                        // Small delay to respect rate limits
-                        if (i + batchSizeGeo < addressesWithoutCoords.length) {
-                            await new Promise(resolve => setTimeout(resolve, 200));
-                        }
-                    }
-
-                }
-
-                // Step 3: Insert new data in batches
+                // Step 2: Insert new data in batches
                 document.getElementById('progressText').textContent = 'Inserindo novos dados...';
 
                 const batchSize = 50;
@@ -7772,22 +7459,14 @@
                     document.getElementById('progressText').textContent = `Inserindo dados... ${Math.min(i + batchSize, parsedData.length)}/${parsedData.length}`;
                 }
 
-                // Step 4: Save to cache for offline use
+                // Step 3: Save to cache for offline use
                 document.getElementById('progressText').textContent = 'Salvando cache local...';
                 await saveCacheToDB('cachedPlanilha', allInsertedData.length > 0 ? allInsertedData : parsedData);
 
                 // Success
                 uploadProgress.classList.remove('active');
                 uploadSuccess.classList.add('active');
-
-                // Show detailed success message
-                const withCoords = parsedData.filter(r => r.latitude !== null && r.longitude !== null).length;
-                const withoutCoords = parsedData.length - withCoords;
-                let successMsg = `${parsedData.length} registros foram salvos com sucesso.`;
-                if (withoutCoords > 0) {
-                    successMsg += ` (${withoutCoords} sem coordenadas)`;
-                }
-                document.getElementById('successText').textContent = successMsg;
+                document.getElementById('successText').textContent = `${parsedData.length} registros foram salvos com sucesso.`;
 
                 // Auto close after 2 seconds
                 setTimeout(() => {
