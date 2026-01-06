@@ -1820,6 +1820,148 @@
             color: var(--text-muted-dark);
         }
 
+        /* Fixed Stats Panel - Bottom Right */
+        .fixed-stats-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: none;
+            flex-direction: row;
+            gap: 8px;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: all 0.3s ease;
+            animation: slideInStats 0.4s ease-out;
+        }
+
+        body.dark .fixed-stats-panel {
+            background: rgba(30, 30, 40, 0.95);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+
+        .fixed-stats-panel.visible {
+            display: flex;
+        }
+
+        @keyframes slideInStats {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .fixed-stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            padding: 6px 10px;
+            border-radius: 10px;
+            min-width: 52px;
+            transition: transform 0.2s ease;
+        }
+
+        .fixed-stat-item:hover {
+            transform: scale(1.05);
+        }
+
+        .fixed-stat-item.total {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(124, 58, 237, 0.2) 100%);
+        }
+
+        .fixed-stat-item.registered {
+            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.2) 100%);
+        }
+
+        .fixed-stat-item.unregistered {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.2) 100%);
+        }
+
+        .fixed-stat-item.delivered {
+            background: linear-gradient(135deg, rgba(107, 114, 128, 0.15) 0%, rgba(75, 85, 99, 0.2) 100%);
+        }
+
+        .fixed-stat-number {
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .fixed-stat-item.total .fixed-stat-number {
+            color: #8b5cf6;
+        }
+
+        .fixed-stat-item.registered .fixed-stat-number {
+            color: #22c55e;
+        }
+
+        .fixed-stat-item.unregistered .fixed-stat-number {
+            color: #ef4444;
+        }
+
+        .fixed-stat-item.delivered .fixed-stat-number {
+            color: #6b7280;
+        }
+
+        .fixed-stat-label {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-muted-light);
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        body.dark .fixed-stat-label {
+            color: var(--text-muted-dark);
+        }
+
+        /* Pulse animation for updates */
+        .fixed-stat-item.updating .fixed-stat-number {
+            animation: statPulse 0.3s ease;
+        }
+
+        @keyframes statPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 480px) {
+            .fixed-stats-panel {
+                bottom: 70px;
+                right: 10px;
+                left: 10px;
+                justify-content: space-around;
+                padding: 8px 10px;
+            }
+
+            .fixed-stat-item {
+                min-width: 45px;
+                padding: 5px 8px;
+            }
+
+            .fixed-stat-number {
+                font-size: 16px;
+            }
+
+            .fixed-stat-label {
+                font-size: 8px;
+            }
+        }
+
         /* QR Scanner Modal */
         .qr-modal {
             position: fixed;
@@ -3803,6 +3945,26 @@
             <circle cx="12" cy="9" r="2"/>
         </svg>
     </button>
+
+    <!-- Fixed Stats Panel -->
+    <div class="fixed-stats-panel" id="fixedStatsPanel">
+        <div class="fixed-stat-item total" title="Total de paradas">
+            <span class="fixed-stat-number" id="fixedStatTotal">0</span>
+            <span class="fixed-stat-label">Paradas</span>
+        </div>
+        <div class="fixed-stat-item registered" title="Endereços cadastrados">
+            <span class="fixed-stat-number" id="fixedStatRegistered">0</span>
+            <span class="fixed-stat-label">Cadastrados</span>
+        </div>
+        <div class="fixed-stat-item unregistered" title="Endereços não cadastrados">
+            <span class="fixed-stat-number" id="fixedStatUnregistered">0</span>
+            <span class="fixed-stat-label">Pendentes</span>
+        </div>
+        <div class="fixed-stat-item delivered" title="Entregas realizadas">
+            <span class="fixed-stat-number" id="fixedStatDelivered">0</span>
+            <span class="fixed-stat-label">Entregas</span>
+        </div>
+    </div>
 
     <!-- QR Scanner Modal -->
     <div class="qr-modal" id="qrModal">
@@ -6013,6 +6175,80 @@
             return { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
         }
 
+        // Update fixed stats panel with current route data
+        function updateFixedStatsPanel(stats = null) {
+            const panel = document.getElementById('fixedStatsPanel');
+            if (!panel) return;
+
+            // If no stats provided, calculate from current markers
+            if (!stats) {
+                try {
+                    if (map && map.getSource && map.getSource('route-markers')) {
+                        const source = map.getSource('route-markers');
+                        const data = source._data;
+
+                        if (data && data.features) {
+                            let total = 0;
+                            let registered = 0;
+                            let unregistered = 0;
+                            let delivered = 0;
+
+                            data.features.forEach(feature => {
+                                const props = feature.properties;
+                                const count = props.packageCount || 1;
+                                total += count;
+
+                                if (props.deliveryStatus === 'delivered' || props.deliveryStatus === 'not_delivered') {
+                                    delivered += count;
+                                } else if (props.isRegistered) {
+                                    registered += count;
+                                } else {
+                                    unregistered += count;
+                                }
+                            });
+
+                            stats = { total, registered, unregistered, delivered };
+                        }
+                    }
+                } catch (e) {
+                    // Silently fail
+                }
+            }
+
+            if (!stats) return;
+
+            // Show the panel
+            panel.classList.add('visible');
+
+            // Update values with animation
+            const updateStat = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    const currentValue = parseInt(el.textContent) || 0;
+                    if (currentValue !== value) {
+                        el.parentElement.classList.add('updating');
+                        el.textContent = value;
+                        setTimeout(() => {
+                            el.parentElement.classList.remove('updating');
+                        }, 300);
+                    }
+                }
+            };
+
+            updateStat('fixedStatTotal', stats.total);
+            updateStat('fixedStatRegistered', stats.registered);
+            updateStat('fixedStatUnregistered', stats.unregistered);
+            updateStat('fixedStatDelivered', stats.delivered);
+        }
+
+        // Hide fixed stats panel
+        function hideFixedStatsPanel() {
+            const panel = document.getElementById('fixedStatsPanel');
+            if (panel) {
+                panel.classList.remove('visible');
+            }
+        }
+
         async function loadRouteMarkers(skipFitBounds = false) {
             try {
                 // PERFORMANCE: Mostrar indicador de carregamento com barra de progresso
@@ -7269,6 +7505,9 @@
                                     ensureIconExists();
                                 }
 
+                                // Update fixed stats panel after status change
+                                updateFixedStatsPanel();
+
                                 // Sincroniza em background (não bloqueia a UI)
                                 updateDeliveryStatus(ids, statusToSave).catch(err => {
                                     // Erro ao sincronizar status
@@ -7326,6 +7565,9 @@
                     }, 300);
                 }
 
+                // Update fixed stats panel with route data
+                updateFixedStatsPanel();
+
             } catch (error) {
                 // PERFORMANCE: Restaurar botão em caso de erro
                 const routeBtn = document.getElementById('routeMarkersBtn');
@@ -7351,6 +7593,9 @@
             }
             routeMarkersVisible = false;
             routeMarkersBtn.classList.remove('active');
+
+            // Hide fixed stats panel when markers are removed
+            hideFixedStatsPanel();
         }
 
         routeMarkersBtn.addEventListener('click', () => {
