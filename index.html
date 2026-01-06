@@ -1753,73 +1753,6 @@
             color: var(--text-muted-dark);
         }
 
-        /* Upload Statistics */
-        .upload-stats {
-            display: flex;
-            justify-content: center;
-            gap: 16px;
-            margin-top: 16px;
-            padding: 12px;
-            background: var(--bg-secondary-light);
-            border-radius: 12px;
-        }
-
-        body.dark .upload-stats {
-            background: var(--bg-secondary-dark);
-        }
-
-        .upload-stat-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            min-width: 80px;
-        }
-
-        .upload-stat-item.total {
-            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);
-        }
-
-        .upload-stat-item.registered {
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.15) 100%);
-        }
-
-        .upload-stat-item.unregistered {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.15) 100%);
-        }
-
-        .upload-stat-number {
-            font-size: 24px;
-            font-weight: 700;
-        }
-
-        .upload-stat-item.total .upload-stat-number {
-            color: #8b5cf6;
-        }
-
-        .upload-stat-item.registered .upload-stat-number {
-            color: #22c55e;
-        }
-
-        .upload-stat-item.unregistered .upload-stat-number {
-            color: #ef4444;
-        }
-
-        .upload-stat-label {
-            font-size: 11px;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-muted-light);
-            text-align: center;
-        }
-
-        body.dark .upload-stat-label {
-            color: var(--text-muted-dark);
-        }
-
         /* Fixed Stats Panel - Bottom Right (Compact Vertical) */
         .fixed-stats-panel {
             position: fixed;
@@ -4085,22 +4018,6 @@
                     </div>
                     <h4>Planilha importada!</h4>
                     <p id="successText">68 registros foram salvos com sucesso.</p>
-
-                    <!-- Upload Statistics -->
-                    <div class="upload-stats" id="uploadStats">
-                        <div class="upload-stat-item total">
-                            <span class="upload-stat-number" id="statTotal">0</span>
-                            <span class="upload-stat-label">Paradas</span>
-                        </div>
-                        <div class="upload-stat-item registered">
-                            <span class="upload-stat-number" id="statRegistered">0</span>
-                            <span class="upload-stat-label">Cadastrados</span>
-                        </div>
-                        <div class="upload-stat-item unregistered">
-                            <span class="upload-stat-number" id="statUnregistered">0</span>
-                            <span class="upload-stat-label">Não Cadastrados</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
@@ -7774,96 +7691,6 @@
             }
         }
 
-        // Calculate and display upload statistics (registered vs unregistered addresses)
-        async function calculateUploadStats(uploadedData) {
-            try {
-                // Get all registered clients
-                let registeredAddresses = [];
-
-                // Try online first
-                if (isOnline) {
-                    try {
-                        const { data: clientsData, error } = await db
-                            .from('clients')
-                            .select('address')
-                            .not('address', 'is', null);
-
-                        if (!error && clientsData) {
-                            registeredAddresses = clientsData.map(c => c.address);
-                        }
-                    } catch (e) {}
-                }
-
-                // Fallback to cache
-                if (registeredAddresses.length === 0) {
-                    try {
-                        const cachedClients = await getAllFromOfflineDB('cachedClients');
-                        if (cachedClients && cachedClients.length > 0) {
-                            registeredAddresses = cachedClients.map(c => c.address);
-                        }
-                    } catch (e) {}
-                }
-
-                // Include pending clients
-                try {
-                    const pendingClients = await getAllFromOfflineDB('pendingClients');
-                    if (pendingClients && pendingClients.length > 0) {
-                        pendingClients.forEach(c => {
-                            if (c.address && !registeredAddresses.includes(c.address)) {
-                                registeredAddresses.push(c.address);
-                            }
-                        });
-                    }
-                } catch (e) {}
-
-                // Normalize registered addresses for comparison
-                const normalizedRegistered = registeredAddresses
-                    .filter(addr => addr)
-                    .map(addr => normalizeAddressForComparison(addr));
-
-                // Count registered vs unregistered from uploaded data
-                let registeredCount = 0;
-                let unregisteredCount = 0;
-
-                const uniqueAddresses = new Set();
-
-                for (const item of uploadedData) {
-                    const addr = item.destination_address;
-                    if (!addr || uniqueAddresses.has(addr)) continue;
-
-                    uniqueAddresses.add(addr);
-
-                    const normalizedAddr = normalizeAddressForComparison(addr);
-                    const isRegistered = normalizedRegistered.some(regAddr => regAddr === normalizedAddr);
-
-                    if (isRegistered) {
-                        registeredCount++;
-                    } else {
-                        unregisteredCount++;
-                    }
-                }
-
-                // Update stats in UI
-                const statTotal = document.getElementById('statTotal');
-                const statRegistered = document.getElementById('statRegistered');
-                const statUnregistered = document.getElementById('statUnregistered');
-
-                if (statTotal) statTotal.textContent = uniqueAddresses.size;
-                if (statRegistered) statRegistered.textContent = registeredCount;
-                if (statUnregistered) statUnregistered.textContent = unregisteredCount;
-
-            } catch (err) {
-                // If stats fail, just show totals
-                const statTotal = document.getElementById('statTotal');
-                const statRegistered = document.getElementById('statRegistered');
-                const statUnregistered = document.getElementById('statUnregistered');
-
-                if (statTotal) statTotal.textContent = uploadedData.length;
-                if (statRegistered) statRegistered.textContent = '-';
-                if (statUnregistered) statUnregistered.textContent = '-';
-            }
-        }
-
         // Upload confirm
         uploadConfirm.addEventListener('click', async () => {
             if (parsedData.length === 0) return;
@@ -7899,13 +7726,10 @@
                     document.getElementById('successText').textContent = `${parsedData.length} registros salvos offline. Serão sincronizados quando a internet voltar.`;
                     updateOfflineIndicator();
 
-                    // Calculate and show statistics
-                    await calculateUploadStats(parsedData);
-
-                    // Auto close after 6 seconds (more time to see stats)
+                    // Auto close after 2 seconds
                     setTimeout(() => {
                         closeUploadModal();
-                    }, 6000);
+                    }, 2000);
 
                 } catch (offlineErr) {
                     uploadProgress.classList.remove('active');
@@ -7958,13 +7782,10 @@
                 uploadSuccess.classList.add('active');
                 document.getElementById('successText').textContent = `${parsedData.length} registros foram salvos com sucesso.`;
 
-                // Calculate and show statistics
-                await calculateUploadStats(parsedData);
-
-                // Auto close after 6 seconds (more time to see stats)
+                // Auto close after 2 seconds
                 setTimeout(() => {
                     closeUploadModal();
-                }, 6000);
+                }, 2000);
 
             } catch (error) {
                 try {
@@ -7980,13 +7801,10 @@
                     document.getElementById('successText').textContent = `${parsedData.length} registros salvos offline. Serão sincronizados quando a internet voltar.`;
                     updateOfflineIndicator();
 
-                    // Calculate and show statistics
-                    await calculateUploadStats(parsedData);
-
-                    // Auto close after 6 seconds (more time to see stats)
+                    // Auto close after 2 seconds
                     setTimeout(() => {
                         closeUploadModal();
-                    }, 6000);
+                    }, 2000);
 
                 } catch (offlineErr) {
                     uploadProgress.classList.remove('active');
