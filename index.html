@@ -2264,12 +2264,13 @@
         /* Crosshair visual no centro exato do mapa
          * O .center-pin está em top:50%, left:50% (centro da tela)
          * O crosshair deve indicar EXATAMENTE esse ponto central
+         * IMPORTANTE: position absolute para não afetar o layout flex do .center-pin
          */
         .center-pin-crosshair {
             position: absolute;
-            top: 0;
-            left: 0;
-            transform: translate(-50%, -50%); /* Centraliza no ponto 0,0 do .center-pin */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%); /* Centraliza no centro do .center-pin */
             width: 24px;
             height: 24px;
             pointer-events: none;
