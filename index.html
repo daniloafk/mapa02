@@ -1106,9 +1106,9 @@
         .mapboxgl-popup-content {
             touch-action: pan-x pan-y;
             padding: 12px !important;
-            width: fit-content;
-            max-width: 280px;
+            width: 100%;
             box-sizing: border-box !important;
+            overflow: hidden;
         }
 
         .mapboxgl-popup-close-button {
@@ -1299,6 +1299,53 @@
 
         .route-popup-btn.navigate:hover {
             background: linear-gradient(135deg, #0369a1 0%, #01579b 100%);
+        }
+
+        /* Mobile-specific adjustments for popup */
+        @media (max-width: 480px) {
+            .mapboxgl-popup-content {
+                padding: 10px !important;
+                width: 100% !important;
+            }
+
+            .route-popup-content {
+                min-width: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            .route-popup-address {
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .route-popup-actions {
+                gap: 4px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .route-popup-btn {
+                flex: 1 1 0;
+                min-width: 0;
+                padding: 8px 4px;
+                font-size: 9px;
+                box-sizing: border-box;
+            }
+
+            .route-popup-btn svg {
+                width: 11px;
+                height: 11px;
+            }
+
+            .route-popup-btn .btn-text {
+                display: inline;
+            }
+
+            .route-popup-orders {
+                width: 100%;
+                box-sizing: border-box;
+            }
         }
 
         /* Upload Modal */
