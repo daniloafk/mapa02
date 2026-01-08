@@ -2185,29 +2185,33 @@
             z-index: 1000;
             pointer-events: none;
             display: none;
+            /* Remove flex para evitar bugs de recálculo em mobile */
+            width: 0;
+            height: 0;
         }
 
         .center-pin.active {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            display: block;
         }
 
         .center-pin-marker {
+            position: absolute;
             width: 24px;
-            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             /*
              * Cálculo preciso do posicionamento:
+             * - Posição absoluta garante que sempre funcione mesmo após map.resize()
+             * - top: 0; left: 0; = ponto central do .center-pin (que está em 50%, 50%)
              * - head: 16px altura
              * - needle: 30px altura
              * - Total do marcador: 46px
              * - O centro do mapa deve coincidir com a PONTA da agulha (bottom da needle)
-             * - transform: translate(-50%, -100%) posiciona o bottom no centro
-             * - Não precisamos de offset adicional pois a ponta da agulha É o bottom
+             * - transform: translate(-50%, -100%) posiciona a ponta exatamente no centro
              */
+            top: 0;
+            left: 0;
             transform: translate(-50%, -100%);
         }
 
@@ -2264,13 +2268,13 @@
         /* Crosshair visual no centro exato do mapa
          * O .center-pin está em top:50%, left:50% (centro da tela)
          * O crosshair deve indicar EXATAMENTE esse ponto central
-         * IMPORTANTE: position absolute para não afetar o layout flex do .center-pin
+         * IMPORTANTE: position absolute e top:0/left:0 = ponto central do .center-pin
          */
         .center-pin-crosshair {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%); /* Centraliza no centro do .center-pin */
+            top: 0;
+            left: 0;
+            transform: translate(-50%, -50%); /* Centraliza no ponto 0,0 do .center-pin */
             width: 24px;
             height: 24px;
             pointer-events: none;
