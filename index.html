@@ -7421,9 +7421,20 @@
                                </div>`
                             : '';
 
+                        // Se for marcador vermelho que foi desativado, mostrar opção de reativar similaridade
+                        const reactivateSimilarityHeader = (props.wasDeactivated && props.originalMatchedClientAddress)
+                            ? `<div class="reactivate-similarity-address" data-ids="${props.ids}" style="font-size: 11px; font-weight: 600; color: #ef4444; margin-bottom: 8px; padding: 6px 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border-left: 3px solid #ef4444; cursor: pointer; transition: all 0.2s ease;"
+                                    onmouseover="this.style.background='rgba(139, 92, 246, 0.15)'; this.style.borderLeftColor='#8b5cf6';"
+                                    onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderLeftColor='#ef4444';">
+                                   🔄 Voltar para: ${props.originalMatchedClientAddress}
+                                   <div style="font-size: 9px; color: #7c3aed; margin-top: 3px; font-weight: 500;">🖱️ Clique para reativar similaridade</div>
+                               </div>`
+                            : '';
+
                         if (hasMultipleAddresses) {
                             addressDisplay = `
                                 ${similarityHeader}
+                                ${reactivateSimilarityHeader}
                                 <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
                                 ${locationInfo}
                                 <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
@@ -7431,9 +7442,9 @@
                                 </div>
                             `;
                         } else if (addressSequencePairs.length === 1) {
-                            addressDisplay = `${similarityHeader}<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
+                            addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
                         } else {
-                            addressDisplay = `${similarityHeader}<div class="route-popup-address">${props.address}</div>${locationInfo}`;
+                            addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div class="route-popup-address">${props.address}</div>${locationInfo}`;
                         }
 
                         // Determine current status for button styling
@@ -7610,10 +7621,16 @@
                                     }
 
                                     if (originalLat && originalLng) {
+                                        // Salva os dados originais do match de similaridade para permitir reversão
+                                        markerFeature.properties.originalMatchType = props.matchType;
+                                        markerFeature.properties.originalMatchedClientAddress = props.matchedClientAddress;
+                                        markerFeature.properties.originalCoordinates = JSON.stringify(markerFeature.geometry.coordinates);
+
                                         // Atualiza as propriedades do marcador
                                         markerFeature.properties.matchType = null;
                                         markerFeature.properties.isRegistered = false;
                                         markerFeature.properties.matchedClientAddress = '';
+                                        markerFeature.properties.wasDeactivated = true; // Flag para indicar que foi desativado
                                         markerFeature.geometry.coordinates = [originalLng, originalLat];
 
                                         // Atualiza o ícone para vermelho (não cadastrado)
@@ -7655,6 +7672,80 @@
                                         // Atualiza estatísticas
                                         updateFixedStatsPanel();
                                     }
+                                }
+                            });
+                        }
+
+                        // Add click handler for reactivate similarity address (reativar similaridade)
+                        const reactivateAddress = popupContent.querySelector('.reactivate-similarity-address');
+                        if (reactivateAddress) {
+                            reactivateAddress.addEventListener('click', async (evt) => {
+                                evt.stopPropagation();
+                                evt.preventDefault();
+
+                                const ids = reactivateAddress.dataset.ids.split(',').map(id => parseInt(id));
+
+                                // Fecha o popup
+                                routePopup.remove();
+
+                                // Busca o marcador
+                                const sourceData = map.getSource('route-stops')._data;
+                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
+
+                                if (markerFeature && props.originalCoordinates) {
+                                    // Restaura as coordenadas originais (do cliente cadastrado)
+                                    const originalCoords = JSON.parse(props.originalCoordinates);
+
+                                    // Restaura as propriedades do match de similaridade
+                                    markerFeature.properties.matchType = props.originalMatchType;
+                                    markerFeature.properties.isRegistered = true;
+                                    markerFeature.properties.matchedClientAddress = props.originalMatchedClientAddress;
+                                    markerFeature.properties.wasDeactivated = false;
+                                    markerFeature.geometry.coordinates = originalCoords;
+
+                                    // Remove as propriedades salvas
+                                    markerFeature.properties.originalMatchType = null;
+                                    markerFeature.properties.originalMatchedClientAddress = null;
+                                    markerFeature.properties.originalCoordinates = null;
+
+                                    // Atualiza o ícone para roxo (similaridade)
+                                    const newColor = 'purple';
+                                    const newIconName = `pin-${newColor}-${props.packageCount}`;
+                                    markerFeature.properties.icon = newIconName;
+
+                                    // Garante que o ícone existe
+                                    if (!map.hasImage(newIconName)) {
+                                        const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
+                                        const img = new Image();
+                                        img.onload = () => {
+                                            if (!map.hasImage(newIconName)) {
+                                                map.addImage(newIconName, img, { pixelRatio: pixelRatio });
+                                            }
+                                            // Re-renderiza após adicionar o ícone
+                                            map.getSource('route-stops').setData(sourceData);
+
+                                            // Move o mapa de volta para a posição original
+                                            map.flyTo({
+                                                center: originalCoords,
+                                                zoom: 16,
+                                                duration: 1500
+                                            });
+                                        };
+                                        img.src = dataUrl;
+                                    } else {
+                                        // Ícone já existe, apenas re-renderiza
+                                        map.getSource('route-stops').setData(sourceData);
+
+                                        // Move o mapa de volta para a posição original
+                                        map.flyTo({
+                                            center: originalCoords,
+                                            zoom: 16,
+                                            duration: 1500
+                                        });
+                                    }
+
+                                    // Atualiza estatísticas
+                                    updateFixedStatsPanel();
                                 }
                             });
                         }
