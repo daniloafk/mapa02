@@ -6015,6 +6015,7 @@
             const colors = {
                 red: { needle: '#dc2626', light: '#f87171', mid: '#ef4444', dark: '#dc2626' },
                 green: { needle: '#16a34a', light: '#4ade80', mid: '#22c55e', dark: '#16a34a' },
+                orange: { needle: '#ea580c', light: '#fb923c', mid: '#f97316', dark: '#ea580c' },
                 gray: { needle: '#6b7280', light: '#9ca3af', mid: '#6b7280', dark: '#4b5563' },
                 'gray-x': { needle: '#6b7280', light: '#9ca3af', mid: '#6b7280', dark: '#4b5563' }
             };
@@ -6733,7 +6734,20 @@
                         // Pois o cliente sem número pode ser qualquer endereço daquela rua
                     }
 
-                    return bestMatch;
+                    // Se encontrou um match, determinar se foi exato ou por similaridade
+                    if (bestMatch) {
+                        // Match exato: similarity >= 0.95 (endereços quase idênticos após normalização)
+                        const normalizedBestClient = normalizeAddress(bestMatch.address);
+                        const finalSimilarity = textSimilarity(normalizedAddr, normalizedBestClient);
+                        const isExactMatch = finalSimilarity >= 0.95;
+
+                        return {
+                            client: bestMatch,
+                            matchType: isExactMatch ? 'exact' : 'similarity'
+                        };
+                    }
+
+                    return null;
                 }
 
                 // Check if two addresses should be merged (same street AND same house number)
@@ -6919,16 +6933,16 @@
                         if (shouldMerge) {
                             // Check if both have registered clients with distant coordinates
                             // PERFORMANCE: Usar cache para evitar recálculos
-                            const client1 = getCachedClientMatch(group1.originalAddress, group1.originalBairro, group1.originalZipcode);
-                            const client2 = getCachedClientMatch(group2.originalAddress, group2.originalBairro, group2.originalZipcode);
+                            const match1 = getCachedClientMatch(group1.originalAddress, group1.originalBairro, group1.originalZipcode);
+                            const match2 = getCachedClientMatch(group2.originalAddress, group2.originalBairro, group2.originalZipcode);
 
-                            if (client1 && client2) {
+                            if (match1 && match2) {
                                 // Check if they are DIFFERENT clients
-                                if (client1.id !== client2.id) {
+                                if (match1.client.id !== match2.client.id) {
                                     // Different clients - check distance between their coordinates
                                     const distance = haversineDistance(
-                                        client1.latitude, client1.longitude,
-                                        client2.latitude, client2.longitude
+                                        match1.client.latitude, match1.client.longitude,
+                                        match2.client.latitude, match2.client.longitude
                                     );
 
                                     if (distance > 0.1) {
@@ -7024,23 +7038,30 @@
                     // Check if ANY address in this group has a registered client (Option 1: at least one)
                     // Collect ALL registered clients for this group, then cluster their coordinates
                     // PERFORMANCE: Usar cache para evitar recálculos
-                    const registeredClients = [];
+                    const registeredMatches = [];
                     for (const addrDetails of allAddressesWithDetails) {
-                        const client = getCachedClientMatch(addrDetails.address, addrDetails.bairro, addrDetails.zipcode);
-                        if (client) {
-                            registeredClients.push(client);
+                        const match = getCachedClientMatch(addrDetails.address, addrDetails.bairro, addrDetails.zipcode);
+                        if (match) {
+                            registeredMatches.push(match);
                         }
                     }
 
+                    // Determine match type: 'exact' if ALL matches are exact, 'similarity' if at least one is similarity
+                    let matchType = null;
+                    if (registeredMatches.length > 0) {
+                        const hasAnySimilarity = registeredMatches.some(m => m.matchType === 'similarity');
+                        matchType = hasAnySimilarity ? 'similarity' : 'exact';
+                    }
+
                     // Determine final coordinates
-                    // Priority: 1. Registered client coords (GREEN), 2. Planilha coords (RED)
+                    // Priority: 1. Registered client coords (GREEN/ORANGE), 2. Planilha coords (RED)
                     let finalLat, finalLng;
                     let hasValidCoords = false;
 
-                    if (registeredClients.length > 0) {
-                        // Match found! Use client coordinates (GREEN marker)
-                        finalLat = registeredClients.reduce((sum, c) => sum + c.latitude, 0) / registeredClients.length;
-                        finalLng = registeredClients.reduce((sum, c) => sum + c.longitude, 0) / registeredClients.length;
+                    if (registeredMatches.length > 0) {
+                        // Match found! Use client coordinates (GREEN or ORANGE marker)
+                        finalLat = registeredMatches.reduce((sum, m) => sum + m.client.latitude, 0) / registeredMatches.length;
+                        finalLng = registeredMatches.reduce((sum, m) => sum + m.client.longitude, 0) / registeredMatches.length;
                         hasValidCoords = true;
                     } else {
                         // NO match - use planilha coordinates (RED marker)
@@ -7077,7 +7098,8 @@
                             stops: stopsList,
                             ids: ids,
                             deliveryStatus: deliveryStatus,
-                            isRegistered: registeredClients.length > 0, // GREEN if match, RED if not
+                            isRegistered: registeredMatches.length > 0, // GREEN/ORANGE if match, RED if not
+                            matchType: matchType, // 'exact', 'similarity', or null
                             bairro: group1.originalBairro || null,
                             zipcode: group1.originalZipcode || null
                         });
@@ -7147,9 +7169,16 @@
                             }
                         });
 
-                        // Use the most favorable registration status (if any is registered, show green)
+                        // Use the most favorable registration status (if any is registered, show green/orange)
                         if (group.isRegistered) {
                             existing.isRegistered = true;
+                            // Se qualquer um dos grupos tiver match por similaridade, use 'similarity'
+                            // Prioridade: exact > similarity > null
+                            if (!existing.matchType || existing.matchType === 'similarity') {
+                                existing.matchType = group.matchType;
+                            } else if (existing.matchType === 'exact' && group.matchType === 'similarity') {
+                                existing.matchType = 'similarity';
+                            }
                         }
                     } else {
                         // New location - add to map
@@ -7166,11 +7195,18 @@
 
                 const stops = finalGroups;
 
-                // Determine icon color based on delivery status
+                // Determine icon color based on delivery status and match type
                 function getIconColor(stop) {
                     if (stop.deliveryStatus === 'delivered') return 'gray';
                     if (stop.deliveryStatus === 'not_delivered') return 'gray-x';
-                    return stop.isRegistered ? 'green' : 'red';
+
+                    if (stop.isRegistered) {
+                        // Verde: match exato (normalizado igual)
+                        // Laranja: match por similaridade
+                        return stop.matchType === 'exact' ? 'green' : 'orange';
+                    }
+
+                    return 'red'; // Não cadastrado
                 }
 
                 // Generate and add high-resolution pin icons for each unique config needed
@@ -7234,6 +7270,7 @@
                             addressSequencePairs: stop.addressSequencePairs ? JSON.stringify(stop.addressSequencePairs) : '', // Store address+sequence pairs
                             sequences: stop.sequences.join(', '),
                             isRegistered: stop.isRegistered,
+                            matchType: stop.matchType || null, // 'exact', 'similarity', or null
                             ids: stop.ids.join(','),
                             deliveryStatus: stop.deliveryStatus || 'pending',
                             bairro: stop.bairro || '',
@@ -7396,10 +7433,18 @@
                                 if (markerFeature) {
                                     markerFeature.properties.deliveryStatus = statusToSave;
 
-                                    // Atualiza o ícone baseado no novo status
-                                    const newColor = statusToSave === 'delivered' ? 'gray' :
-                                                   statusToSave === 'not_delivered' ? 'gray-x' :
-                                                   (props.isRegistered ? 'green' : 'red');
+                                    // Atualiza o ícone baseado no novo status e tipo de match
+                                    let newColor;
+                                    if (statusToSave === 'delivered') {
+                                        newColor = 'gray';
+                                    } else if (statusToSave === 'not_delivered') {
+                                        newColor = 'gray-x';
+                                    } else if (props.isRegistered) {
+                                        // Verde se match exato, laranja se match por similaridade
+                                        newColor = props.matchType === 'exact' ? 'green' : 'orange';
+                                    } else {
+                                        newColor = 'red';
+                                    }
 
                                     const newIconName = `pin-${newColor}-${props.packageCount}`;
                                     markerFeature.properties.icon = newIconName;
