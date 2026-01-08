@@ -5887,9 +5887,59 @@
                     coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
                 }
 
+                // Check if this address has matches in the route markers (planilha)
+                // This will determine if it was found by exact match or similarity
+                let matchType = null;
+
+                // Get the current route markers data if available
+                if (map.getSource && map.getSource('route-stops')) {
+                    const routeSource = map.getSource('route-stops');
+                    const routeData = routeSource._data;
+
+                    if (routeData && routeData.features) {
+                        // Normalize the client address for comparison
+                        const normalizedClientAddr = normalizeAddressForComparison(address);
+
+                        // Check if any route marker matches this client
+                        const matchingRoute = routeData.features.find(feature => {
+                            const routeAddresses = feature.properties.allAddresses || [];
+                            return routeAddresses.some(routeAddr => {
+                                const normalizedRouteAddr = normalizeAddressForComparison(routeAddr);
+                                return normalizedRouteAddr === normalizedClientAddr;
+                            });
+                        });
+
+                        if (matchingRoute) {
+                            // Found in route markers - it's registered
+                            // Check if it was exact match or similarity
+                            const routeAddr = matchingRoute.properties.address;
+                            const normalizedRouteAddr = normalizeAddressForComparison(routeAddr);
+
+                            if (normalizedClientAddr === normalizedRouteAddr) {
+                                matchType = 'exact';
+                            } else {
+                                matchType = 'similarity';
+                            }
+                        }
+                    }
+                }
+
+                // Build popup HTML
+                let popupHTML = '';
+
+                // Add match type info if available
+                if (matchType === 'exact') {
+                    popupHTML += '<div style="font-size:11px;color:#10b981;margin-bottom:6px;font-weight:600;">✓ Cadastro Igual</div>';
+                } else if (matchType === 'similarity') {
+                    popupHTML += '<div style="font-size:11px;color:#f59e0b;margin-bottom:6px;font-weight:600;">≈ Encontrado por Similaridade</div>';
+                }
+
+                // Add address and coordinates
+                popupHTML += `<strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small>`;
+
                 new mapboxgl.Popup()
                     .setLngLat(coordinates)
-                    .setHTML(`<strong>${address}</strong><br><small>${parseFloat(latitude).toFixed(6)}, ${parseFloat(longitude).toFixed(6)}</small>`)
+                    .setHTML(popupHTML)
                     .addTo(map);
             });
 
