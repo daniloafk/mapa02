@@ -1105,7 +1105,7 @@
 
         .mapboxgl-popup-content {
             touch-action: pan-x pan-y;
-            padding: 10px !important;
+            padding: 12px !important;
             width: fit-content;
             max-width: 280px;
         }
@@ -1228,19 +1228,19 @@
         .route-popup-actions {
             display: flex;
             flex-wrap: nowrap; /* Mantém botões em uma linha */
-            gap: 4px;
+            gap: 6px;
             margin-top: 10px;
             padding-top: 10px;
             border-top: 1px solid #e2e8f0;
         }
 
         .route-popup-btn {
-            flex: 1 1 auto; /* flex-grow flex-shrink flex-basis */
+            flex: 1 1 0; /* Todos os botões com largura igual */
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 2px;
-            padding: 6px 8px;
+            gap: 3px;
+            padding: 8px 6px;
             border: none;
             border-radius: 6px;
             font-size: 10px;
@@ -1250,8 +1250,7 @@
             color: #1e293b;
             transition: all 0.2s ease;
             white-space: nowrap;
-            min-width: 70px; /* Largura mínima para garantir legibilidade */
-            max-width: 100%; /* Previne overflow */
+            min-width: 0; /* Remove largura mínima para flex funcionar corretamente */
         }
 
         .route-popup-btn svg {
