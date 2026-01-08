@@ -6015,7 +6015,7 @@
             const colors = {
                 red: { needle: '#dc2626', light: '#f87171', mid: '#ef4444', dark: '#dc2626' },
                 green: { needle: '#16a34a', light: '#4ade80', mid: '#22c55e', dark: '#16a34a' },
-                orange: { needle: '#ea580c', light: '#fb923c', mid: '#f97316', dark: '#ea580c' },
+                purple: { needle: '#7c3aed', light: '#a78bfa', mid: '#8b5cf6', dark: '#7c3aed' },
                 gray: { needle: '#6b7280', light: '#9ca3af', mid: '#6b7280', dark: '#4b5563' },
                 'gray-x': { needle: '#6b7280', light: '#9ca3af', mid: '#6b7280', dark: '#4b5563' }
             };
@@ -7202,8 +7202,8 @@
 
                     if (stop.isRegistered) {
                         // Verde: match exato (normalizado igual)
-                        // Laranja: match por similaridade
-                        return stop.matchType === 'exact' ? 'green' : 'orange';
+                        // Roxo: match por similaridade
+                        return stop.matchType === 'exact' ? 'green' : 'purple';
                     }
 
                     return 'red'; // Não cadastrado
@@ -7440,8 +7440,8 @@
                                     } else if (statusToSave === 'not_delivered') {
                                         newColor = 'gray-x';
                                     } else if (props.isRegistered) {
-                                        // Verde se match exato, laranja se match por similaridade
-                                        newColor = props.matchType === 'exact' ? 'green' : 'orange';
+                                        // Verde se match exato, roxo se match por similaridade
+                                        newColor = props.matchType === 'exact' ? 'green' : 'purple';
                                     } else {
                                         newColor = 'red';
                                     }
