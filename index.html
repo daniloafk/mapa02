@@ -7048,9 +7048,18 @@
 
                     // Determine match type: 'exact' if ALL matches are exact, 'similarity' if at least one is similarity
                     let matchType = null;
+                    let matchedClientAddress = null;
                     if (registeredMatches.length > 0) {
                         const hasAnySimilarity = registeredMatches.some(m => m.matchType === 'similarity');
                         matchType = hasAnySimilarity ? 'similarity' : 'exact';
+
+                        // Se houver match por similaridade, armazena o endereço do cliente para exibir no popup
+                        if (matchType === 'similarity') {
+                            const similarityMatch = registeredMatches.find(m => m.matchType === 'similarity');
+                            if (similarityMatch) {
+                                matchedClientAddress = similarityMatch.client.address;
+                            }
+                        }
                     }
 
                     // Determine final coordinates
@@ -7100,6 +7109,7 @@
                             deliveryStatus: deliveryStatus,
                             isRegistered: registeredMatches.length > 0, // GREEN/ORANGE if match, RED if not
                             matchType: matchType, // 'exact', 'similarity', or null
+                            matchedClientAddress: matchedClientAddress, // Endereço do cliente encontrado por similaridade
                             bairro: group1.originalBairro || null,
                             zipcode: group1.originalZipcode || null
                         });
@@ -7271,6 +7281,7 @@
                             sequences: stop.sequences.join(', '),
                             isRegistered: stop.isRegistered,
                             matchType: stop.matchType || null, // 'exact', 'similarity', or null
+                            matchedClientAddress: stop.matchedClientAddress || '', // Endereço do cliente encontrado por similaridade
                             ids: stop.ids.join(','),
                             deliveryStatus: stop.deliveryStatus || 'pending',
                             bairro: stop.bairro || '',
@@ -7341,10 +7352,25 @@
                         const cepDisplay = props.zipcode ? `<span style="font-size: 10px; color: #0ea5e9; font-weight: 500; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;">📮 ${props.zipcode}</span>` : '';
                         const locationInfo = (bairroDisplay || cepDisplay) ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; margin-bottom: 8px;">${bairroDisplay}${cepDisplay}</div>` : '';
 
-                        // Build address display
+                        // Build address display with matched client address for similarity matches
                         let addressDisplay = '';
+
+                        // Se for match por similaridade, mostrar endereço do cliente cadastrado acima
+                        const similarityHeader = (props.matchType === 'similarity' && props.matchedClientAddress)
+                            ? `<div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 6px 10px; border-radius: 8px 8px 0 0; margin: -8px -12px 8px -12px; font-size: 11px; font-weight: 600;">
+                                   🔍 Cadastro encontrado por similaridade
+                               </div>
+                               <div style="font-size: 12px; font-weight: 600; color: #8b5cf6; margin-bottom: 4px; padding: 6px 8px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border-left: 3px solid #8b5cf6;">
+                                   📍 ${props.matchedClientAddress}
+                               </div>
+                               <div style="font-size: 10px; color: #64748b; margin-bottom: 8px; font-weight: 500;">
+                                   ↓ Endereço da planilha:
+                               </div>`
+                            : '';
+
                         if (hasMultipleAddresses) {
                             addressDisplay = `
+                                ${similarityHeader}
                                 <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
                                 ${locationInfo}
                                 <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
@@ -7352,9 +7378,9 @@
                                 </div>
                             `;
                         } else if (addressSequencePairs.length === 1) {
-                            addressDisplay = `<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
+                            addressDisplay = `${similarityHeader}<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
                         } else {
-                            addressDisplay = `<div class="route-popup-address">${props.address}</div>${locationInfo}`;
+                            addressDisplay = `${similarityHeader}<div class="route-popup-address">${props.address}</div>${locationInfo}`;
                         }
 
                         // Determine current status for button styling
