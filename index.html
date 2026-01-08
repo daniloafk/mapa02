@@ -5891,20 +5891,32 @@
                 // This will determine if it was found by exact match or similarity
                 let matchType = null;
 
+                // Define normalize function locally to ensure it's available
+                function normalizeAddr(addr) {
+                    if (!addr) return '';
+                    return addr
+                        .toLowerCase()
+                        .trim()
+                        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                        .replace(/[.,;:\-\/\\()]/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                }
+
                 // Get the current route markers data if available
                 if (map.getSource && map.getSource('route-stops')) {
                     const routeSource = map.getSource('route-stops');
                     const routeData = routeSource._data;
 
-                    if (routeData && routeData.features) {
+                    if (routeData && routeData.features && routeData.features.length > 0) {
                         // Normalize the client address for comparison
-                        const normalizedClientAddr = normalizeAddressForComparison(address);
+                        const normalizedClientAddr = normalizeAddr(address);
 
                         // Check if any route marker matches this client
                         const matchingRoute = routeData.features.find(feature => {
                             const routeAddresses = feature.properties.allAddresses || [];
                             return routeAddresses.some(routeAddr => {
-                                const normalizedRouteAddr = normalizeAddressForComparison(routeAddr);
+                                const normalizedRouteAddr = normalizeAddr(routeAddr);
                                 return normalizedRouteAddr === normalizedClientAddr;
                             });
                         });
@@ -5913,7 +5925,7 @@
                             // Found in route markers - it's registered
                             // Check if it was exact match or similarity
                             const routeAddr = matchingRoute.properties.address;
-                            const normalizedRouteAddr = normalizeAddressForComparison(routeAddr);
+                            const normalizedRouteAddr = normalizeAddr(routeAddr);
 
                             if (normalizedClientAddr === normalizedRouteAddr) {
                                 matchType = 'exact';
