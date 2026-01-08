@@ -1108,6 +1108,7 @@
             padding: 12px !important;
             width: fit-content;
             max-width: 280px;
+            box-sizing: border-box !important;
         }
 
         .mapboxgl-popup-close-button {
@@ -1200,14 +1201,17 @@
 
         .route-popup-content {
             font-size: 13px;
-            width: fit-content;
+            width: 100%;
             min-width: 250px; /* Garante espaço mínimo para os 3 botões */
+            box-sizing: border-box;
         }
 
         .route-popup-address {
             font-weight: 600;
             margin-bottom: 8px;
             line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
         .route-popup-orders {
