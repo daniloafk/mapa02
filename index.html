@@ -6368,6 +6368,9 @@
                     return;
                 }
 
+                // Salva os dados originais da planilha globalmente para uso na desativação de similaridade
+                window.currentRouteData = data;
+
                 // Progresso: iniciando processamento (20%)
                 updateProgress(20);
 
@@ -7405,10 +7408,13 @@
                         // Build address display with matched client address for similarity matches
                         let addressDisplay = '';
 
-                        // Se for match por similaridade, mostrar endereço do cliente cadastrado acima
+                        // Se for match por similaridade, mostrar endereço do cliente cadastrado acima (clicável para desativar similaridade)
                         const similarityHeader = (props.matchType === 'similarity' && props.matchedClientAddress)
-                            ? `<div style="font-size: 12px; font-weight: 600; color: #8b5cf6; margin-bottom: 4px; padding: 6px 8px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border-left: 3px solid #8b5cf6;">
+                            ? `<div class="similarity-matched-address" data-ids="${props.ids}" style="font-size: 12px; font-weight: 600; color: #8b5cf6; margin-bottom: 4px; padding: 6px 8px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border-left: 3px solid #8b5cf6; cursor: pointer; transition: all 0.2s ease;"
+                                    onmouseover="this.style.background='rgba(139, 92, 246, 0.2)'; this.style.borderLeftWidth='4px';"
+                                    onmouseout="this.style.background='rgba(139, 92, 246, 0.1)'; this.style.borderLeftWidth='3px';">
                                    📍 ${props.matchedClientAddress}
+                                   <div style="font-size: 9px; color: #7c3aed; margin-top: 3px; font-weight: 500;">🖱️ Clique para usar coordenadas da planilha</div>
                                </div>
                                <div style="font-size: 10px; color: #64748b; margin-bottom: 8px; font-weight: 500;">
                                    ↓ Endereço da planilha:
@@ -7566,6 +7572,90 @@
                                 const destAddress = navBtn.dataset.address;
                                 routePopup.remove();
                                 startNavigation(destLng, destLat, destAddress);
+                            });
+                        }
+
+                        // Add click handler for similarity matched address (desativar similaridade)
+                        const similarityAddress = popupContent.querySelector('.similarity-matched-address');
+                        if (similarityAddress) {
+                            similarityAddress.addEventListener('click', async (evt) => {
+                                evt.stopPropagation();
+                                evt.preventDefault();
+
+                                const ids = similarityAddress.dataset.ids.split(',').map(id => parseInt(id));
+
+                                // Fecha o popup
+                                routePopup.remove();
+
+                                // Busca as coordenadas originais da planilha para esses IDs
+                                const sourceData = map.getSource('route-stops')._data;
+                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
+
+                                if (markerFeature) {
+                                    // Busca as coordenadas originais da planilha
+                                    let originalLat = null;
+                                    let originalLng = null;
+
+                                    // Busca nos dados originais da planilha
+                                    if (window.currentRouteData) {
+                                        const itemsForThisMarker = window.currentRouteData.filter(item =>
+                                            ids.includes(item.id) && item.latitude && item.longitude
+                                        );
+
+                                        if (itemsForThisMarker.length > 0) {
+                                            // Calcula a média das coordenadas da planilha (pode haver múltiplos pontos)
+                                            originalLat = itemsForThisMarker.reduce((sum, item) => sum + item.latitude, 0) / itemsForThisMarker.length;
+                                            originalLng = itemsForThisMarker.reduce((sum, item) => sum + item.longitude, 0) / itemsForThisMarker.length;
+                                        }
+                                    }
+
+                                    if (originalLat && originalLng) {
+                                        // Atualiza as propriedades do marcador
+                                        markerFeature.properties.matchType = null;
+                                        markerFeature.properties.isRegistered = false;
+                                        markerFeature.properties.matchedClientAddress = '';
+                                        markerFeature.geometry.coordinates = [originalLng, originalLat];
+
+                                        // Atualiza o ícone para vermelho (não cadastrado)
+                                        const newColor = 'red';
+                                        const newIconName = `pin-${newColor}-${props.packageCount}`;
+                                        markerFeature.properties.icon = newIconName;
+
+                                        // Garante que o ícone existe
+                                        if (!map.hasImage(newIconName)) {
+                                            const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
+                                            const img = new Image();
+                                            img.onload = () => {
+                                                if (!map.hasImage(newIconName)) {
+                                                    map.addImage(newIconName, img, { pixelRatio: pixelRatio });
+                                                }
+                                                // Re-renderiza após adicionar o ícone
+                                                map.getSource('route-stops').setData(sourceData);
+
+                                                // Move o mapa para a nova posição
+                                                map.flyTo({
+                                                    center: [originalLng, originalLat],
+                                                    zoom: 16,
+                                                    duration: 1500
+                                                });
+                                            };
+                                            img.src = dataUrl;
+                                        } else {
+                                            // Ícone já existe, apenas re-renderiza
+                                            map.getSource('route-stops').setData(sourceData);
+
+                                            // Move o mapa para a nova posição
+                                            map.flyTo({
+                                                center: [originalLng, originalLat],
+                                                zoom: 16,
+                                                duration: 1500
+                                            });
+                                        }
+
+                                        // Atualiza estatísticas
+                                        updateFixedStatsPanel();
+                                    }
+                                }
                             });
                         }
 
