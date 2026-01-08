@@ -4597,6 +4597,42 @@
             return syncedStatusChanges;
         }
 
+        // Sync pending similarity overrides to Supabase
+        async function syncPendingSimilarityOverrides() {
+            try {
+                const pendingOverrides = await getPendingFromOfflineDB('pendingSimilarityOverrides');
+                if (pendingOverrides.length === 0) return;
+
+                for (let i = 0; i < pendingOverrides.length; i++) {
+                    const item = pendingOverrides[i];
+
+                    // PERFORMANCE: Cede controle a cada item
+                    if (i > 0) {
+                        await yieldToMain();
+                    }
+
+                    try {
+                        const { error } = await db
+                            .from('planilha')
+                            .update({
+                                similarity_disabled: item.similarity_disabled,
+                                similarity_original_lat: item.similarity_original_lat,
+                                similarity_original_lng: item.similarity_original_lng
+                            })
+                            .in('id', item.ids);
+
+                        if (!error) {
+                            await deleteSyncedFromOfflineDB('pendingSimilarityOverrides', item.localId);
+                        }
+                    } catch (err) {
+                        // Erro na sincronização de similarity override
+                    }
+                }
+            } catch (err) {
+                // Erro ao obter overrides pendentes
+            }
+        }
+
         // Main sync function - syncs all pending data
         // Retorna objeto com o que foi sincronizado para atualização incremental
         async function syncAllPendingData() {
@@ -4624,6 +4660,10 @@
 
                 const statusChanges = await syncPendingDeliveryStatus();
                 syncResult.syncedStatusChanges = statusChanges || {};
+                await longYield();
+
+                // Sync similarity overrides
+                await syncPendingSimilarityOverrides();
                 await longYield();
 
                 // Verifica se houve alguma mudança
@@ -6045,6 +6085,88 @@
             }
         }
 
+        // Update similarity override in Supabase or offline
+        async function updateSimilarityOverride(ids, disabled, originalLat = null, originalLng = null) {
+            if (!ids || ids.length === 0) {
+                return false;
+            }
+
+            const updateData = {
+                similarity_disabled: disabled,
+                similarity_original_lat: disabled ? originalLat : null,
+                similarity_original_lng: disabled ? originalLng : null
+            };
+
+            // If offline, save locally
+            if (!isOnline) {
+                try {
+                    await saveToOfflineDB('pendingSimilarityOverrides', {
+                        ids: ids,
+                        ...updateData
+                    });
+                    updateOfflineIndicator();
+                    return true;
+                } catch (err) {
+                    return false;
+                }
+            }
+
+            // If online, try Supabase
+            try {
+                const { data, error } = await db
+                    .from('planilha')
+                    .update(updateData)
+                    .in('id', ids)
+                    .select();
+
+                if (error) {
+                    throw error;
+                }
+
+                // Update local cache
+                try {
+                    const cachedPlanilha = await getAllFromOfflineDB('cachedPlanilha');
+                    if (cachedPlanilha && cachedPlanilha.length > 0) {
+                        const updatedPlanilha = cachedPlanilha.map(item => {
+                            if (ids.includes(item.id)) {
+                                return { ...item, ...updateData };
+                            }
+                            return item;
+                        });
+                        await saveCacheToDB('cachedPlanilha', updatedPlanilha);
+                    }
+                } catch (cacheErr) {
+                    // Cache update failed, but Supabase update succeeded
+                }
+
+                return data && data.length > 0;
+            } catch (error) {
+                // If Supabase fails, save offline
+                try {
+                    await saveToOfflineDB('pendingSimilarityOverrides', { ids, ...updateData });
+
+                    // Update local cache when saving offline
+                    try {
+                        const cachedPlanilha = await getAllFromOfflineDB('cachedPlanilha');
+                        if (cachedPlanilha && cachedPlanilha.length > 0) {
+                            const updatedPlanilha = cachedPlanilha.map(item => {
+                                if (ids.includes(item.id)) {
+                                    return { ...item, ...updateData };
+                                }
+                                return item;
+                            });
+                            await saveCacheToDB('cachedPlanilha', updatedPlanilha);
+                        }
+                    } catch (cacheErr) {}
+
+                    updateOfflineIndicator();
+                    return true;
+                } catch (offlineErr) {
+                    return false;
+                }
+            }
+        }
+
         // Generate high-resolution pin icon with number using Canvas (3x for Retina/HiDPI)
         // Colors: red (pending), green (registered), gray (delivered), gray-x (not delivered)
         function generatePinIcon(number, color = 'red') {
@@ -6250,7 +6372,7 @@
                     // Coordinates come from registered clients matching
                     const { data: onlineData, error } = await db
                         .from('planilha')
-                        .select('id, destination_address, bairro, city, zipcode, latitude, longitude, sequence, stop, delivery_status')
+                        .select('id, destination_address, bairro, city, zipcode, latitude, longitude, sequence, stop, delivery_status, similarity_disabled, similarity_original_lat, similarity_original_lng')
                         .not('destination_address', 'is', null);
 
                     if (!error && onlineData) {
@@ -7115,13 +7237,42 @@
                         }
                     }
 
+                    // Check if similarity was disabled by user for ANY item in this group
+                    const hasSimilarityDisabled = mergedItems.some(item => item.similarity_disabled === true);
+                    let wasDeactivated = false;
+                    let originalMatchType = null;
+                    let originalMatchedClientAddress = null;
+                    let originalCoordinates = null;
+
                     // Determine final coordinates
-                    // Priority: 1. Registered client coords (GREEN/ORANGE), 2. Planilha coords (RED)
+                    // Priority: 1. User override (similarity disabled), 2. Registered client coords (GREEN/PURPLE), 3. Planilha coords (RED)
                     let finalLat, finalLng;
                     let hasValidCoords = false;
 
-                    if (registeredMatches.length > 0) {
-                        // Match found! Use client coordinates (GREEN or ORANGE marker)
+                    if (hasSimilarityDisabled) {
+                        // User disabled similarity - use planilha coordinates
+                        const disabledItem = mergedItems.find(item => item.similarity_disabled === true);
+                        if (disabledItem && disabledItem.similarity_original_lat && disabledItem.similarity_original_lng) {
+                            finalLat = disabledItem.similarity_original_lat;
+                            finalLng = disabledItem.similarity_original_lng;
+                            hasValidCoords = true;
+                            wasDeactivated = true;
+
+                            // Save original match data for reactivation
+                            if (registeredMatches.length > 0) {
+                                originalMatchType = matchType;
+                                originalMatchedClientAddress = matchedClientAddress;
+                                const clientLat = registeredMatches.reduce((sum, m) => sum + m.client.latitude, 0) / registeredMatches.length;
+                                const clientLng = registeredMatches.reduce((sum, m) => sum + m.client.longitude, 0) / registeredMatches.length;
+                                originalCoordinates = JSON.stringify([clientLng, clientLat]);
+                            }
+
+                            // Override match data to show as unregistered
+                            matchType = null;
+                            matchedClientAddress = null;
+                        }
+                    } else if (registeredMatches.length > 0) {
+                        // Match found! Use client coordinates (GREEN or PURPLE marker)
                         finalLat = registeredMatches.reduce((sum, m) => sum + m.client.latitude, 0) / registeredMatches.length;
                         finalLng = registeredMatches.reduce((sum, m) => sum + m.client.longitude, 0) / registeredMatches.length;
                         hasValidCoords = true;
@@ -7160,9 +7311,13 @@
                             stops: stopsList,
                             ids: ids,
                             deliveryStatus: deliveryStatus,
-                            isRegistered: registeredMatches.length > 0, // GREEN/ORANGE if match, RED if not
+                            isRegistered: wasDeactivated ? false : (registeredMatches.length > 0), // GREEN/PURPLE if match, RED if not or disabled
                             matchType: matchType, // 'exact', 'similarity', or null
                             matchedClientAddress: matchedClientAddress, // Endereço do cliente encontrado por similaridade
+                            wasDeactivated: wasDeactivated, // Flag indicando que foi desativado pelo usuário
+                            originalMatchType: originalMatchType, // Match type original (para reativação)
+                            originalMatchedClientAddress: originalMatchedClientAddress, // Endereço original (para reativação)
+                            originalCoordinates: originalCoordinates, // Coordenadas originais do cliente (para reativação)
                             bairro: group1.originalBairro || null,
                             zipcode: group1.originalZipcode || null
                         });
@@ -7335,6 +7490,10 @@
                             isRegistered: stop.isRegistered,
                             matchType: stop.matchType || null, // 'exact', 'similarity', or null
                             matchedClientAddress: stop.matchedClientAddress || '', // Endereço do cliente encontrado por similaridade
+                            wasDeactivated: stop.wasDeactivated || false, // Flag de desativação pelo usuário
+                            originalMatchType: stop.originalMatchType || null, // Match type original (para reativação)
+                            originalMatchedClientAddress: stop.originalMatchedClientAddress || '', // Endereço original (para reativação)
+                            originalCoordinates: stop.originalCoordinates || null, // Coordenadas originais do cliente (para reativação)
                             ids: stop.ids.join(','),
                             deliveryStatus: stop.deliveryStatus || 'pending',
                             bairro: stop.bairro || '',
@@ -7671,6 +7830,11 @@
 
                                         // Atualiza estatísticas
                                         updateFixedStatsPanel();
+
+                                        // Salva no banco de dados
+                                        updateSimilarityOverride(ids, true, originalLat, originalLng).catch(err => {
+                                            console.error('Erro ao salvar desativação de similaridade:', err);
+                                        });
                                     }
                                 }
                             });
@@ -7746,6 +7910,11 @@
 
                                     // Atualiza estatísticas
                                     updateFixedStatsPanel();
+
+                                    // Salva no banco de dados (reativa similaridade)
+                                    updateSimilarityOverride(ids, false).catch(err => {
+                                        console.error('Erro ao salvar reativação de similaridade:', err);
+                                    });
                                 }
                             });
                         }
