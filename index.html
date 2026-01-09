@@ -7914,6 +7914,9 @@
                                 // Update fixed stats panel after status change
                                 updateFixedStatsPanel();
 
+                                // Salva o GeoJSON atualizado no IndexedDB para persistir o status
+                                saveRouteMarkersData(sourceData).catch(() => {});
+
                                 // Sincroniza em background (não bloqueia a UI)
                                 updateDeliveryStatus(ids, statusToSave).catch(err => {
                                     // Erro ao sincronizar status
@@ -8021,6 +8024,9 @@
                                         // Atualiza estatísticas
                                         updateFixedStatsPanel();
 
+                                        // Salva o GeoJSON atualizado no IndexedDB
+                                        saveRouteMarkersData(sourceData).catch(() => {});
+
                                         // Salva no banco de dados
                                         updateSimilarityOverride(ids, true, originalLat, originalLng).catch(err => {
                                             console.error('Erro ao salvar desativação de similaridade:', err);
@@ -8100,6 +8106,9 @@
 
                                     // Atualiza estatísticas
                                     updateFixedStatsPanel();
+
+                                    // Salva o GeoJSON atualizado no IndexedDB
+                                    saveRouteMarkersData(sourceData).catch(() => {});
 
                                     // Salva no banco de dados (reativa similaridade)
                                     updateSimilarityOverride(ids, false).catch(err => {
