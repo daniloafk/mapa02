@@ -4307,7 +4307,7 @@
         // Initialize IndexedDB for offline storage
         function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('MapaInterativoDB', 4);
+                const request = indexedDB.open('MapaInterativoDB', 3);
 
                 request.onerror = () => {
                     // Erro ao abrir IndexedDB
@@ -4355,11 +4355,6 @@
                         clientsCacheStore.createIndex('bairro', 'bairro', { unique: false });
                         clientsCacheStore.createIndex('city', 'city', { unique: false });
                         clientsCacheStore.createIndex('zipcode', 'zipcode', { unique: false });
-                    }
-
-                    // Store for cached route markers (v4)
-                    if (!db.objectStoreNames.contains('cachedRouteMarkers')) {
-                        db.createObjectStore('cachedRouteMarkers', { keyPath: 'cacheKey' });
                     }
 
                 };
@@ -5091,37 +5086,6 @@
             });
         }
 
-        // Salvar GeoJSON dos marcadores no cache
-        function saveRouteMarkersToCache(geojsonData) {
-            return new Promise((resolve, reject) => {
-                if (!offlineDB) {
-                    reject(new Error('IndexedDB não inicializado'));
-                    return;
-                }
-                const transaction = offlineDB.transaction(['cachedRouteMarkers'], 'readwrite');
-                const store = transaction.objectStore('cachedRouteMarkers');
-                store.clear();
-                const request = store.put({ cacheKey: 'routeMarkers', data: geojsonData, timestamp: Date.now() });
-                request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        // Carregar GeoJSON dos marcadores do cache
-        function loadRouteMarkersFromCache() {
-            return new Promise((resolve, reject) => {
-                if (!offlineDB) {
-                    resolve(null);
-                    return;
-                }
-                const transaction = offlineDB.transaction(['cachedRouteMarkers'], 'readonly');
-                const store = transaction.objectStore('cachedRouteMarkers');
-                const request = store.get('routeMarkers');
-                request.onsuccess = () => resolve(request.result ? request.result.data : null);
-                request.onerror = () => reject(request.error);
-            });
-        }
-
         // Save cache to IndexedDB (replaces all data in cache)
         async function saveCacheToDB(storeName, dataArray) {
             if (!offlineDB) return;
@@ -5464,68 +5428,6 @@
                         loadClientes();
                     }
                 }, 4000);
-
-                // AUTO-LOAD: Carrega marcadores salvos após 3s
-                setTimeout(async () => {
-                    try {
-                        const cachedGeojson = await loadRouteMarkersFromCache();
-                        if (cachedGeojson && cachedGeojson.features && cachedGeojson.features.length > 0) {
-                            // Recriar ícones necessários
-                            const iconConfigs = new Set();
-                            cachedGeojson.features.forEach(f => {
-                                if (f.properties && f.properties.icon) {
-                                    iconConfigs.add(f.properties.icon);
-                                }
-                            });
-
-                            // Gerar ícones
-                            for (const iconName of iconConfigs) {
-                                if (!map.hasImage(iconName)) {
-                                    const parts = iconName.split('-');
-                                    const color = parts.slice(1, -1).join('-');
-                                    const count = parseInt(parts[parts.length - 1]);
-                                    const { dataUrl, pixelRatio } = generatePinIcon(count, color);
-                                    await new Promise(resolve => {
-                                        const img = new Image();
-                                        img.onload = () => {
-                                            if (!map.hasImage(iconName)) {
-                                                map.addImage(iconName, img, { pixelRatio });
-                                            }
-                                            resolve();
-                                        };
-                                        img.onerror = resolve;
-                                        img.src = dataUrl;
-                                    });
-                                }
-                            }
-
-                            // Criar source e layer
-                            if (!map.getSource('route-stops')) {
-                                map.addSource('route-stops', { type: 'geojson', data: cachedGeojson });
-                                map.addLayer({
-                                    id: 'route-stops-pins',
-                                    type: 'symbol',
-                                    source: 'route-stops',
-                                    layout: {
-                                        'icon-image': ['get', 'icon'],
-                                        'icon-size': 1,
-                                        'icon-anchor': 'bottom',
-                                        'icon-allow-overlap': true
-                                    }
-                                });
-                            } else {
-                                map.getSource('route-stops').setData(cachedGeojson);
-                            }
-
-                            map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
-                            routeMarkersVisible = true;
-                            if (routeMarkersBtn) routeMarkersBtn.classList.add('active');
-                            updateFixedStatsPanel();
-                        }
-                    } catch (e) {
-                        // Erro ao carregar cache (silencioso)
-                    }
-                }, 3000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -8099,13 +8001,6 @@
 
                 // Update fixed stats panel with route data
                 updateFixedStatsPanel();
-
-                // Salvar marcadores no cache para carregar automaticamente
-                try {
-                    await saveRouteMarkersToCache(geojson);
-                } catch (cacheErr) {
-                    // Erro ao salvar cache (silencioso)
-                }
 
             } catch (error) {
                 // PERFORMANCE: Restaurar botão em caso de erro
