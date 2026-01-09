@@ -1123,6 +1123,14 @@
             pointer-events: auto;
         }
 
+        /* PERFORMANCE: Popup de warmup invisível */
+        .warmup-popup-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            position: absolute !important;
+            left: -9999px !important;
+        }
+
         .mapboxgl-popup-content {
             touch-action: pan-x pan-y;
             padding: 12px !important;
@@ -8228,18 +8236,11 @@
                     // Silencioso se falhar
                 }
 
-                // PERFORMANCE: Pré-parsear addressSequencePairs em background
-                // para evitar travamento no primeiro clique
+                // PERFORMANCE: Pré-parsear addressSequencePairs ANTES de exibir marcadores
+                // para garantir que o primeiro clique seja instantâneo
                 window.parsedAddressSequencePairs = new Map();
-
-                // Processa em chunks para não bloquear a UI
-                const featuresToParse = savedGeojson.features.filter(f => f.properties.addressSequencePairs);
-                const parseChunk = (startIdx) => {
-                    const CHUNK_SIZE = 20;
-                    const endIdx = Math.min(startIdx + CHUNK_SIZE, featuresToParse.length);
-
-                    for (let i = startIdx; i < endIdx; i++) {
-                        const feature = featuresToParse[i];
+                for (const feature of savedGeojson.features) {
+                    if (feature.properties.addressSequencePairs) {
                         try {
                             window.parsedAddressSequencePairs.set(
                                 feature.properties.ids,
@@ -8247,14 +8248,6 @@
                             );
                         } catch (e) {}
                     }
-
-                    if (endIdx < featuresToParse.length) {
-                        setTimeout(() => parseChunk(endIdx), 0);
-                    }
-                };
-
-                if (featuresToParse.length > 0) {
-                    setTimeout(() => parseChunk(0), 100);
                 }
 
                 // Extrair configs de ícones únicos dos features salvos
@@ -8361,6 +8354,25 @@
 
                 // Atualizar painel de estatísticas
                 updateFixedStatsPanel();
+
+                // PERFORMANCE: Pré-aquecer o sistema de popups criando um invisível
+                // Isso força o browser a carregar CSS e inicializar classes do Mapbox popup
+                setTimeout(() => {
+                    try {
+                        const warmupPopup = new mapboxgl.Popup({
+                            closeButton: false,
+                            closeOnClick: true,
+                            maxWidth: '1px',
+                            className: 'warmup-popup-hidden'
+                        })
+                        .setLngLat([0, 0])
+                        .setHTML('<div></div>')
+                        .addTo(map);
+
+                        // Remove imediatamente
+                        setTimeout(() => warmupPopup.remove(), 50);
+                    } catch (e) {}
+                }, 200);
 
                 return true;
             } catch (error) {
