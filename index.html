@@ -4414,6 +4414,16 @@
             });
         }
 
+        // Save route markers GeoJSON to IndexedDB for quick restore
+        function saveRouteMarkersData(geojson) {
+            return saveAppSetting('routeMarkersData', geojson);
+        }
+
+        // Get saved route markers GeoJSON from IndexedDB
+        function getSavedRouteMarkersData() {
+            return getAppSetting('routeMarkersData');
+        }
+
         // Save data to IndexedDB
         function saveToOfflineDB(storeName, data) {
             return new Promise((resolve, reject) => {
@@ -5483,22 +5493,26 @@
                 }, 4000);
 
                 // Auto-load route markers se estavam visíveis na última sessão
-                // Aguarda 5s para garantir que tudo está carregado
+                // Aguarda 3s para garantir que tudo está carregado
                 setTimeout(async () => {
                     try {
                         const wasVisible = await getAppSetting('routeMarkersVisible');
                         if (wasVisible === true) {
-                            // Carrega os marcadores automaticamente
-                            if ('requestIdleCallback' in window) {
-                                requestIdleCallback(() => loadRouteMarkers(true), { timeout: 5000 });
-                            } else {
-                                loadRouteMarkers(true); // skipFitBounds = true para não mover o mapa
+                            // Tenta restauração rápida primeiro (usando dados salvos)
+                            const restored = await restoreRouteMarkers();
+                            if (!restored) {
+                                // Se não conseguiu restaurar, carrega do zero
+                                if ('requestIdleCallback' in window) {
+                                    requestIdleCallback(() => loadRouteMarkers(true), { timeout: 5000 });
+                                } else {
+                                    loadRouteMarkers(true);
+                                }
                             }
                         }
                     } catch (e) {
                         // Silencioso se falhar
                     }
-                }, 5000);
+                }, 3000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -7622,6 +7636,13 @@
                     features: features
                 };
 
+                // Salvar GeoJSON no IndexedDB para restauração rápida
+                try {
+                    await saveRouteMarkersData(geojson);
+                } catch (e) {
+                    // Silencioso se falhar
+                }
+
                 // Add or update source
                 if (map.getSource('route-stops')) {
                     // Remove old images to force regeneration with new colors
@@ -8103,12 +8124,118 @@
             hideFixedStatsPanel();
         }
 
+        // Restauração rápida dos marcadores usando dados salvos (sem recalcular)
+        async function restoreRouteMarkers() {
+            try {
+                const savedGeojson = await getSavedRouteMarkersData();
+                if (!savedGeojson || !savedGeojson.features || savedGeojson.features.length === 0) {
+                    // Sem dados salvos, precisa carregar do zero
+                    return false;
+                }
+
+                const routeBtn = document.getElementById('routeMarkersBtn');
+                if (routeBtn) {
+                    routeBtn.classList.add('loading');
+                    routeBtn.style.pointerEvents = 'none';
+                }
+
+                // Extrair configs de ícones únicos dos features salvos
+                const iconConfigs = new Set();
+                savedGeojson.features.forEach(feature => {
+                    const icon = feature.properties.icon; // formato: pin-color-count
+                    if (icon) {
+                        const parts = icon.replace('pin-', '').split('-');
+                        // Suporta cores compostas como "gray-x"
+                        const count = parts.pop();
+                        const color = parts.join('-');
+                        iconConfigs.add(`${count}-${color}`);
+                    }
+                });
+
+                // Gerar ícones necessários
+                const iconPromises = Array.from(iconConfigs).map(config => {
+                    return new Promise((resolve) => {
+                        const firstDash = config.indexOf('-');
+                        const count = config.substring(0, firstDash);
+                        const color = config.substring(firstDash + 1);
+                        const iconName = `pin-${color}-${count}`;
+
+                        if (map.hasImage(iconName)) {
+                            resolve();
+                            return;
+                        }
+
+                        const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
+                        const img = new Image();
+                        img.onload = () => {
+                            if (!map.hasImage(iconName)) {
+                                map.addImage(iconName, img, { pixelRatio: pixelRatio });
+                            }
+                            resolve();
+                        };
+                        img.onerror = () => resolve();
+                        img.src = dataUrl;
+                    });
+                });
+
+                await Promise.all(iconPromises);
+
+                // Adicionar ou atualizar source
+                if (map.getSource('route-stops')) {
+                    map.getSource('route-stops').setData(savedGeojson);
+                    map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+                } else {
+                    map.addSource('route-stops', {
+                        type: 'geojson',
+                        data: savedGeojson
+                    });
+
+                    map.addLayer({
+                        id: 'route-stops-pins',
+                        type: 'symbol',
+                        source: 'route-stops',
+                        layout: {
+                            'icon-image': ['get', 'icon'],
+                            'icon-size': 1,
+                            'icon-anchor': 'bottom',
+                            'icon-allow-overlap': true
+                        }
+                    });
+                }
+
+                // Mostrar layer
+                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+
+                routeMarkersVisible = true;
+                routeMarkersBtn.classList.add('active');
+
+                // Restaurar botão
+                if (routeBtn) {
+                    routeBtn.classList.remove('loading');
+                    routeBtn.style.pointerEvents = 'auto';
+                }
+
+                // Atualizar painel de estatísticas
+                updateFixedStatsPanel();
+
+                return true;
+            } catch (error) {
+                const routeBtn = document.getElementById('routeMarkersBtn');
+                if (routeBtn) {
+                    routeBtn.classList.remove('loading');
+                    routeBtn.style.pointerEvents = 'auto';
+                }
+                return false;
+            }
+        }
+
         routeMarkersBtn.addEventListener('click', async () => {
             if (routeMarkersVisible) {
                 removeRouteMarkers();
-                // Salvar estado como desativado
+                // Salvar estado como desativado e limpar dados salvos
                 try {
                     await saveAppSetting('routeMarkersVisible', false);
+                    await saveAppSetting('routeMarkersData', null);
                 } catch (e) {}
             } else {
                 loadRouteMarkers();
