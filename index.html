@@ -7777,17 +7777,26 @@
 
             // Add click event for popup
             map.on('click', 'route-stops-pins', (e) => {
-                        const feature = e.features[0];
-                        const coords = feature.geometry.coordinates.slice();
-                        const props = feature.properties;
+                // PERFORMANCE: Usa requestAnimationFrame para não bloquear a UI
+                const feature = e.features[0];
+                const coords = feature.geometry.coordinates.slice();
 
-                        const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
-                        const ordersHtml = sequencesArr.map(seq =>
-                            `<span class="route-popup-order">${seq}</span>`
-                        ).join('');
+                requestAnimationFrame(() => {
+                    const props = feature.properties;
 
-                        // Check if there are multiple addresses in this stop
-                        const addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
+                    const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
+                    const ordersHtml = sequencesArr.map(seq =>
+                        `<span class="route-popup-order">${seq}</span>`
+                    ).join('');
+
+                    // Check if there are multiple addresses in this stop
+                    // PERFORMANCE: JSON.parse pode ser lento com strings grandes
+                    let addressSequencePairs = [];
+                    try {
+                        addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
+                    } catch (e) {
+                        addressSequencePairs = [];
+                    }
                         const hasMultipleAddresses = addressSequencePairs.length > 1;
 
                         // Build bairro and CEP info display
@@ -8158,7 +8167,7 @@
                                 }
                             });
                         }
-
+                }); // Fecha requestAnimationFrame
             });
 
             // Change cursor on hover
