@@ -6123,6 +6123,7 @@
         const routeMarkersBtn = document.getElementById('routeMarkersBtn');
         let routeMarkersVisible = false;
         let routePopup = null;
+        let routeStopsListenersConfigured = false; // Controla se os event listeners já foram configurados
 
         // Update delivery status in Supabase or offline
         async function updateDeliveryStatus(ids, status) {
@@ -7680,8 +7681,61 @@
                         }
                     });
 
-                    // Add click event for popup
-                    map.on('click', 'route-stops-pins', (e) => {
+                    // Configura event listeners (será chamado também pelo restoreRouteMarkers)
+                    setupRouteStopsEventListeners();
+                }
+
+                // Show layer
+                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+
+                // Progresso: marcadores exibidos (100%)
+                updateProgress(100);
+
+                routeMarkersVisible = true;
+                routeMarkersBtn.classList.add('active');
+
+                // Fit map to show all markers (only on first load, not on status updates)
+                if (features.length > 0 && !skipFitBounds) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    features.forEach(f => bounds.extend(f.geometry.coordinates));
+                    map.fitBounds(bounds, { padding: 50, duration: 1500 });
+                }
+
+                // PERFORMANCE: Restaurar botão após carregamento com delay para animação
+                if (routeBtn) {
+                    setTimeout(() => {
+                        routeBtn.classList.remove('loading');
+                        routeBtn.style.pointerEvents = 'auto';
+                        updateProgress(0); // Reset para próximo uso
+                    }, 300);
+                }
+
+                // Update fixed stats panel with route data
+                updateFixedStatsPanel();
+
+            } catch (error) {
+                // PERFORMANCE: Restaurar botão em caso de erro
+                const routeBtn = document.getElementById('routeMarkersBtn');
+                const progressFill = document.getElementById('routeProgressFill');
+                if (routeBtn) {
+                    routeBtn.classList.remove('loading');
+                    routeBtn.style.pointerEvents = 'auto';
+                }
+                if (progressFill) {
+                    progressFill.style.height = '0%';
+                }
+                showErrorModal('Erro ao carregar as paradas da planilha.');
+            }
+        }
+
+        // Função para configurar event listeners dos marcadores de rota (reutilizável)
+        function setupRouteStopsEventListeners() {
+            // Evita registrar múltiplos listeners
+            if (routeStopsListenersConfigured) return;
+            routeStopsListenersConfigured = true;
+
+            // Add click event for popup
+            map.on('click', 'route-stops-pins', (e) => {
                         const feature = e.features[0];
                         const coords = feature.geometry.coordinates.slice();
                         const props = feature.properties;
@@ -8055,58 +8109,15 @@
                             });
                         }
 
-                    });
+            });
 
-                    // Change cursor on hover
-                    map.on('mouseenter', 'route-stops-pins', () => {
-                        map.getCanvas().style.cursor = 'pointer';
-                    });
-                    map.on('mouseleave', 'route-stops-pins', () => {
-                        map.getCanvas().style.cursor = '';
-                    });
-                }
-
-                // Show layer
-                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
-
-                // Progresso: marcadores exibidos (100%)
-                updateProgress(100);
-
-                routeMarkersVisible = true;
-                routeMarkersBtn.classList.add('active');
-
-                // Fit map to show all markers (only on first load, not on status updates)
-                if (features.length > 0 && !skipFitBounds) {
-                    const bounds = new mapboxgl.LngLatBounds();
-                    features.forEach(f => bounds.extend(f.geometry.coordinates));
-                    map.fitBounds(bounds, { padding: 50, duration: 1500 });
-                }
-
-                // PERFORMANCE: Restaurar botão após carregamento com delay para animação
-                if (routeBtn) {
-                    setTimeout(() => {
-                        routeBtn.classList.remove('loading');
-                        routeBtn.style.pointerEvents = 'auto';
-                        updateProgress(0); // Reset para próximo uso
-                    }, 300);
-                }
-
-                // Update fixed stats panel with route data
-                updateFixedStatsPanel();
-
-            } catch (error) {
-                // PERFORMANCE: Restaurar botão em caso de erro
-                const routeBtn = document.getElementById('routeMarkersBtn');
-                const progressFill = document.getElementById('routeProgressFill');
-                if (routeBtn) {
-                    routeBtn.classList.remove('loading');
-                    routeBtn.style.pointerEvents = 'auto';
-                }
-                if (progressFill) {
-                    progressFill.style.height = '0%';
-                }
-                showErrorModal('Erro ao carregar as paradas da planilha.');
-            }
+            // Change cursor on hover
+            map.on('mouseenter', 'route-stops-pins', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+            map.on('mouseleave', 'route-stops-pins', () => {
+                map.getCanvas().style.cursor = '';
+            });
         }
 
         function removeRouteMarkers() {
@@ -8205,6 +8216,9 @@
 
                 // Mostrar layer
                 map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+
+                // Configura event listeners para popups (reutiliza a mesma função do loadRouteMarkers)
+                setupRouteStopsEventListeners();
 
                 routeMarkersVisible = true;
                 routeMarkersBtn.classList.add('active');
