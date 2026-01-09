@@ -6581,6 +6581,13 @@
                         .replace(/\b(apt|apto|apartamento|bloco|bl|lote|lt|qd|quadra|conj|conjunto)\b/gi, '')
                         .replace(/\b(belem|para|pa)\b/gi, '') // Remove city/state names (removed 'mosqueiro' - it's a street name!)
                         .replace(/\d{5}\s*\-?\s*\d{3}/g, '') // Remove CEP
+                        .replace(/\b(doutor|doutora|dr|dra)\b/gi, '') // Remove doctor titles (Doutor = Dr = Dra)
+                        .replace(/\b(professor|professora|prof|profa)\b/gi, '') // Remove professor titles
+                        .replace(/\b(engenheiro|engenheira|eng)\b/gi, '') // Remove engineer titles
+                        .replace(/\b(padre|pe)\b/gi, '') // Remove priest titles
+                        .replace(/\b(general|gen|coronel|cel|major|maj|capitao|cap|tenente|ten|sargento|sgt)\b/gi, '') // Remove military titles
+                        .replace(/\b(deputado|dep|senador|sen|vereador|ver|prefeito)\b/gi, '') // Remove political titles
+                        .replace(/\b(santo|santa|sao|sta|sto)\b/gi, '') // Remove saint titles
                         .replace(/\s+/g, ' ')
                         .trim();
                 }
@@ -6626,8 +6633,11 @@
                     for (const pattern of patterns) {
                         const match = cleanAddr.match(pattern);
                         if (match && match[1]) {
-                            // Normalize: remove spaces and lowercase the letter suffix
-                            return match[1].replace(/\s+/g, '').toLowerCase();
+                            // Normalize: remove spaces, lowercase the letter suffix, and remove leading zeros
+                            let num = match[1].replace(/\s+/g, '').toLowerCase();
+                            // Remove leading zeros but keep at least one digit (e.g., "05" -> "5", "007" -> "7", "0" -> "0")
+                            num = num.replace(/^0+(\d)/, '$1');
+                            return num;
                         }
                     }
                     return null;
