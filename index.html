@@ -1227,6 +1227,53 @@
             100% { transform: scale(2.5); opacity: 0; }
         }
 
+        /* POPUP FIXO - já existe no DOM para evitar travamento */
+        .route-stop-popup-fixed {
+            position: fixed;
+            z-index: 9999;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            padding: 12px;
+            max-width: 320px;
+            min-width: 260px;
+            transform: translate(-50%, -100%);
+            margin-top: -15px;
+        }
+        .dark .route-stop-popup-fixed {
+            background: #1e293b;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .route-stop-popup-arrow {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 10px solid white;
+        }
+        .dark .route-stop-popup-arrow {
+            border-top-color: #1e293b;
+        }
+        .route-stop-popup-close {
+            position: absolute;
+            top: 4px;
+            right: 8px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #64748b;
+            line-height: 1;
+            padding: 4px;
+        }
+        .route-stop-popup-close:hover {
+            color: #ef4444;
+        }
+
         .route-popup-content {
             font-size: 13px;
             width: 100%;
@@ -3885,6 +3932,13 @@
     </div>
 
     <div id="map"></div>
+
+    <!-- POPUP FIXO para marcadores de rota - já existe no DOM para evitar travamento -->
+    <div id="routeStopPopup" class="route-stop-popup-fixed" style="display:none;">
+        <div class="route-stop-popup-arrow"></div>
+        <button class="route-stop-popup-close" id="routeStopPopupClose">&times;</button>
+        <div id="routeStopPopupContent"></div>
+    </div>
 
     <!-- Location Error -->
     <div class="location-error" id="locationError">
@@ -7777,13 +7831,174 @@
             }
         }
 
-        // Função para configurar event listeners dos marcadores de rota (reutilizável)
+        // POPUP FIXO - elementos DOM que já existem (evita criar/destruir)
+        const fixedPopup = document.getElementById('routeStopPopup');
+        const fixedPopupContent = document.getElementById('routeStopPopupContent');
+        const fixedPopupClose = document.getElementById('routeStopPopupClose');
+        let currentFixedPopupProps = null;
+
+        // Fecha popup fixo
+        function closeFixedPopup() {
+            fixedPopup.style.display = 'none';
+            currentFixedPopupProps = null;
+        }
+
+        // Configura fechar popup
+        fixedPopupClose.onclick = closeFixedPopup;
+        document.addEventListener('click', (e) => {
+            if (fixedPopup.style.display !== 'none' && !fixedPopup.contains(e.target)) {
+                closeFixedPopup();
+            }
+        });
+
+        // Função para configurar event listeners dos marcadores de rota
         function setupRouteStopsEventListeners() {
             if (routeStopsListenersConfigured) return;
             routeStopsListenersConfigured = true;
 
-            // Função para gerar HTML do popup
-            function buildPopupHtml(props, coords, addressSequencePairs) {
+            // Usa event delegation no popup fixo - configura UMA VEZ
+            fixedPopupContent.addEventListener('click', (evt) => {
+                const btn = evt.target.closest('.route-popup-btn');
+                const simAddr = evt.target.closest('.similarity-matched-address');
+                const reactAddr = evt.target.closest('.reactivate-similarity-address');
+                const props = currentFixedPopupProps;
+                if (!props) return;
+
+                // Botão de status (entregue/não entregue)
+                if (btn && !btn.classList.contains('navigate')) {
+                    evt.stopPropagation();
+                    const action = btn.dataset.action;
+                    const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
+                    const statusToSave = btn.classList.contains('active') ? 'pending' : action;
+                    closeFixedPopup();
+
+                    const sourceData = map.getSource('route-stops')._data;
+                    const feature = sourceData.features.find(f => f.properties.ids === props.ids);
+                    if (feature) {
+                        feature.properties.deliveryStatus = statusToSave;
+                        let newColor = statusToSave === 'delivered' ? 'gray' : statusToSave === 'not_delivered' ? 'gray-x' : props.isRegistered ? (props.matchType === 'exact' ? 'green' : 'purple') : 'red';
+                        const iconName = `pin-${newColor}-${props.packageCount}`;
+                        feature.properties.icon = iconName;
+                        if (!map.hasImage(iconName)) {
+                            const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
+                            const img = new Image();
+                            img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); };
+                            img.src = dataUrl;
+                        } else {
+                            map.getSource('route-stops').setData(sourceData);
+                        }
+                    }
+                    updateFixedStatsPanel();
+                    saveRouteMarkersData(sourceData).catch(() => {});
+                    updateDeliveryStatus(ids, statusToSave).catch(() => {});
+                    return;
+                }
+
+                // Botão navegar
+                if (btn && btn.classList.contains('navigate')) {
+                    evt.stopPropagation();
+                    closeFixedPopup();
+                    startNavigation(parseFloat(btn.dataset.lng), parseFloat(btn.dataset.lat), btn.dataset.address);
+                    return;
+                }
+
+                // Desativar similaridade
+                if (simAddr) {
+                    evt.stopPropagation();
+                    const ids = simAddr.dataset.ids.split(',').map(id => parseInt(id));
+                    closeFixedPopup();
+                    const sourceData = map.getSource('route-stops')._data;
+                    const feature = sourceData.features.find(f => f.properties.ids === props.ids);
+                    if (feature && window.currentRouteData) {
+                        const items = window.currentRouteData.filter(item => ids.includes(item.id) && item.latitude && item.longitude);
+                        if (items.length > 0) {
+                            const lat = items.reduce((s, i) => s + i.latitude, 0) / items.length;
+                            const lng = items.reduce((s, i) => s + i.longitude, 0) / items.length;
+                            feature.properties.originalMatchType = props.matchType;
+                            feature.properties.originalMatchedClientAddress = props.matchedClientAddress;
+                            feature.properties.originalCoordinates = JSON.stringify(feature.geometry.coordinates);
+                            feature.properties.matchType = null;
+                            feature.properties.isRegistered = false;
+                            feature.properties.matchedClientAddress = '';
+                            feature.properties.wasDeactivated = true;
+                            feature.geometry.coordinates = [lng, lat];
+                            const iconName = `pin-red-${props.packageCount}`;
+                            feature.properties.icon = iconName;
+                            if (!map.hasImage(iconName)) {
+                                const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, 'red');
+                                const img = new Image();
+                                img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 }); };
+                                img.src = dataUrl;
+                            } else {
+                                map.getSource('route-stops').setData(sourceData);
+                                map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 });
+                            }
+                            updateFixedStatsPanel();
+                            saveRouteMarkersData(sourceData).catch(() => {});
+                            updateSimilarityOverride(ids, true, lat, lng).catch(() => {});
+                        }
+                    }
+                    return;
+                }
+
+                // Reativar similaridade
+                if (reactAddr) {
+                    evt.stopPropagation();
+                    const ids = reactAddr.dataset.ids.split(',').map(id => parseInt(id));
+                    closeFixedPopup();
+                    const sourceData = map.getSource('route-stops')._data;
+                    const feature = sourceData.features.find(f => f.properties.ids === props.ids);
+                    if (feature && props.originalCoordinates) {
+                        const origCoords = JSON.parse(props.originalCoordinates);
+                        feature.properties.matchType = props.originalMatchType;
+                        feature.properties.isRegistered = true;
+                        feature.properties.matchedClientAddress = props.originalMatchedClientAddress;
+                        feature.properties.wasDeactivated = false;
+                        feature.geometry.coordinates = origCoords;
+                        feature.properties.originalMatchType = null;
+                        feature.properties.originalMatchedClientAddress = null;
+                        feature.properties.originalCoordinates = null;
+                        const iconName = `pin-purple-${props.packageCount}`;
+                        feature.properties.icon = iconName;
+                        if (!map.hasImage(iconName)) {
+                            const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, 'purple');
+                            const img = new Image();
+                            img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); map.flyTo({ center: origCoords, zoom: 16, duration: 1500 }); };
+                            img.src = dataUrl;
+                        } else {
+                            map.getSource('route-stops').setData(sourceData);
+                            map.flyTo({ center: origCoords, zoom: 16, duration: 1500 });
+                        }
+                        updateFixedStatsPanel();
+                        saveRouteMarkersData(sourceData).catch(() => {});
+                        updateSimilarityOverride(ids, false).catch(() => {});
+                    }
+                    return;
+                }
+            });
+
+            // Click no marcador - apenas atualiza conteúdo e posiciona popup
+            map.on('click', 'route-stops-pins', (e) => {
+                e.originalEvent.stopPropagation();
+                const feature = e.features[0];
+                const coords = feature.geometry.coordinates.slice();
+                const props = feature.properties;
+                currentFixedPopupProps = props;
+
+                // Obtém dados do cache
+                let addressSequencePairs = [];
+                const cached = window.parsedAddressSequencePairs && window.parsedAddressSequencePairs[props.ids];
+                if (cached) {
+                    addressSequencePairs = cached;
+                } else if (props.addressSequencePairs) {
+                    try {
+                        addressSequencePairs = JSON.parse(props.addressSequencePairs);
+                        if (!window.parsedAddressSequencePairs) window.parsedAddressSequencePairs = {};
+                        window.parsedAddressSequencePairs[props.ids] = addressSequencePairs;
+                    } catch (ex) {}
+                }
+
+                // Gera HTML simples
                 const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
                 const ordersHtml = sequencesArr.map(seq => `<span class="route-popup-order">${seq}</span>`).join('');
                 const hasMultiple = addressSequencePairs.length > 1;
@@ -7810,177 +8025,30 @@
                 const isNotDel = status === 'not_delivered';
                 const orderSection = hasMultiple ? '' : `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;"><span style="font-size:11px;color:#64748b;">Ordem:</span><div class="route-popup-orders">${ordersHtml || '<span style="color:#94a3b8;">Sem ordem</span>'}</div></div>`;
 
-                return `<div class="route-popup-content">${addressDisplay}${orderSection}<div class="route-popup-actions"><button class="route-popup-btn ${isDel ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span class="btn-text">${isDel ? 'Desfazer' : 'Entregue'}</span></button><button class="route-popup-btn not-delivered ${isNotDel ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span class="btn-text">${isNotDel ? 'Desfazer' : 'Não entreg'}</span></button><button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>Navegar</button></div></div>`;
-            }
+                // Atualiza conteúdo (apenas innerHTML, sem criar elementos)
+                fixedPopupContent.innerHTML = `<div class="route-popup-content">${addressDisplay}${orderSection}<div class="route-popup-actions"><button class="route-popup-btn ${isDel ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span class="btn-text">${isDel ? 'Desfazer' : 'Entregue'}</span></button><button class="route-popup-btn not-delivered ${isNotDel ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span class="btn-text">${isNotDel ? 'Desfazer' : 'Não entreg'}</span></button><button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>Navegar</button></div></div>`;
 
-            // Função para configurar handlers do popup
-            function setupPopupHandlers(popupContent, props) {
-                // Botões de status
-                popupContent.querySelectorAll('.route-popup-btn:not(.navigate)').forEach(btn => {
-                    btn.addEventListener('click', (evt) => {
-                        evt.stopPropagation();
-                        const action = btn.dataset.action;
-                        const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
-                        const statusToSave = btn.classList.contains('active') ? 'pending' : action;
-                        routePopup.remove();
-
-                        const sourceData = map.getSource('route-stops')._data;
-                        const feature = sourceData.features.find(f => f.properties.ids === props.ids);
-                        if (feature) {
-                            feature.properties.deliveryStatus = statusToSave;
-                            let newColor = statusToSave === 'delivered' ? 'gray' : statusToSave === 'not_delivered' ? 'gray-x' : props.isRegistered ? (props.matchType === 'exact' ? 'green' : 'purple') : 'red';
-                            const iconName = `pin-${newColor}-${props.packageCount}`;
-                            feature.properties.icon = iconName;
-                            if (!map.hasImage(iconName)) {
-                                const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
-                                const img = new Image();
-                                img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); };
-                                img.src = dataUrl;
-                            } else {
-                                map.getSource('route-stops').setData(sourceData);
-                            }
-                        }
-                        updateFixedStatsPanel();
-                        saveRouteMarkersData(sourceData).catch(() => {});
-                        updateDeliveryStatus(ids, statusToSave).catch(() => {});
-                    });
-                });
-
-                // Botão navegar
-                const navBtn = popupContent.querySelector('.route-popup-btn.navigate');
-                if (navBtn) {
-                    navBtn.addEventListener('click', (evt) => {
-                        evt.stopPropagation();
-                        routePopup.remove();
-                        startNavigation(parseFloat(navBtn.dataset.lng), parseFloat(navBtn.dataset.lat), navBtn.dataset.address);
-                    });
-                }
-
-                // Desativar similaridade
-                const simAddr = popupContent.querySelector('.similarity-matched-address');
-                if (simAddr) {
-                    simAddr.addEventListener('click', (evt) => {
-                        evt.stopPropagation();
-                        const ids = simAddr.dataset.ids.split(',').map(id => parseInt(id));
-                        routePopup.remove();
-                        const sourceData = map.getSource('route-stops')._data;
-                        const feature = sourceData.features.find(f => f.properties.ids === props.ids);
-                        if (feature && window.currentRouteData) {
-                            const items = window.currentRouteData.filter(item => ids.includes(item.id) && item.latitude && item.longitude);
-                            if (items.length > 0) {
-                                const lat = items.reduce((s, i) => s + i.latitude, 0) / items.length;
-                                const lng = items.reduce((s, i) => s + i.longitude, 0) / items.length;
-                                feature.properties.originalMatchType = props.matchType;
-                                feature.properties.originalMatchedClientAddress = props.matchedClientAddress;
-                                feature.properties.originalCoordinates = JSON.stringify(feature.geometry.coordinates);
-                                feature.properties.matchType = null;
-                                feature.properties.isRegistered = false;
-                                feature.properties.matchedClientAddress = '';
-                                feature.properties.wasDeactivated = true;
-                                feature.geometry.coordinates = [lng, lat];
-                                const iconName = `pin-red-${props.packageCount}`;
-                                feature.properties.icon = iconName;
-                                if (!map.hasImage(iconName)) {
-                                    const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, 'red');
-                                    const img = new Image();
-                                    img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 }); };
-                                    img.src = dataUrl;
-                                } else {
-                                    map.getSource('route-stops').setData(sourceData);
-                                    map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 });
-                                }
-                                updateFixedStatsPanel();
-                                saveRouteMarkersData(sourceData).catch(() => {});
-                                updateSimilarityOverride(ids, true, lat, lng).catch(() => {});
-                            }
-                        }
-                    });
-                }
-
-                // Reativar similaridade
-                const reactivateAddr = popupContent.querySelector('.reactivate-similarity-address');
-                if (reactivateAddr) {
-                    reactivateAddr.addEventListener('click', (evt) => {
-                        evt.stopPropagation();
-                        const ids = reactivateAddr.dataset.ids.split(',').map(id => parseInt(id));
-                        routePopup.remove();
-                        const sourceData = map.getSource('route-stops')._data;
-                        const feature = sourceData.features.find(f => f.properties.ids === props.ids);
-                        if (feature && props.originalCoordinates) {
-                            const origCoords = JSON.parse(props.originalCoordinates);
-                            feature.properties.matchType = props.originalMatchType;
-                            feature.properties.isRegistered = true;
-                            feature.properties.matchedClientAddress = props.originalMatchedClientAddress;
-                            feature.properties.wasDeactivated = false;
-                            feature.geometry.coordinates = origCoords;
-                            feature.properties.originalMatchType = null;
-                            feature.properties.originalMatchedClientAddress = null;
-                            feature.properties.originalCoordinates = null;
-                            const iconName = `pin-purple-${props.packageCount}`;
-                            feature.properties.icon = iconName;
-                            if (!map.hasImage(iconName)) {
-                                const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, 'purple');
-                                const img = new Image();
-                                img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); map.flyTo({ center: origCoords, zoom: 16, duration: 1500 }); };
-                                img.src = dataUrl;
-                            } else {
-                                map.getSource('route-stops').setData(sourceData);
-                                map.flyTo({ center: origCoords, zoom: 16, duration: 1500 });
-                            }
-                            updateFixedStatsPanel();
-                            saveRouteMarkersData(sourceData).catch(() => {});
-                            updateSimilarityOverride(ids, false).catch(() => {});
-                        }
-                    });
-                }
-            }
-
-            // Click event - SEM setTimeout para resposta instantânea
-            map.on('click', 'route-stops-pins', (e) => {
-                const feature = e.features[0];
-                const coords = feature.geometry.coordinates.slice();
-                const props = feature.properties;
-
-                // Obtém dados do cache
-                let addressSequencePairs = [];
-                const cached = window.parsedAddressSequencePairs && window.parsedAddressSequencePairs[props.ids];
-                if (cached) {
-                    addressSequencePairs = cached;
-                } else if (props.addressSequencePairs) {
-                    try {
-                        addressSequencePairs = JSON.parse(props.addressSequencePairs);
-                        if (!window.parsedAddressSequencePairs) window.parsedAddressSequencePairs = {};
-                        window.parsedAddressSequencePairs[props.ids] = addressSequencePairs;
-                    } catch (e) {}
-                }
-
-                if (routePopup) routePopup.remove();
-
-                const isMobile = window.innerWidth <= 480;
-                routePopup = new mapboxgl.Popup({ offset: [0, -50], closeButton: true, closeOnClick: true, maxWidth: isMobile ? '280px' : '320px' })
-                    .setLngLat(coords)
-                    .setHTML(buildPopupHtml(props, coords, addressSequencePairs))
-                    .addTo(map);
-
-                setupPopupHandlers(routePopup.getElement(), props);
+                // Posiciona popup na tela
+                const point = map.project(coords);
+                fixedPopup.style.left = point.x + 'px';
+                fixedPopup.style.top = point.y + 'px';
+                fixedPopup.style.display = 'block';
             });
 
             map.on('mouseenter', 'route-stops-pins', () => { map.getCanvas().style.cursor = 'pointer'; });
             map.on('mouseleave', 'route-stops-pins', () => { map.getCanvas().style.cursor = ''; });
+
+            // Fecha popup ao mover o mapa
+            map.on('move', () => { if (fixedPopup.style.display !== 'none') closeFixedPopup(); });
         }
 
         function removeRouteMarkers() {
             if (map.getLayer('route-stops-pins')) {
                 map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
             }
-            if (routePopup) {
-                routePopup.remove();
-                routePopup = null;
-            }
+            closeFixedPopup();
             routeMarkersVisible = false;
             routeMarkersBtn.classList.remove('active');
-
-            // Hide fixed stats panel when markers are removed
             hideFixedStatsPanel();
         }
 
@@ -8124,22 +8192,6 @@
 
                 // Atualizar painel de estatísticas
                 updateFixedStatsPanel();
-
-                // PERFORMANCE: Pré-aquecer popup usando requestIdleCallback (quando browser estiver ocioso)
-                const warmupFn = () => {
-                    try {
-                        const wp = new mapboxgl.Popup({ closeButton: false, maxWidth: '1px', className: 'warmup-popup-hidden' })
-                            .setLngLat([0, 0])
-                            .setHTML('<div class="route-popup-content"></div>')
-                            .addTo(map);
-                        wp.remove();
-                    } catch (e) {}
-                };
-                if (window.requestIdleCallback) {
-                    requestIdleCallback(warmupFn, { timeout: 2000 });
-                } else {
-                    setTimeout(warmupFn, 1000);
-                }
 
                 return true;
             } catch (error) {
