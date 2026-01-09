@@ -7785,32 +7785,32 @@
 
             // Add click event for popup
             map.on('click', 'route-stops-pins', (e) => {
-                // PERFORMANCE: Usa requestAnimationFrame para não bloquear a UI
+                // PERFORMANCE: Captura dados mínimos e adia processamento
                 const feature = e.features[0];
                 const coords = feature.geometry.coordinates.slice();
+                const props = feature.properties;
 
-                requestAnimationFrame(() => {
-                    const props = feature.properties;
-
+                // PERFORMANCE: Usa setTimeout(0) para liberar a thread principal imediatamente
+                setTimeout(() => {
                     const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
                     const ordersHtml = sequencesArr.map(seq =>
                         `<span class="route-popup-order">${seq}</span>`
                     ).join('');
 
                     // Check if there are multiple addresses in this stop
-                    // PERFORMANCE: Usa cache pré-parseado se disponível, senão faz parse
+                    // PERFORMANCE: Usa cache pré-parseado se disponível (objeto simples para acesso O(1))
                     let addressSequencePairs = [];
-                    if (window.parsedAddressSequencePairs && window.parsedAddressSequencePairs.has(props.ids)) {
-                        addressSequencePairs = window.parsedAddressSequencePairs.get(props.ids);
+                    const cachedPairs = window.parsedAddressSequencePairs && window.parsedAddressSequencePairs[props.ids];
+                    if (cachedPairs) {
+                        addressSequencePairs = cachedPairs;
                     } else if (props.addressSequencePairs) {
                         try {
                             addressSequencePairs = JSON.parse(props.addressSequencePairs);
-                            // Salva no cache para próximos cliques
                             if (!window.parsedAddressSequencePairs) {
-                                window.parsedAddressSequencePairs = new Map();
+                                window.parsedAddressSequencePairs = {};
                             }
-                            window.parsedAddressSequencePairs.set(props.ids, addressSequencePairs);
-                        } catch (e) {
+                            window.parsedAddressSequencePairs[props.ids] = addressSequencePairs;
+                        } catch (err) {
                             addressSequencePairs = [];
                         }
                     }
@@ -8184,7 +8184,7 @@
                                 }
                             });
                         }
-                }); // Fecha requestAnimationFrame
+                }, 0); // Fecha setTimeout
             });
 
             // Change cursor on hover
@@ -8227,25 +8227,22 @@
                 }
 
                 // Restaurar também os dados originais da planilha para desativar similaridade
-                try {
-                    const savedRouteData = await getAppSetting('currentRouteData');
+                // Faz isso em background para não bloquear
+                getAppSetting('currentRouteData').then(savedRouteData => {
                     if (savedRouteData) {
                         window.currentRouteData = savedRouteData;
                     }
-                } catch (e) {
-                    // Silencioso se falhar
-                }
+                }).catch(() => {});
 
                 // PERFORMANCE: Pré-parsear addressSequencePairs ANTES de exibir marcadores
-                // para garantir que o primeiro clique seja instantâneo
-                window.parsedAddressSequencePairs = new Map();
-                for (const feature of savedGeojson.features) {
+                // Usando um objeto simples em vez de Map para acesso mais rápido
+                window.parsedAddressSequencePairs = {};
+                for (let i = 0; i < savedGeojson.features.length; i++) {
+                    const feature = savedGeojson.features[i];
                     if (feature.properties.addressSequencePairs) {
                         try {
-                            window.parsedAddressSequencePairs.set(
-                                feature.properties.ids,
-                                JSON.parse(feature.properties.addressSequencePairs)
-                            );
+                            window.parsedAddressSequencePairs[feature.properties.ids] =
+                                JSON.parse(feature.properties.addressSequencePairs);
                         } catch (e) {}
                     }
                 }
