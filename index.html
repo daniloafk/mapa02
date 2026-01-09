@@ -4528,6 +4528,8 @@
         initializeApp();
 
         function initApplication() {
+            console.log('🚀 APLICAÇÃO INICIANDO!!!');
+
             // Supabase initialization
             const SUPABASE_URL = 'https://wwvftlyvewetspombnky.supabase.co';
             const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3dmZ0bHl2ZXdldHNwb21ibmt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNjE5NjYsImV4cCI6MjA4MTkzNzk2Nn0.qvW0QconrSPOWWtB8SNalIpfWhlO2-Oc8LzJURk4zVs';
@@ -4535,6 +4537,7 @@
             const db = window.db;
 
             updateLoader('supabase', 'Conectando banco de dados...');
+            console.log('📦 Supabase conectado!');
 
         // ============================================
         // OFFLINE SYSTEM - IndexedDB & Sync
