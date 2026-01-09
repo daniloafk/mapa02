@@ -7676,9 +7676,11 @@
                     features: features
                 };
 
-                // Salvar GeoJSON no IndexedDB para restauração rápida
+                // Salvar GeoJSON e dados da planilha no IndexedDB para restauração rápida
                 try {
                     await saveRouteMarkersData(geojson);
+                    // Salva também os dados originais da planilha para permitir desativar similaridade
+                    await saveAppSetting('currentRouteData', data);
                 } catch (e) {
                     // Silencioso se falhar
                 }
@@ -8198,6 +8200,16 @@
                     routeBtn.style.pointerEvents = 'none';
                 }
 
+                // Restaurar também os dados originais da planilha para desativar similaridade
+                try {
+                    const savedRouteData = await getAppSetting('currentRouteData');
+                    if (savedRouteData) {
+                        window.currentRouteData = savedRouteData;
+                    }
+                } catch (e) {
+                    // Silencioso se falhar
+                }
+
                 // Extrair configs de ícones únicos dos features salvos
                 const iconConfigs = new Set();
                 savedGeojson.features.forEach(feature => {
@@ -8321,6 +8333,8 @@
                 try {
                     await saveAppSetting('routeMarkersVisible', false);
                     await saveAppSetting('routeMarkersData', null);
+                    await saveAppSetting('currentRouteData', null);
+                    window.currentRouteData = null;
                 } catch (e) {}
             } else {
                 loadRouteMarkers();
