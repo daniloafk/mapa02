@@ -7790,14 +7790,23 @@
                     ).join('');
 
                     // Check if there are multiple addresses in this stop
-                    // PERFORMANCE: JSON.parse pode ser lento com strings grandes
+                    // PERFORMANCE: Usa cache pré-parseado se disponível, senão faz parse
                     let addressSequencePairs = [];
-                    try {
-                        addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
-                    } catch (e) {
-                        addressSequencePairs = [];
+                    if (window.parsedAddressSequencePairs && window.parsedAddressSequencePairs.has(props.ids)) {
+                        addressSequencePairs = window.parsedAddressSequencePairs.get(props.ids);
+                    } else if (props.addressSequencePairs) {
+                        try {
+                            addressSequencePairs = JSON.parse(props.addressSequencePairs);
+                            // Salva no cache para próximos cliques
+                            if (!window.parsedAddressSequencePairs) {
+                                window.parsedAddressSequencePairs = new Map();
+                            }
+                            window.parsedAddressSequencePairs.set(props.ids, addressSequencePairs);
+                        } catch (e) {
+                            addressSequencePairs = [];
+                        }
                     }
-                        const hasMultipleAddresses = addressSequencePairs.length > 1;
+                    const hasMultipleAddresses = addressSequencePairs.length > 1;
 
                         // Build bairro and CEP info display
                         const bairroDisplay = props.bairro ? `<span style="font-size: 10px; color: #8b5cf6; font-weight: 500; padding: 2px 6px; background: rgba(139, 92, 246, 0.1); border-radius: 4px;">🏘️ ${props.bairro}</span>` : '';
@@ -8217,6 +8226,35 @@
                     }
                 } catch (e) {
                     // Silencioso se falhar
+                }
+
+                // PERFORMANCE: Pré-parsear addressSequencePairs em background
+                // para evitar travamento no primeiro clique
+                window.parsedAddressSequencePairs = new Map();
+
+                // Processa em chunks para não bloquear a UI
+                const featuresToParse = savedGeojson.features.filter(f => f.properties.addressSequencePairs);
+                const parseChunk = (startIdx) => {
+                    const CHUNK_SIZE = 20;
+                    const endIdx = Math.min(startIdx + CHUNK_SIZE, featuresToParse.length);
+
+                    for (let i = startIdx; i < endIdx; i++) {
+                        const feature = featuresToParse[i];
+                        try {
+                            window.parsedAddressSequencePairs.set(
+                                feature.properties.ids,
+                                JSON.parse(feature.properties.addressSequencePairs)
+                            );
+                        } catch (e) {}
+                    }
+
+                    if (endIdx < featuresToParse.length) {
+                        setTimeout(() => parseChunk(endIdx), 0);
+                    }
+                };
+
+                if (featuresToParse.length > 0) {
+                    setTimeout(() => parseChunk(0), 100);
                 }
 
                 // Extrair configs de ícones únicos dos features salvos
