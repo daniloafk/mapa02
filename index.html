@@ -7872,8 +7872,8 @@
                     const statusToSave = btn.classList.contains('active') ? 'pending' : action;
                     closeFixedPopup();
 
-                    // Adia trabalho pesado para próximo frame
-                    requestAnimationFrame(() => {
+                    // Adia TODO o trabalho para liberar a UI completamente
+                    setTimeout(() => {
                         const sourceData = map.getSource('route-stops')._data;
                         const feature = sourceData.features.find(f => f.properties.ids === props.ids);
                         if (feature) {
@@ -7884,16 +7884,23 @@
                             if (!map.hasImage(iconName)) {
                                 const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
                                 const img = new Image();
-                                img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); };
+                                img.onload = () => {
+                                    if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio });
+                                    map.getSource('route-stops').setData(sourceData);
+                                    updateFixedStatsPanel();
+                                };
                                 img.src = dataUrl;
                             } else {
                                 map.getSource('route-stops').setData(sourceData);
+                                updateFixedStatsPanel();
                             }
                         }
-                        updateFixedStatsPanel();
-                        saveRouteMarkersData(sourceData).catch(() => {});
-                        updateDeliveryStatus(ids, statusToSave).catch(() => {});
-                    });
+                        // Salva em background separado
+                        setTimeout(() => {
+                            saveRouteMarkersData(sourceData).catch(() => {});
+                            updateDeliveryStatus(ids, statusToSave).catch(() => {});
+                        }, 100);
+                    }, 16);
                     return;
                 }
 
@@ -7901,7 +7908,9 @@
                 if (btn && btn.classList.contains('navigate')) {
                     evt.stopPropagation();
                     closeFixedPopup();
-                    startNavigation(parseFloat(btn.dataset.lng), parseFloat(btn.dataset.lat), btn.dataset.address);
+                    setTimeout(() => {
+                        startNavigation(parseFloat(btn.dataset.lng), parseFloat(btn.dataset.lat), btn.dataset.address);
+                    }, 16);
                     return;
                 }
 
@@ -7910,7 +7919,7 @@
                     evt.stopPropagation();
                     const ids = simAddr.dataset.ids.split(',').map(id => parseInt(id));
                     closeFixedPopup();
-                    requestAnimationFrame(() => {
+                    setTimeout(() => {
                         const sourceData = map.getSource('route-stops')._data;
                         const feature = sourceData.features.find(f => f.properties.ids === props.ids);
                         if (feature && window.currentRouteData) {
@@ -7931,18 +7940,25 @@
                                 if (!map.hasImage(iconName)) {
                                     const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, 'red');
                                     const img = new Image();
-                                    img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 }); };
+                                    img.onload = () => {
+                                        if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio });
+                                        map.getSource('route-stops').setData(sourceData);
+                                        map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 });
+                                        updateFixedStatsPanel();
+                                    };
                                     img.src = dataUrl;
                                 } else {
                                     map.getSource('route-stops').setData(sourceData);
                                     map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 });
+                                    updateFixedStatsPanel();
                                 }
-                                updateFixedStatsPanel();
-                                saveRouteMarkersData(sourceData).catch(() => {});
-                                updateSimilarityOverride(ids, true, lat, lng).catch(() => {});
+                                setTimeout(() => {
+                                    saveRouteMarkersData(sourceData).catch(() => {});
+                                    updateSimilarityOverride(ids, true, lat, lng).catch(() => {});
+                                }, 100);
                             }
                         }
-                    });
+                    }, 16);
                     return;
                 }
 
@@ -7951,7 +7967,7 @@
                     evt.stopPropagation();
                     const ids = reactAddr.dataset.ids.split(',').map(id => parseInt(id));
                     closeFixedPopup();
-                    requestAnimationFrame(() => {
+                    setTimeout(() => {
                         const sourceData = map.getSource('route-stops')._data;
                         const feature = sourceData.features.find(f => f.properties.ids === props.ids);
                         if (feature && props.originalCoordinates) {
@@ -7969,17 +7985,24 @@
                             if (!map.hasImage(iconName)) {
                                 const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, 'purple');
                                 const img = new Image();
-                                img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); map.flyTo({ center: origCoords, zoom: 16, duration: 1500 }); };
+                                img.onload = () => {
+                                    if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio });
+                                    map.getSource('route-stops').setData(sourceData);
+                                    map.flyTo({ center: origCoords, zoom: 16, duration: 1500 });
+                                    updateFixedStatsPanel();
+                                };
                                 img.src = dataUrl;
                             } else {
                                 map.getSource('route-stops').setData(sourceData);
                                 map.flyTo({ center: origCoords, zoom: 16, duration: 1500 });
+                                updateFixedStatsPanel();
                             }
-                            updateFixedStatsPanel();
-                            saveRouteMarkersData(sourceData).catch(() => {});
-                            updateSimilarityOverride(ids, false).catch(() => {});
+                            setTimeout(() => {
+                                saveRouteMarkersData(sourceData).catch(() => {});
+                                updateSimilarityOverride(ids, false).catch(() => {});
+                            }, 100);
                         }
-                    });
+                    }, 16);
                     return;
                 }
             });
