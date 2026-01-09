@@ -8172,33 +8172,56 @@
                     }
                 });
 
-                // Gerar ícones necessários
-                const iconPromises = Array.from(iconConfigs).map(config => {
+                // OTIMIZAÇÃO: Gerar ícones em batches pequenos com requestAnimationFrame
+                // para não bloquear a thread principal
+                const iconConfigsArray = Array.from(iconConfigs);
+                const BATCH_SIZE = 3; // Processa 3 ícones por frame
+
+                const processIconBatch = (startIndex) => {
                     return new Promise((resolve) => {
-                        const firstDash = config.indexOf('-');
-                        const count = config.substring(0, firstDash);
-                        const color = config.substring(firstDash + 1);
-                        const iconName = `pin-${color}-${count}`;
+                        requestAnimationFrame(() => {
+                            const endIndex = Math.min(startIndex + BATCH_SIZE, iconConfigsArray.length);
+                            const batchPromises = [];
 
-                        if (map.hasImage(iconName)) {
-                            resolve();
-                            return;
-                        }
+                            for (let i = startIndex; i < endIndex; i++) {
+                                const config = iconConfigsArray[i];
+                                const firstDash = config.indexOf('-');
+                                const count = config.substring(0, firstDash);
+                                const color = config.substring(firstDash + 1);
+                                const iconName = `pin-${color}-${count}`;
 
-                        const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
-                        const img = new Image();
-                        img.onload = () => {
-                            if (!map.hasImage(iconName)) {
-                                map.addImage(iconName, img, { pixelRatio: pixelRatio });
+                                if (!map.hasImage(iconName)) {
+                                    batchPromises.push(new Promise((resolveIcon) => {
+                                        const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
+                                        const img = new Image();
+                                        img.onload = () => {
+                                            if (!map.hasImage(iconName)) {
+                                                map.addImage(iconName, img, { pixelRatio: pixelRatio });
+                                            }
+                                            resolveIcon();
+                                        };
+                                        img.onerror = () => resolveIcon();
+                                        img.src = dataUrl;
+                                    }));
+                                }
                             }
-                            resolve();
-                        };
-                        img.onerror = () => resolve();
-                        img.src = dataUrl;
-                    });
-                });
 
-                await Promise.all(iconPromises);
+                            Promise.all(batchPromises).then(() => {
+                                if (endIndex < iconConfigsArray.length) {
+                                    // Ainda tem mais ícones, processa próximo batch
+                                    processIconBatch(endIndex).then(resolve);
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        });
+                    });
+                };
+
+                // Processa todos os ícones em batches
+                if (iconConfigsArray.length > 0) {
+                    await processIconBatch(0);
+                }
 
                 // Adicionar ou atualizar source
                 if (map.getSource('route-stops')) {
