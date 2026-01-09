@@ -7779,377 +7779,194 @@
 
         // Função para configurar event listeners dos marcadores de rota (reutilizável)
         function setupRouteStopsEventListeners() {
-            // Evita registrar múltiplos listeners
             if (routeStopsListenersConfigured) return;
             routeStopsListenersConfigured = true;
 
-            // PERFORMANCE: Função para gerar o HTML do popup - extraída para pré-compilação
-            function generatePopupHtml(props, coords, sequencesArr, addressSequencePairs) {
-                const ordersHtml = sequencesArr.map(seq =>
-                    `<span class="route-popup-order">${seq}</span>`
-                ).join('');
+            // Função para gerar HTML do popup
+            function buildPopupHtml(props, coords, addressSequencePairs) {
+                const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
+                const ordersHtml = sequencesArr.map(seq => `<span class="route-popup-order">${seq}</span>`).join('');
+                const hasMultiple = addressSequencePairs.length > 1;
+                const bairroDisplay = props.bairro ? `<span style="font-size:10px;color:#8b5cf6;font-weight:500;padding:2px 6px;background:rgba(139,92,246,0.1);border-radius:4px;">🏘️ ${props.bairro}</span>` : '';
+                const cepDisplay = props.zipcode ? `<span style="font-size:10px;color:#0ea5e9;font-weight:500;padding:2px 6px;background:rgba(14,165,233,0.1);border-radius:4px;">📮 ${props.zipcode}</span>` : '';
+                const locationInfo = (bairroDisplay || cepDisplay) ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin:6px 0 8px;">${bairroDisplay}${cepDisplay}</div>` : '';
 
-                const hasMultipleAddresses = addressSequencePairs.length > 1;
-
-                // Build bairro and CEP info display
-                const bairroDisplay = props.bairro ? `<span style="font-size: 10px; color: #8b5cf6; font-weight: 500; padding: 2px 6px; background: rgba(139, 92, 246, 0.1); border-radius: 4px;">🏘️ ${props.bairro}</span>` : '';
-                const cepDisplay = props.zipcode ? `<span style="font-size: 10px; color: #0ea5e9; font-weight: 500; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;">📮 ${props.zipcode}</span>` : '';
-                const locationInfo = (bairroDisplay || cepDisplay) ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; margin-bottom: 8px;">${bairroDisplay}${cepDisplay}</div>` : '';
-
-                // Build address display
                 let addressDisplay = '';
+                const simHeader = (props.matchType === 'similarity' && props.matchedClientAddress) ?
+                    `<div class="similarity-matched-address" data-ids="${props.ids}" style="font-size:12px;font-weight:600;color:#8b5cf6;margin-bottom:4px;padding:6px 8px;background:rgba(139,92,246,0.1);border-radius:6px;border-left:3px solid #8b5cf6;cursor:pointer;">📍 ${props.matchedClientAddress}<div style="font-size:9px;color:#7c3aed;margin-top:3px;">🖱️ Clique para usar coordenadas da planilha</div></div><div style="font-size:10px;color:#64748b;margin-bottom:8px;">↓ Endereço da planilha:</div>` : '';
+                const reactivateHeader = (props.wasDeactivated && props.originalMatchedClientAddress) ?
+                    `<div class="reactivate-similarity-address" data-ids="${props.ids}" style="font-size:11px;font-weight:600;color:#ef4444;margin-bottom:8px;padding:6px 8px;background:rgba(239,68,68,0.1);border-radius:6px;border-left:3px solid #ef4444;cursor:pointer;">🔄 Voltar para: ${props.originalMatchedClientAddress}<div style="font-size:9px;color:#7c3aed;margin-top:3px;">🖱️ Clique para reativar similaridade</div></div>` : '';
 
-                const similarityHeader = (props.matchType === 'similarity' && props.matchedClientAddress)
-                    ? `<div class="similarity-matched-address" data-ids="${props.ids}" style="font-size: 12px; font-weight: 600; color: #8b5cf6; margin-bottom: 4px; padding: 6px 8px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border-left: 3px solid #8b5cf6; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(139, 92, 246, 0.2)'; this.style.borderLeftWidth='4px';" onmouseout="this.style.background='rgba(139, 92, 246, 0.1)'; this.style.borderLeftWidth='3px';">📍 ${props.matchedClientAddress}<div style="font-size: 9px; color: #7c3aed; margin-top: 3px; font-weight: 500;">🖱️ Clique para usar coordenadas da planilha</div></div><div style="font-size: 10px; color: #64748b; margin-bottom: 8px; font-weight: 500;">↓ Endereço da planilha:</div>`
-                    : '';
-
-                const reactivateSimilarityHeader = (props.wasDeactivated && props.originalMatchedClientAddress)
-                    ? `<div class="reactivate-similarity-address" data-ids="${props.ids}" style="font-size: 11px; font-weight: 600; color: #ef4444; margin-bottom: 8px; padding: 6px 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border-left: 3px solid #ef4444; cursor: pointer; transition: all 0.2s ease;" onmouseover="this.style.background='rgba(139, 92, 246, 0.15)'; this.style.borderLeftColor='#8b5cf6';" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderLeftColor='#ef4444';">🔄 Voltar para: ${props.originalMatchedClientAddress}<div style="font-size: 9px; color: #7c3aed; margin-top: 3px; font-weight: 500;">🖱️ Clique para reativar similaridade</div></div>`
-                    : '';
-
-                if (hasMultipleAddresses) {
-                    addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>${locationInfo}<div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">${addressSequencePairs.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}</div>`;
+                if (hasMultiple) {
+                    addressDisplay = `${simHeader}${reactivateHeader}<div style="font-size:11px;color:#8b5cf6;font-weight:600;margin-bottom:4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>${locationInfo}<div style="font-size:11px;line-height:1.5;max-height:120px;overflow-y:auto;margin-bottom:8px;">${addressSequencePairs.map(p => `<div style="margin-bottom:3px;"><span style="background:linear-gradient(135deg,#8b5cf6 0%,#7c3aed 100%);color:white;padding:2px 6px;border-radius:4px;font-weight:600;margin-right:4px;font-size:10px;">${p.sequence}</span> ${p.address}</div>`).join('')}</div>`;
                 } else if (addressSequencePairs.length === 1) {
-                    addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
+                    addressDisplay = `${simHeader}${reactivateHeader}<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
                 } else {
-                    addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div class="route-popup-address">${props.address}</div>${locationInfo}`;
+                    addressDisplay = `${simHeader}${reactivateHeader}<div class="route-popup-address">${props.address}</div>${locationInfo}`;
                 }
 
-                const currentStatus = props.deliveryStatus || 'pending';
-                const isDelivered = currentStatus === 'delivered';
-                const isNotDelivered = currentStatus === 'not_delivered';
+                const status = props.deliveryStatus || 'pending';
+                const isDel = status === 'delivered';
+                const isNotDel = status === 'not_delivered';
+                const orderSection = hasMultiple ? '' : `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;"><span style="font-size:11px;color:#64748b;">Ordem:</span><div class="route-popup-orders">${ordersHtml || '<span style="color:#94a3b8;">Sem ordem</span>'}</div></div>`;
 
-                const orderSection = hasMultipleAddresses ? '' : `<div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;"><span style="font-size: 11px; color: #64748b;">Ordem:</span><div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div></div>`;
-
-                return `<div class="route-popup-content">${addressDisplay}${orderSection}<div class="route-popup-actions"><button class="route-popup-btn ${isDelivered ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}" data-current-status="${currentStatus}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg><span class="btn-text">${isDelivered ? 'Desfazer' : 'Entregue'}</span></button><button class="route-popup-btn not-delivered ${isNotDelivered ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}" data-current-status="${currentStatus}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><span class="btn-text">${isNotDelivered ? 'Desfazer' : 'Não entreg'}</span></button><button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>Navegar</button></div></div>`;
+                return `<div class="route-popup-content">${addressDisplay}${orderSection}<div class="route-popup-actions"><button class="route-popup-btn ${isDel ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span class="btn-text">${isDel ? 'Desfazer' : 'Entregue'}</span></button><button class="route-popup-btn not-delivered ${isNotDel ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span class="btn-text">${isNotDel ? 'Desfazer' : 'Não entreg'}</span></button><button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>Navegar</button></div></div>`;
             }
 
-            // PERFORMANCE: Pré-compila a função em background quando browser estiver ocioso
-            const precompileFn = () => {
-                try {
-                    const dummyProps = { ids: '0', address: 'test', bairro: '', zipcode: '', matchType: null, deliveryStatus: 'pending' };
-                    generatePopupHtml(dummyProps, [0, 0], [], []);
-                } catch(e) {}
-            };
-            if (window.requestIdleCallback) {
-                requestIdleCallback(precompileFn, { timeout: 3000 });
-            } else {
-                setTimeout(precompileFn, 500);
+            // Função para configurar handlers do popup
+            function setupPopupHandlers(popupContent, props) {
+                // Botões de status
+                popupContent.querySelectorAll('.route-popup-btn:not(.navigate)').forEach(btn => {
+                    btn.addEventListener('click', (evt) => {
+                        evt.stopPropagation();
+                        const action = btn.dataset.action;
+                        const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
+                        const statusToSave = btn.classList.contains('active') ? 'pending' : action;
+                        routePopup.remove();
+
+                        const sourceData = map.getSource('route-stops')._data;
+                        const feature = sourceData.features.find(f => f.properties.ids === props.ids);
+                        if (feature) {
+                            feature.properties.deliveryStatus = statusToSave;
+                            let newColor = statusToSave === 'delivered' ? 'gray' : statusToSave === 'not_delivered' ? 'gray-x' : props.isRegistered ? (props.matchType === 'exact' ? 'green' : 'purple') : 'red';
+                            const iconName = `pin-${newColor}-${props.packageCount}`;
+                            feature.properties.icon = iconName;
+                            if (!map.hasImage(iconName)) {
+                                const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
+                                const img = new Image();
+                                img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); };
+                                img.src = dataUrl;
+                            } else {
+                                map.getSource('route-stops').setData(sourceData);
+                            }
+                        }
+                        updateFixedStatsPanel();
+                        saveRouteMarkersData(sourceData).catch(() => {});
+                        updateDeliveryStatus(ids, statusToSave).catch(() => {});
+                    });
+                });
+
+                // Botão navegar
+                const navBtn = popupContent.querySelector('.route-popup-btn.navigate');
+                if (navBtn) {
+                    navBtn.addEventListener('click', (evt) => {
+                        evt.stopPropagation();
+                        routePopup.remove();
+                        startNavigation(parseFloat(navBtn.dataset.lng), parseFloat(navBtn.dataset.lat), navBtn.dataset.address);
+                    });
+                }
+
+                // Desativar similaridade
+                const simAddr = popupContent.querySelector('.similarity-matched-address');
+                if (simAddr) {
+                    simAddr.addEventListener('click', (evt) => {
+                        evt.stopPropagation();
+                        const ids = simAddr.dataset.ids.split(',').map(id => parseInt(id));
+                        routePopup.remove();
+                        const sourceData = map.getSource('route-stops')._data;
+                        const feature = sourceData.features.find(f => f.properties.ids === props.ids);
+                        if (feature && window.currentRouteData) {
+                            const items = window.currentRouteData.filter(item => ids.includes(item.id) && item.latitude && item.longitude);
+                            if (items.length > 0) {
+                                const lat = items.reduce((s, i) => s + i.latitude, 0) / items.length;
+                                const lng = items.reduce((s, i) => s + i.longitude, 0) / items.length;
+                                feature.properties.originalMatchType = props.matchType;
+                                feature.properties.originalMatchedClientAddress = props.matchedClientAddress;
+                                feature.properties.originalCoordinates = JSON.stringify(feature.geometry.coordinates);
+                                feature.properties.matchType = null;
+                                feature.properties.isRegistered = false;
+                                feature.properties.matchedClientAddress = '';
+                                feature.properties.wasDeactivated = true;
+                                feature.geometry.coordinates = [lng, lat];
+                                const iconName = `pin-red-${props.packageCount}`;
+                                feature.properties.icon = iconName;
+                                if (!map.hasImage(iconName)) {
+                                    const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, 'red');
+                                    const img = new Image();
+                                    img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 }); };
+                                    img.src = dataUrl;
+                                } else {
+                                    map.getSource('route-stops').setData(sourceData);
+                                    map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 });
+                                }
+                                updateFixedStatsPanel();
+                                saveRouteMarkersData(sourceData).catch(() => {});
+                                updateSimilarityOverride(ids, true, lat, lng).catch(() => {});
+                            }
+                        }
+                    });
+                }
+
+                // Reativar similaridade
+                const reactivateAddr = popupContent.querySelector('.reactivate-similarity-address');
+                if (reactivateAddr) {
+                    reactivateAddr.addEventListener('click', (evt) => {
+                        evt.stopPropagation();
+                        const ids = reactivateAddr.dataset.ids.split(',').map(id => parseInt(id));
+                        routePopup.remove();
+                        const sourceData = map.getSource('route-stops')._data;
+                        const feature = sourceData.features.find(f => f.properties.ids === props.ids);
+                        if (feature && props.originalCoordinates) {
+                            const origCoords = JSON.parse(props.originalCoordinates);
+                            feature.properties.matchType = props.originalMatchType;
+                            feature.properties.isRegistered = true;
+                            feature.properties.matchedClientAddress = props.originalMatchedClientAddress;
+                            feature.properties.wasDeactivated = false;
+                            feature.geometry.coordinates = origCoords;
+                            feature.properties.originalMatchType = null;
+                            feature.properties.originalMatchedClientAddress = null;
+                            feature.properties.originalCoordinates = null;
+                            const iconName = `pin-purple-${props.packageCount}`;
+                            feature.properties.icon = iconName;
+                            if (!map.hasImage(iconName)) {
+                                const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, 'purple');
+                                const img = new Image();
+                                img.onload = () => { if (!map.hasImage(iconName)) map.addImage(iconName, img, { pixelRatio }); map.getSource('route-stops').setData(sourceData); map.flyTo({ center: origCoords, zoom: 16, duration: 1500 }); };
+                                img.src = dataUrl;
+                            } else {
+                                map.getSource('route-stops').setData(sourceData);
+                                map.flyTo({ center: origCoords, zoom: 16, duration: 1500 });
+                            }
+                            updateFixedStatsPanel();
+                            saveRouteMarkersData(sourceData).catch(() => {});
+                            updateSimilarityOverride(ids, false).catch(() => {});
+                        }
+                    });
+                }
             }
 
-            // Add click event for popup
+            // Click event - SEM setTimeout para resposta instantânea
             map.on('click', 'route-stops-pins', (e) => {
-                // PERFORMANCE: Captura dados mínimos e adia processamento
                 const feature = e.features[0];
                 const coords = feature.geometry.coordinates.slice();
                 const props = feature.properties;
 
-                // PERFORMANCE: Usa setTimeout(0) para liberar a thread principal imediatamente
-                setTimeout(() => {
-                    // Obtém dados do cache ou parse
-                    const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
-                    let addressSequencePairs = [];
-                    const cachedPairs = window.parsedAddressSequencePairs && window.parsedAddressSequencePairs[props.ids];
-                    if (cachedPairs) {
-                        addressSequencePairs = cachedPairs;
-                    } else if (props.addressSequencePairs) {
-                        try {
-                            addressSequencePairs = JSON.parse(props.addressSequencePairs);
-                            if (!window.parsedAddressSequencePairs) window.parsedAddressSequencePairs = {};
-                            window.parsedAddressSequencePairs[props.ids] = addressSequencePairs;
-                        } catch (err) {}
-                    }
+                // Obtém dados do cache
+                let addressSequencePairs = [];
+                const cached = window.parsedAddressSequencePairs && window.parsedAddressSequencePairs[props.ids];
+                if (cached) {
+                    addressSequencePairs = cached;
+                } else if (props.addressSequencePairs) {
+                    try {
+                        addressSequencePairs = JSON.parse(props.addressSequencePairs);
+                        if (!window.parsedAddressSequencePairs) window.parsedAddressSequencePairs = {};
+                        window.parsedAddressSequencePairs[props.ids] = addressSequencePairs;
+                    } catch (e) {}
+                }
 
-                    if (routePopup) routePopup.remove();
+                if (routePopup) routePopup.remove();
 
-                    // PERFORMANCE: Usa função pré-compilada para gerar HTML
-                    const popupHtml = generatePopupHtml(props, coords, sequencesArr, addressSequencePairs);
-                    const isMobile = window.innerWidth <= 480;
-
-                    routePopup = new mapboxgl.Popup({
-                        offset: [0, -50],
-                        closeButton: true,
-                        closeOnClick: true,
-                        maxWidth: isMobile ? '280px' : '320px'
-                    })
+                const isMobile = window.innerWidth <= 480;
+                routePopup = new mapboxgl.Popup({ offset: [0, -50], closeButton: true, closeOnClick: true, maxWidth: isMobile ? '280px' : '320px' })
                     .setLngLat(coords)
-                    .setHTML(popupHtml)
+                    .setHTML(buildPopupHtml(props, coords, addressSequencePairs))
                     .addTo(map);
 
-                    // Add click handlers for delivery buttons
-                    const popupContent = routePopup.getElement();
-                    popupContent.querySelectorAll('.route-popup-btn:not(.navigate)').forEach(btn => {
-                        btn.addEventListener('click', async (evt) => {
-                            evt.stopPropagation();
-                            evt.preventDefault();
-
-                            const action = btn.dataset.action;
-                            const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
-                            const statusToSave = btn.classList.contains('active') ? 'pending' : action;
-
-                            routePopup.remove();
-
-                                // Atualiza a propriedade do marcador localmente
-                                const sourceData = map.getSource('route-stops')._data;
-                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
-                                if (markerFeature) {
-                                    markerFeature.properties.deliveryStatus = statusToSave;
-
-                                    // Atualiza o ícone baseado no novo status e tipo de match
-                                    let newColor;
-                                    if (statusToSave === 'delivered') {
-                                        newColor = 'gray';
-                                    } else if (statusToSave === 'not_delivered') {
-                                        newColor = 'gray-x';
-                                    } else if (props.isRegistered) {
-                                        // Verde se match exato, roxo se match por similaridade
-                                        newColor = props.matchType === 'exact' ? 'green' : 'purple';
-                                    } else {
-                                        newColor = 'red';
-                                    }
-
-                                    const newIconName = `pin-${newColor}-${props.packageCount}`;
-                                    markerFeature.properties.icon = newIconName;
-
-
-                                    // Garante que o ícone existe antes de atualizar
-                                    const ensureIconExists = () => {
-                                        if (!map.hasImage(newIconName)) {
-                                            const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
-                                            const img = new Image();
-                                            img.onload = () => {
-                                                if (!map.hasImage(newIconName)) {
-                                                    map.addImage(newIconName, img, { pixelRatio: pixelRatio });
-                                                }
-                                                // Re-renderiza após adicionar o ícone
-                                                map.getSource('route-stops').setData(sourceData);
-                                            };
-                                            img.src = dataUrl;
-                                        } else {
-                                            // Ícone já existe, apenas re-renderiza
-                                            map.getSource('route-stops').setData(sourceData);
-                                        }
-                                    };
-
-                                    ensureIconExists();
-                                }
-
-                                // Update fixed stats panel after status change
-                                updateFixedStatsPanel();
-
-                                // Salva o GeoJSON atualizado no IndexedDB para persistir o status
-                                saveRouteMarkersData(sourceData).catch(() => {});
-
-                                // Sincroniza em background (não bloqueia a UI)
-                                updateDeliveryStatus(ids, statusToSave).catch(err => {
-                                    // Erro ao sincronizar status
-                                });
-                            });
-                        });
-
-                        // Add click handler for navigate button
-                        const navBtn = popupContent.querySelector('.route-popup-btn.navigate');
-                        if (navBtn) {
-                            navBtn.addEventListener('click', (evt) => {
-                                evt.stopPropagation();
-                                evt.preventDefault();
-                                const destLng = parseFloat(navBtn.dataset.lng);
-                                const destLat = parseFloat(navBtn.dataset.lat);
-                                const destAddress = navBtn.dataset.address;
-                                routePopup.remove();
-                                startNavigation(destLng, destLat, destAddress);
-                            });
-                        }
-
-                        // Add click handler for similarity matched address (desativar similaridade)
-                        const similarityAddress = popupContent.querySelector('.similarity-matched-address');
-                        if (similarityAddress) {
-                            similarityAddress.addEventListener('click', async (evt) => {
-                                evt.stopPropagation();
-                                evt.preventDefault();
-
-                                const ids = similarityAddress.dataset.ids.split(',').map(id => parseInt(id));
-
-                                // Fecha o popup
-                                routePopup.remove();
-
-                                // Busca as coordenadas originais da planilha para esses IDs
-                                const sourceData = map.getSource('route-stops')._data;
-                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
-
-                                if (markerFeature) {
-                                    // Busca as coordenadas originais da planilha
-                                    let originalLat = null;
-                                    let originalLng = null;
-
-                                    // Busca nos dados originais da planilha
-                                    if (window.currentRouteData) {
-                                        const itemsForThisMarker = window.currentRouteData.filter(item =>
-                                            ids.includes(item.id) && item.latitude && item.longitude
-                                        );
-
-                                        if (itemsForThisMarker.length > 0) {
-                                            // Calcula a média das coordenadas da planilha (pode haver múltiplos pontos)
-                                            originalLat = itemsForThisMarker.reduce((sum, item) => sum + item.latitude, 0) / itemsForThisMarker.length;
-                                            originalLng = itemsForThisMarker.reduce((sum, item) => sum + item.longitude, 0) / itemsForThisMarker.length;
-                                        }
-                                    }
-
-                                    if (originalLat && originalLng) {
-                                        // Salva os dados originais do match de similaridade para permitir reversão
-                                        markerFeature.properties.originalMatchType = props.matchType;
-                                        markerFeature.properties.originalMatchedClientAddress = props.matchedClientAddress;
-                                        markerFeature.properties.originalCoordinates = JSON.stringify(markerFeature.geometry.coordinates);
-
-                                        // Atualiza as propriedades do marcador
-                                        markerFeature.properties.matchType = null;
-                                        markerFeature.properties.isRegistered = false;
-                                        markerFeature.properties.matchedClientAddress = '';
-                                        markerFeature.properties.wasDeactivated = true; // Flag para indicar que foi desativado
-                                        markerFeature.geometry.coordinates = [originalLng, originalLat];
-
-                                        // Atualiza o ícone para vermelho (não cadastrado)
-                                        const newColor = 'red';
-                                        const newIconName = `pin-${newColor}-${props.packageCount}`;
-                                        markerFeature.properties.icon = newIconName;
-
-                                        // Garante que o ícone existe
-                                        if (!map.hasImage(newIconName)) {
-                                            const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
-                                            const img = new Image();
-                                            img.onload = () => {
-                                                if (!map.hasImage(newIconName)) {
-                                                    map.addImage(newIconName, img, { pixelRatio: pixelRatio });
-                                                }
-                                                // Re-renderiza após adicionar o ícone
-                                                map.getSource('route-stops').setData(sourceData);
-
-                                                // Move o mapa para a nova posição
-                                                map.flyTo({
-                                                    center: [originalLng, originalLat],
-                                                    zoom: 16,
-                                                    duration: 1500
-                                                });
-                                            };
-                                            img.src = dataUrl;
-                                        } else {
-                                            // Ícone já existe, apenas re-renderiza
-                                            map.getSource('route-stops').setData(sourceData);
-
-                                            // Move o mapa para a nova posição
-                                            map.flyTo({
-                                                center: [originalLng, originalLat],
-                                                zoom: 16,
-                                                duration: 1500
-                                            });
-                                        }
-
-                                        // Atualiza estatísticas
-                                        updateFixedStatsPanel();
-
-                                        // Salva o GeoJSON atualizado no IndexedDB
-                                        saveRouteMarkersData(sourceData).catch(() => {});
-
-                                        // Salva no banco de dados
-                                        updateSimilarityOverride(ids, true, originalLat, originalLng).catch(err => {
-                                            console.error('Erro ao salvar desativação de similaridade:', err);
-                                        });
-                                    }
-                                }
-                            });
-                        }
-
-                        // Add click handler for reactivate similarity address (reativar similaridade)
-                        const reactivateAddress = popupContent.querySelector('.reactivate-similarity-address');
-                        if (reactivateAddress) {
-                            reactivateAddress.addEventListener('click', async (evt) => {
-                                evt.stopPropagation();
-                                evt.preventDefault();
-
-                                const ids = reactivateAddress.dataset.ids.split(',').map(id => parseInt(id));
-
-                                // Fecha o popup
-                                routePopup.remove();
-
-                                // Busca o marcador
-                                const sourceData = map.getSource('route-stops')._data;
-                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
-
-                                if (markerFeature && props.originalCoordinates) {
-                                    // Restaura as coordenadas originais (do cliente cadastrado)
-                                    const originalCoords = JSON.parse(props.originalCoordinates);
-
-                                    // Restaura as propriedades do match de similaridade
-                                    markerFeature.properties.matchType = props.originalMatchType;
-                                    markerFeature.properties.isRegistered = true;
-                                    markerFeature.properties.matchedClientAddress = props.originalMatchedClientAddress;
-                                    markerFeature.properties.wasDeactivated = false;
-                                    markerFeature.geometry.coordinates = originalCoords;
-
-                                    // Remove as propriedades salvas
-                                    markerFeature.properties.originalMatchType = null;
-                                    markerFeature.properties.originalMatchedClientAddress = null;
-                                    markerFeature.properties.originalCoordinates = null;
-
-                                    // Atualiza o ícone para roxo (similaridade)
-                                    const newColor = 'purple';
-                                    const newIconName = `pin-${newColor}-${props.packageCount}`;
-                                    markerFeature.properties.icon = newIconName;
-
-                                    // Garante que o ícone existe
-                                    if (!map.hasImage(newIconName)) {
-                                        const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
-                                        const img = new Image();
-                                        img.onload = () => {
-                                            if (!map.hasImage(newIconName)) {
-                                                map.addImage(newIconName, img, { pixelRatio: pixelRatio });
-                                            }
-                                            // Re-renderiza após adicionar o ícone
-                                            map.getSource('route-stops').setData(sourceData);
-
-                                            // Move o mapa de volta para a posição original
-                                            map.flyTo({
-                                                center: originalCoords,
-                                                zoom: 16,
-                                                duration: 1500
-                                            });
-                                        };
-                                        img.src = dataUrl;
-                                    } else {
-                                        // Ícone já existe, apenas re-renderiza
-                                        map.getSource('route-stops').setData(sourceData);
-
-                                        // Move o mapa de volta para a posição original
-                                        map.flyTo({
-                                            center: originalCoords,
-                                            zoom: 16,
-                                            duration: 1500
-                                        });
-                                    }
-
-                                    // Atualiza estatísticas
-                                    updateFixedStatsPanel();
-
-                                    // Salva o GeoJSON atualizado no IndexedDB
-                                    saveRouteMarkersData(sourceData).catch(() => {});
-
-                                    // Salva no banco de dados (reativa similaridade)
-                                    updateSimilarityOverride(ids, false).catch(err => {
-                                        console.error('Erro ao salvar reativação de similaridade:', err);
-                                    });
-                                }
-                            });
-                        }
-                }, 0); // Fecha setTimeout
+                setupPopupHandlers(routePopup.getElement(), props);
             });
 
-            // Change cursor on hover
-            map.on('mouseenter', 'route-stops-pins', () => {
-                map.getCanvas().style.cursor = 'pointer';
-            });
-            map.on('mouseleave', 'route-stops-pins', () => {
-                map.getCanvas().style.cursor = '';
-            });
+            map.on('mouseenter', 'route-stops-pins', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'route-stops-pins', () => { map.getCanvas().style.cursor = ''; });
         }
 
         function removeRouteMarkers() {
