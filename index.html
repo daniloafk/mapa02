@@ -4307,7 +4307,7 @@
         // Initialize IndexedDB for offline storage
         function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('MapaInterativoDB', 3);
+                const request = indexedDB.open('MapaInterativoDB', 4);
 
                 request.onerror = () => {
                     // Erro ao abrir IndexedDB
@@ -4357,7 +4357,60 @@
                         clientsCacheStore.createIndex('zipcode', 'zipcode', { unique: false });
                     }
 
+                    // Store for app settings (persistent UI state like routeMarkersVisible)
+                    if (!db.objectStoreNames.contains('appSettings')) {
+                        db.createObjectStore('appSettings', { keyPath: 'key' });
+                    }
+
                 };
+            });
+        }
+
+        // Save app setting to IndexedDB
+        function saveAppSetting(key, value) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    reject(new Error('IndexedDB não inicializado'));
+                    return;
+                }
+
+                try {
+                    const transaction = offlineDB.transaction(['appSettings'], 'readwrite');
+                    const store = transaction.objectStore('appSettings');
+                    const request = store.put({ key: key, value: value, updatedAt: new Date().toISOString() });
+
+                    request.onsuccess = () => resolve(true);
+                    request.onerror = () => reject(request.error);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        // Get app setting from IndexedDB
+        function getAppSetting(key) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    resolve(null);
+                    return;
+                }
+
+                try {
+                    const transaction = offlineDB.transaction(['appSettings'], 'readonly');
+                    const store = transaction.objectStore('appSettings');
+                    const request = store.get(key);
+
+                    request.onsuccess = () => {
+                        if (request.result) {
+                            resolve(request.result.value);
+                        } else {
+                            resolve(null);
+                        }
+                    };
+                    request.onerror = () => resolve(null);
+                } catch (error) {
+                    resolve(null);
+                }
             });
         }
 
@@ -5428,6 +5481,24 @@
                         loadClientes();
                     }
                 }, 4000);
+
+                // Auto-load route markers se estavam visíveis na última sessão
+                // Aguarda 5s para garantir que tudo está carregado
+                setTimeout(async () => {
+                    try {
+                        const wasVisible = await getAppSetting('routeMarkersVisible');
+                        if (wasVisible === true) {
+                            // Carrega os marcadores automaticamente
+                            if ('requestIdleCallback' in window) {
+                                requestIdleCallback(() => loadRouteMarkers(true), { timeout: 5000 });
+                            } else {
+                                loadRouteMarkers(true); // skipFitBounds = true para não mover o mapa
+                            }
+                        }
+                    } catch (e) {
+                        // Silencioso se falhar
+                    }
+                }, 5000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -8032,11 +8103,19 @@
             hideFixedStatsPanel();
         }
 
-        routeMarkersBtn.addEventListener('click', () => {
+        routeMarkersBtn.addEventListener('click', async () => {
             if (routeMarkersVisible) {
                 removeRouteMarkers();
+                // Salvar estado como desativado
+                try {
+                    await saveAppSetting('routeMarkersVisible', false);
+                } catch (e) {}
             } else {
                 loadRouteMarkers();
+                // Salvar estado como ativado
+                try {
+                    await saveAppSetting('routeMarkersVisible', true);
+                } catch (e) {}
             }
         });
 
