@@ -5703,44 +5703,199 @@
                     try {
                         const cachedMarkers = await loadMarkersFromCache();
                         if (cachedMarkers && cachedMarkers.length > 0) {
-                            // Reconstrói os marcadores do cache
-                            const features = cachedMarkers.map(marker => ({
-                                type: 'Feature',
-                                geometry: {
-                                    type: 'Point',
-                                    coordinates: marker.coordinates
-                                },
-                                properties: {
-                                    id: marker.id,
-                                    sequence: marker.sequence,
-                                    address: marker.address,
-                                    bairro: marker.bairro,
-                                    city: marker.city,
-                                    zipcode: marker.zipcode,
-                                    stop: marker.stop,
-                                    delivery_status: marker.delivery_status,
-                                    matchType: marker.matchType,
-                                    similarity_disabled: marker.similarity_disabled,
-                                    similarity_original_lat: marker.similarity_original_lat,
-                                    similarity_original_lng: marker.similarity_original_lng
-                                }
-                            }));
+                            // Função para determinar a cor do ícone
+                            const getIconColor = (marker) => {
+                                if (marker.delivery_status === 'delivered') return 'gray';
+                                if (marker.delivery_status === 'not_delivered') return 'gray-x';
 
-                            // Adiciona marcadores ao mapa
-                            if (map.getSource('route-stops')) {
-                                map.getSource('route-stops').setData({
-                                    type: 'FeatureCollection',
-                                    features: features
+                                // Se tem coordenadas, é registrado
+                                const isRegistered = marker.coordinates && marker.coordinates.length === 2;
+                                if (isRegistered) {
+                                    return marker.matchType === 'exact' ? 'green' : 'purple';
+                                }
+
+                                return 'red'; // Não cadastrado
+                            };
+
+                            // Função para gerar ícone SVG do pin
+                            const generatePinIcon = (number, color = 'red') => {
+                                const scale = 3;
+                                const baseWidth = 30;
+                                const baseHeight = 50;
+                                const width = baseWidth * scale;
+                                const height = baseHeight * scale;
+
+                                const canvas = document.createElement('canvas');
+                                canvas.width = width;
+                                canvas.height = height;
+                                const ctx = canvas.getContext('2d');
+
+                                ctx.scale(scale, scale);
+
+                                const colors = {
+                                    red: { needle: '#dc2626', light: '#f87171', mid: '#ef4444', dark: '#dc2626' },
+                                    green: { needle: '#16a34a', light: '#4ade80', mid: '#22c55e', dark: '#16a34a' },
+                                    purple: { needle: '#7c3aed', light: '#a78bfa', mid: '#8b5cf6', dark: '#7c3aed' },
+                                    gray: { needle: '#6b7280', light: '#9ca3af', mid: '#6b7280', dark: '#4b5563' },
+                                    'gray-x': { needle: '#6b7280', light: '#9ca3af', mid: '#6b7280', dark: '#4b5563' }
+                                };
+                                const colorSet = colors[color] || colors.red;
+
+                                // Desenhar agulha
+                                ctx.fillStyle = colorSet.needle;
+                                ctx.beginPath();
+                                ctx.moveTo(15 - 2, 24);
+                                ctx.lineTo(15 + 2, 24);
+                                ctx.lineTo(15 + 1.5, 46);
+                                ctx.lineTo(15 - 1.5, 46);
+                                ctx.closePath();
+                                ctx.fill();
+
+                                // Desenhar sombra
+                                ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+                                ctx.beginPath();
+                                ctx.ellipse(15, 48, 6, 3, 0, 0, Math.PI * 2);
+                                ctx.fill();
+
+                                // Desenhar círculo com gradiente
+                                const gradient = ctx.createLinearGradient(0, 0, 30, 24);
+                                gradient.addColorStop(0, colorSet.light);
+                                gradient.addColorStop(0.5, colorSet.mid);
+                                gradient.addColorStop(1, colorSet.dark);
+
+                                ctx.fillStyle = gradient;
+                                ctx.beginPath();
+                                ctx.arc(15, 12, 11, 0, Math.PI * 2);
+                                ctx.fill();
+
+                                // Desenhar borda branca
+                                ctx.strokeStyle = '#ffffff';
+                                ctx.lineWidth = 2.5;
+                                ctx.beginPath();
+                                ctx.arc(15, 12, 11, 0, Math.PI * 2);
+                                ctx.stroke();
+
+                                // Desenhar número ou X
+                                ctx.fillStyle = '#ffffff';
+                                ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+
+                                if (color === 'gray-x') {
+                                    ctx.strokeStyle = '#ffffff';
+                                    ctx.lineWidth = 2.5;
+                                    ctx.lineCap = 'round';
+                                    ctx.beginPath();
+                                    ctx.moveTo(10, 7);
+                                    ctx.lineTo(20, 17);
+                                    ctx.moveTo(20, 7);
+                                    ctx.lineTo(10, 17);
+                                    ctx.stroke();
+                                } else {
+                                    ctx.fillText(String(number), 15, 12.5);
+                                }
+
+                                return { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
+                            };
+
+                            // Criar ícones únicos necessários
+                            const iconConfigs = new Set();
+                            cachedMarkers.forEach(marker => {
+                                const color = getIconColor(marker);
+                                iconConfigs.add(`1-${color}`); // 1 pacote por marcador
+                            });
+
+                            const iconPromises = Array.from(iconConfigs).map(config => {
+                                return new Promise((resolve) => {
+                                    const firstDash = config.indexOf('-');
+                                    const count = config.substring(0, firstDash);
+                                    const color = config.substring(firstDash + 1);
+                                    const iconName = `pin-${color}-${count}`;
+
+                                    if (map.hasImage(iconName)) {
+                                        resolve();
+                                        return;
+                                    }
+
+                                    const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
+                                    const img = new Image();
+                                    img.onload = () => {
+                                        if (!map.hasImage(iconName)) {
+                                            map.addImage(iconName, img, { pixelRatio: pixelRatio });
+                                        }
+                                        resolve();
+                                    };
+                                    img.onerror = () => resolve();
+                                    img.src = dataUrl;
                                 });
-                                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
-                                routeMarkersVisible = true;
-                                const routeBtn = document.getElementById('routeMarkersBtn');
-                                if (routeBtn) routeBtn.classList.add('active');
-                                updateFixedStatsPanel();
+                            });
+
+                            await Promise.all(iconPromises);
+
+                            // Reconstrói os marcadores do cache
+                            const features = cachedMarkers.map(marker => {
+                                const color = getIconColor(marker);
+                                return {
+                                    type: 'Feature',
+                                    geometry: {
+                                        type: 'Point',
+                                        coordinates: marker.coordinates
+                                    },
+                                    properties: {
+                                        id: marker.id,
+                                        sequence: marker.sequence,
+                                        address: marker.address,
+                                        bairro: marker.bairro,
+                                        city: marker.city,
+                                        zipcode: marker.zipcode,
+                                        stop: marker.stop,
+                                        delivery_status: marker.delivery_status,
+                                        matchType: marker.matchType,
+                                        similarity_disabled: marker.similarity_disabled,
+                                        similarity_original_lat: marker.similarity_original_lat,
+                                        similarity_original_lng: marker.similarity_original_lng,
+                                        icon: `pin-${color}-1`
+                                    }
+                                };
+                            });
+
+                            const geojson = {
+                                type: 'FeatureCollection',
+                                features: features
+                            };
+
+                            // Criar source e layer se não existirem
+                            if (!map.getSource('route-stops')) {
+                                map.addSource('route-stops', {
+                                    type: 'geojson',
+                                    data: geojson
+                                });
+
+                                map.addLayer({
+                                    id: 'route-stops-pins',
+                                    type: 'symbol',
+                                    source: 'route-stops',
+                                    layout: {
+                                        'icon-image': ['get', 'icon'],
+                                        'icon-size': 1,
+                                        'icon-anchor': 'bottom',
+                                        'icon-allow-overlap': true
+                                    }
+                                });
+                            } else {
+                                // Source já existe, apenas atualiza os dados
+                                map.getSource('route-stops').setData(geojson);
                             }
+
+                            map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+                            routeMarkersVisible = true;
+                            const routeBtn = document.getElementById('routeMarkersBtn');
+                            if (routeBtn) routeBtn.classList.add('active');
+                            updateFixedStatsPanel();
                         }
                     } catch (error) {
                         // Cache load failed silently
+                        console.error('Erro ao carregar marcadores do cache:', error);
                     }
                 }, 5000);
             });
