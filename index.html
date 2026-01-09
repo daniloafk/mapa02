@@ -5701,7 +5701,9 @@
                 // Auto-load cached route markers após 5s (se existirem)
                 setTimeout(async () => {
                     try {
+                        console.log('🔍 Tentando carregar marcadores do cache...');
                         const cachedMarkers = await loadMarkersFromCache();
+                        console.log('📦 Marcadores carregados do cache:', cachedMarkers ? cachedMarkers.length : 0);
                         if (cachedMarkers && cachedMarkers.length > 0) {
                             // Função para determinar a cor do ícone
                             const getIconColor = (marker) => {
@@ -5835,26 +5837,16 @@
                             // Reconstrói os marcadores do cache
                             const features = cachedMarkers.map(marker => {
                                 const color = getIconColor(marker);
+                                const { coordinates, ...properties } = marker;
                                 return {
                                     type: 'Feature',
                                     geometry: {
                                         type: 'Point',
-                                        coordinates: marker.coordinates
+                                        coordinates: coordinates
                                     },
                                     properties: {
-                                        id: marker.id,
-                                        sequence: marker.sequence,
-                                        address: marker.address,
-                                        bairro: marker.bairro,
-                                        city: marker.city,
-                                        zipcode: marker.zipcode,
-                                        stop: marker.stop,
-                                        delivery_status: marker.delivery_status,
-                                        matchType: marker.matchType,
-                                        similarity_disabled: marker.similarity_disabled,
-                                        similarity_original_lat: marker.similarity_original_lat,
-                                        similarity_original_lng: marker.similarity_original_lng,
-                                        icon: `pin-${color}-1`
+                                        ...properties,
+                                        icon: marker.icon || `pin-${color}-1`
                                     }
                                 };
                             });
@@ -5892,10 +5884,11 @@
                             const routeBtn = document.getElementById('routeMarkersBtn');
                             if (routeBtn) routeBtn.classList.add('active');
                             updateFixedStatsPanel();
+                            console.log('✅ Marcadores carregados automaticamente no mapa!', cachedMarkers.length);
                         }
                     } catch (error) {
                         // Cache load failed silently
-                        console.error('Erro ao carregar marcadores do cache:', error);
+                        console.error('❌ Erro ao carregar marcadores do cache:', error);
                     }
                 }, 5000);
             });
@@ -8523,23 +8516,14 @@
                 // Save markers to IndexedDB cache for offline/auto-load
                 try {
                     const markersDataToCache = features.map(f => ({
-                        id: f.properties.id,
-                        sequence: f.properties.sequence,
-                        address: f.properties.address,
-                        bairro: f.properties.bairro,
-                        city: f.properties.city,
-                        zipcode: f.properties.zipcode,
-                        stop: f.properties.stop,
-                        delivery_status: f.properties.delivery_status,
-                        matchType: f.properties.matchType,
-                        similarity_disabled: f.properties.similarity_disabled,
-                        similarity_original_lat: f.properties.similarity_original_lat,
-                        similarity_original_lng: f.properties.similarity_original_lng,
+                        // Salvar TODAS as propriedades para reconstruir completamente
+                        ...f.properties,
                         coordinates: f.geometry.coordinates
                     }));
                     await saveMarkersToCache(markersDataToCache);
+                    console.log('✅ Marcadores salvos no cache:', markersDataToCache.length);
                 } catch (cacheError) {
-                    // Cache save failed silently - não impede a funcionalidade principal
+                    console.error('❌ Erro ao salvar marcadores no cache:', cacheError);
                 }
 
             } catch (error) {
