@@ -5493,26 +5493,31 @@
                 }, 4000);
 
                 // Auto-load route markers se estavam visíveis na última sessão
-                // Aguarda 3s para garantir que tudo está carregado
+                // PERFORMANCE: Aguarda 6s para garantir que loadClientes() terminou
+                // e usa requestIdleCallback para não competir com UI
                 setTimeout(async () => {
                     try {
                         const wasVisible = await getAppSetting('routeMarkersVisible');
                         if (wasVisible === true) {
-                            // Tenta restauração rápida primeiro (usando dados salvos)
-                            const restored = await restoreRouteMarkers();
-                            if (!restored) {
-                                // Se não conseguiu restaurar, carrega do zero
-                                if ('requestIdleCallback' in window) {
-                                    requestIdleCallback(() => loadRouteMarkers(true), { timeout: 5000 });
-                                } else {
+                            // Usa requestIdleCallback para restaurar quando o browser estiver ocioso
+                            const doRestore = async () => {
+                                const restored = await restoreRouteMarkers();
+                                if (!restored) {
+                                    // Se não conseguiu restaurar, carrega do zero
                                     loadRouteMarkers(true);
                                 }
+                            };
+
+                            if ('requestIdleCallback' in window) {
+                                requestIdleCallback(() => doRestore(), { timeout: 8000 });
+                            } else {
+                                doRestore();
                             }
                         }
                     } catch (e) {
                         // Silencioso se falhar
                     }
-                }, 3000);
+                }, 6000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -6287,9 +6292,18 @@
             }
         }
 
+        // Cache para ícones gerados (evita regenerar o mesmo ícone várias vezes)
+        const pinIconCache = new Map();
+
         // Generate high-resolution pin icon with number using Canvas (3x for Retina/HiDPI)
         // Colors: red (pending), green (registered), gray (delivered), gray-x (not delivered)
         function generatePinIcon(number, color = 'red') {
+            // Verifica cache primeiro
+            const cacheKey = `${number}-${color}`;
+            if (pinIconCache.has(cacheKey)) {
+                return pinIconCache.get(cacheKey);
+            }
+
             const scale = 3;
             const baseWidth = 30;
             const baseHeight = 50;
@@ -6368,7 +6382,12 @@
                 ctx.fillText(String(number), 15, 12.5);
             }
 
-            return { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
+            const result = { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
+
+            // Salva no cache para reutilização
+            pinIconCache.set(cacheKey, result);
+
+            return result;
         }
 
         // Update fixed stats panel with current route data
