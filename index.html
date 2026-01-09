@@ -4546,7 +4546,7 @@
         // Initialize IndexedDB for offline storage
         function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('MapaInterativoDB', 3);
+                const request = indexedDB.open('MapaInterativoDB', 4);
 
                 request.onerror = () => {
                     // Erro ao abrir IndexedDB
@@ -4594,6 +4594,12 @@
                         clientsCacheStore.createIndex('bairro', 'bairro', { unique: false });
                         clientsCacheStore.createIndex('city', 'city', { unique: false });
                         clientsCacheStore.createIndex('zipcode', 'zipcode', { unique: false });
+                    }
+
+                    // Store for cached route markers (v4 - NEW)
+                    if (!db.objectStoreNames.contains('cachedRouteMarkers')) {
+                        const markersStore = db.createObjectStore('cachedRouteMarkers', { keyPath: 'id' });
+                        markersStore.createIndex('sequence', 'sequence', { unique: false });
                     }
 
                 };
@@ -5369,6 +5375,30 @@
             });
         }
 
+        // Save route markers to IndexedDB cache
+        async function saveMarkersToCache(markersData) {
+            if (!offlineDB || !markersData || markersData.length === 0) return;
+
+            try {
+                await saveCacheToDB('cachedRouteMarkers', markersData);
+            } catch (error) {
+                console.error('Erro ao salvar marcadores no cache:', error);
+            }
+        }
+
+        // Load route markers from IndexedDB cache
+        async function loadMarkersFromCache() {
+            if (!offlineDB) return [];
+
+            try {
+                const markers = await getAllFromOfflineDB('cachedRouteMarkers');
+                return markers || [];
+            } catch (error) {
+                console.error('Erro ao carregar marcadores do cache:', error);
+                return [];
+            }
+        }
+
         // Initialize offline system
         initOfflineDB().then(async () => {
             updateOfflineIndicator();
@@ -5667,6 +5697,52 @@
                         loadClientes();
                     }
                 }, 4000);
+
+                // Auto-load cached route markers após 5s (se existirem)
+                setTimeout(async () => {
+                    try {
+                        const cachedMarkers = await loadMarkersFromCache();
+                        if (cachedMarkers && cachedMarkers.length > 0) {
+                            // Reconstrói os marcadores do cache
+                            const features = cachedMarkers.map(marker => ({
+                                type: 'Feature',
+                                geometry: {
+                                    type: 'Point',
+                                    coordinates: marker.coordinates
+                                },
+                                properties: {
+                                    id: marker.id,
+                                    sequence: marker.sequence,
+                                    address: marker.address,
+                                    bairro: marker.bairro,
+                                    city: marker.city,
+                                    zipcode: marker.zipcode,
+                                    stop: marker.stop,
+                                    delivery_status: marker.delivery_status,
+                                    matchType: marker.matchType,
+                                    similarity_disabled: marker.similarity_disabled,
+                                    similarity_original_lat: marker.similarity_original_lat,
+                                    similarity_original_lng: marker.similarity_original_lng
+                                }
+                            }));
+
+                            // Adiciona marcadores ao mapa
+                            if (map.getSource('route-stops')) {
+                                map.getSource('route-stops').setData({
+                                    type: 'FeatureCollection',
+                                    features: features
+                                });
+                                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+                                routeMarkersVisible = true;
+                                const routeBtn = document.getElementById('routeMarkersBtn');
+                                if (routeBtn) routeBtn.classList.add('active');
+                                updateFixedStatsPanel();
+                            }
+                        }
+                    } catch (error) {
+                        // Cache load failed silently
+                    }
+                }, 5000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -6326,6 +6402,18 @@
                         });
                         await saveCacheToDB('cachedPlanilha', updatedPlanilha);
                     }
+
+                    // Also update route markers cache
+                    const cachedMarkers = await loadMarkersFromCache();
+                    if (cachedMarkers && cachedMarkers.length > 0) {
+                        const updatedMarkers = cachedMarkers.map(marker => {
+                            if (ids.includes(marker.id)) {
+                                return { ...marker, delivery_status: status };
+                            }
+                            return marker;
+                        });
+                        await saveMarkersToCache(updatedMarkers);
+                    }
                 } catch (cacheErr) {
                     // Cache update failed, but Supabase update succeeded
                 }
@@ -6346,6 +6434,18 @@
                                 return item;
                             });
                             await saveCacheToDB('cachedPlanilha', updatedPlanilha);
+                        }
+
+                        // Also update route markers cache
+                        const cachedMarkers = await loadMarkersFromCache();
+                        if (cachedMarkers && cachedMarkers.length > 0) {
+                            const updatedMarkers = cachedMarkers.map(marker => {
+                                if (ids.includes(marker.id)) {
+                                    return { ...marker, delivery_status: status };
+                                }
+                                return marker;
+                            });
+                            await saveMarkersToCache(updatedMarkers);
                         }
                     } catch (cacheErr) {}
 
@@ -6408,6 +6508,18 @@
                         });
                         await saveCacheToDB('cachedPlanilha', updatedPlanilha);
                     }
+
+                    // Also update route markers cache
+                    const cachedMarkers = await loadMarkersFromCache();
+                    if (cachedMarkers && cachedMarkers.length > 0) {
+                        const updatedMarkers = cachedMarkers.map(marker => {
+                            if (ids.includes(marker.id)) {
+                                return { ...marker, ...updateData };
+                            }
+                            return marker;
+                        });
+                        await saveMarkersToCache(updatedMarkers);
+                    }
                 } catch (cacheErr) {
                     // Cache update failed, but Supabase update succeeded
                 }
@@ -6429,6 +6541,18 @@
                                 return item;
                             });
                             await saveCacheToDB('cachedPlanilha', updatedPlanilha);
+                        }
+
+                        // Also update route markers cache
+                        const cachedMarkers = await loadMarkersFromCache();
+                        if (cachedMarkers && cachedMarkers.length > 0) {
+                            const updatedMarkers = cachedMarkers.map(marker => {
+                                if (ids.includes(marker.id)) {
+                                    return { ...marker, ...updateData };
+                                }
+                                return marker;
+                            });
+                            await saveMarkersToCache(updatedMarkers);
                         }
                     } catch (cacheErr) {}
 
@@ -8240,6 +8364,28 @@
 
                 // Update fixed stats panel with route data
                 updateFixedStatsPanel();
+
+                // Save markers to IndexedDB cache for offline/auto-load
+                try {
+                    const markersDataToCache = features.map(f => ({
+                        id: f.properties.id,
+                        sequence: f.properties.sequence,
+                        address: f.properties.address,
+                        bairro: f.properties.bairro,
+                        city: f.properties.city,
+                        zipcode: f.properties.zipcode,
+                        stop: f.properties.stop,
+                        delivery_status: f.properties.delivery_status,
+                        matchType: f.properties.matchType,
+                        similarity_disabled: f.properties.similarity_disabled,
+                        similarity_original_lat: f.properties.similarity_original_lat,
+                        similarity_original_lng: f.properties.similarity_original_lng,
+                        coordinates: f.geometry.coordinates
+                    }));
+                    await saveMarkersToCache(markersDataToCache);
+                } catch (cacheError) {
+                    // Cache save failed silently - não impede a funcionalidade principal
+                }
 
             } catch (error) {
                 // PERFORMANCE: Restaurar botão em caso de erro
