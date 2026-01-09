@@ -685,6 +685,17 @@
             margin-bottom: 8px;
         }
 
+        .cliente-item-id {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-right: 8px;
+        }
+
         .cliente-item-title {
             font-weight: 600;
             font-size: 14px;
@@ -2183,6 +2194,18 @@
             padding: 0 14px;
             box-sizing: border-box;
             border-bottom: 1px solid #2a2a2a;
+        }
+
+        .qr-address-id {
+            min-width: 45px;
+            padding: 4px 6px;
+            background: rgba(139, 92, 246, 0.2);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            color: #a78bfa;
+            text-align: center;
+            flex-shrink: 0;
         }
 
         .qr-address-order {
@@ -5614,11 +5637,21 @@
                 if (searchTerm === '') {
                     renderClientes(allClientes);
                 } else {
-                    const filtered = allClientes.filter(cliente =>
-                        cliente.address.toLowerCase().includes(searchTerm) ||
-                        (cliente.bairro && cliente.bairro.toLowerCase().includes(searchTerm)) ||
-                        (cliente.zipcode && cliente.zipcode.toLowerCase().includes(searchTerm))
-                    );
+                    // Permite pesquisa por ID (ex: #123 ou apenas 123)
+                    const idSearch = searchTerm.replace('#', '');
+                    const isIdSearch = /^\d+$/.test(idSearch);
+
+                    const filtered = allClientes.filter(cliente => {
+                        // Pesquisa por ID
+                        if (isIdSearch && cliente.id && cliente.id.toString() === idSearch) {
+                            return true;
+                        }
+                        // Pesquisa por endereço, bairro ou CEP
+                        return cliente.address.toLowerCase().includes(searchTerm) ||
+                            (cliente.bairro && cliente.bairro.toLowerCase().includes(searchTerm)) ||
+                            (cliente.zipcode && cliente.zipcode.toLowerCase().includes(searchTerm)) ||
+                            (cliente.id && cliente.id.toString().includes(idSearch));
+                    });
                     renderClientes(filtered);
                 }
             }, 150);
@@ -5651,6 +5684,7 @@
             const html = clientes.map(cliente => `
                 <div class="cliente-item" data-id="${cliente.id}" data-lat="${cliente.latitude || 0}" data-lng="${cliente.longitude || 0}" data-address="${cliente.address}">
                     <div class="cliente-item-header">
+                        <span class="cliente-item-id">#${cliente.id}</span>
                         <div class="cliente-item-title">${cliente.address}</div>
                         <div class="cliente-item-actions">
                             <button class="cliente-item-btn delete" title="Excluir">
@@ -8532,7 +8566,8 @@
             for (let i = startIdx; i <= endIdx; i++) {
                 const addr = planilhaAddressData[i];
                 const top = i * ITEM_HEIGHT;
-                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div><div class="qr-address-order">${addr.sequence || '-'}</div></div>`;
+                const displayId = addr.id ? `#${addr.id}` : '';
+                html += `<div class="qr-address-item" data-idx="${i}" style="top:${top}px"><div class="qr-address-id">${displayId}</div><div class="qr-address-text"><p>${addr.destination_address || 'Endereço não disponível'}</p><span>${addr.bairro || ''}${addr.city ? ' - ' + addr.city : ''}</span></div><div class="qr-address-order">${addr.sequence || '-'}</div></div>`;
             }
             virtualViewport.innerHTML = html;
         }
