@@ -6,17 +6,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="background-color" content="#0f172a">
-    <meta name="description" content="Sistema de mapeamento e gerenciamento de entregas com GPS em tempo real">
-    <meta name="msapplication-TileColor" content="#0f172a">
     <title>Mapa Interativo</title>
-
-    <!-- PWA Manifest Inline -->
-    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk1hcGEgSW50ZXJhdGl2byAtIEVudHJlZ2FzIiwKICAic2hvcnRfbmFtZSI6ICJNYXBhIEVudHJlZ2FzIiwKICAiZGVzY3JpcHRpb24iOiAiU2lzdGVtYSBkZSBtYXBlYW1lbnRvIGUgZ2VyZW5jaWFtZW50byBkZSBlbnRyZWdhcyBjb20gR1BTIGVtIHRlbXBvIHJlYWwiLAogICJzdGFydF91cmwiOiAiLi9pbmRleC5odG1sIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAib3JpZW50YXRpb24iOiAicG9ydHJhaXQiLAogICJ0aGVtZV9jb2xvciI6ICIjMGYxNzJhIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMGYxNzJhIiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxOTIgMTkyJyUzRSUzQ3JlY3QgZmlsbD0nJTIzMGYxNzJhJyB3aWR0aD0nMTkyJyBoZWlnaHQ9JzE5Micgcng9JzMyJy8lM0UlM0NwYXRoIGZpbGw9JyUyMzBlYTVlOScgZD0nTTk2IDMyYzI2LjUgMCA0OCAyMS41IDQ4IDQ4IDAgMzUtNDggODAtNDggODBzLTQ4LTQ1LTQ4LTgwYzAtMjYuNSAyMS41LTQ4IDQ4LTQ4em0wIDY0YTE2IDE2IDAgMTAwLTMyIDE2IDE2IDAgMDAwIDMyeicvJTNFJTNDL3N2ZyUzRSIsCiAgICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiLAogICAgICAic2l6ZXMiOiAiMTkyeDE5MiIsCiAgICAgICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSIKICAgIH0sCiAgICB7CiAgICAgICJzcmMiOiAiZGF0YTppbWFnZS9zdmcreG1sLCUzQ3N2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCA1MTIgNTEyJyUzRSUzQ3JlY3QgZmlsbD0nJTIzMGYxNzJhJyB3aWR0aD0nNTEyJyBoZWlnaHQ9JzUxMicgcng9JzY0Jy8lM0UlM0NwYXRoIGZpbGw9JyUyMzBlYTVlOScgZD0nTTI1NiA4MGM3MS43IDAgMTMwIDU4LjMgMTMwIDEzMCAwIDk1LTEzMCAyMjItMTMwIDIyMlMxMjYgMzA1IDEyNiAyMTBjMC03MS43IDU4LjMtMTMwIDEzMC0xMzB6bTAgMTc2YTQ2IDQ2IDAgMTAwLTkyIDQ2IDQ2IDAgMDAwIDkyeicvJTNFJTNDL3N2ZyUzRSIsCiAgICAgICJ0eXBlIjogImltYWdlL3N2Zyt4bWwiLAogICAgICAic2l6ZXMiOiAiNTEyeDUxMiIsCiAgICAgICJwdXJwb3NlIjogImFueSBtYXNrYWJsZSIKICAgIH0KICBdLAogICJjYXRlZ29yaWVzIjogWyJuYXZpZ2F0aW9uIiwgInV0aWxpdGllcyIsICJidXNpbmVzcyJdLAogICJsYXVuY2hfaGFuZGxlciI6IHsKICAgICJjbGllbnRfbW9kZSI6IFsiZm9jdXMtZXhpc3RpbmciLCAiYXV0byJdCiAgfQp9">
-
-    <!-- Apple Touch Icon (gerado via SVG) -->
-    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect fill='%230f172a' width='180' height='180' rx='40'/%3E%3Cpath fill='%230ea5e9' d='M90 30c33.1 0 60 26.9 60 60 0 45-60 80-60 80S30 135 30 90c0-33.1 26.9-60 60-60zm0 80a20 20 0 100-40 20 20 0 000 40z'/%3E%3C/svg%3E">
 
     <!-- CSS crítico inline para loader imediato -->
     <style id="critical-css">
@@ -3849,235 +3839,6 @@
         @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
             /* Ajustes para telas de alta resolução se necessário */
         }
-
-        /* ========================================
-           PWA - Botão de Instalação
-           ======================================== */
-        .pwa-install-prompt {
-            position: fixed;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
-            color: white;
-            padding: 14px 24px;
-            border-radius: 16px;
-            box-shadow: 0 8px 32px rgba(14, 165, 233, 0.4);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 10000;
-            animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            max-width: calc(100% - 32px);
-            cursor: pointer;
-            border: none;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .pwa-install-prompt:hover {
-            transform: translateX(-50%) scale(1.02);
-            box-shadow: 0 12px 40px rgba(14, 165, 233, 0.5);
-        }
-
-        .pwa-install-prompt:active {
-            transform: translateX(-50%) scale(0.98);
-        }
-
-        .pwa-install-prompt svg {
-            width: 24px;
-            height: 24px;
-            flex-shrink: 0;
-        }
-
-        .pwa-install-prompt .pwa-text {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 2px;
-        }
-
-        .pwa-install-prompt .pwa-title {
-            font-weight: 700;
-            font-size: 14px;
-        }
-
-        .pwa-install-prompt .pwa-subtitle {
-            font-size: 11px;
-            opacity: 0.9;
-            font-weight: 500;
-        }
-
-        .pwa-install-prompt .pwa-close {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 24px;
-            height: 24px;
-            background: #1e293b;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            border: 2px solid white;
-            transition: all 0.2s ease;
-        }
-
-        .pwa-install-prompt .pwa-close:hover {
-            background: #ef4444;
-        }
-
-        .pwa-install-prompt .pwa-close svg {
-            width: 12px;
-            height: 12px;
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 0;
-                transform: translateX(-50%) translateY(100px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
-        }
-
-        .pwa-install-prompt.hiding {
-            animation: slideDown 0.3s ease forwards;
-        }
-
-        @keyframes slideDown {
-            to {
-                opacity: 0;
-                transform: translateX(-50%) translateY(100px);
-            }
-        }
-
-        /* PWA - Indicador de Cache/Offline */
-        .pwa-offline-ready {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            color: white;
-            padding: 12px 20px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            z-index: 10001;
-            animation: slideDown2 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 13px;
-            font-weight: 600;
-            box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4);
-        }
-
-        .pwa-offline-ready svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        @keyframes slideDown2 {
-            from {
-                opacity: 0;
-                transform: translateX(-50%) translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateX(-50%) translateY(0);
-            }
-        }
-
-        .pwa-offline-ready.hiding {
-            animation: slideUp2 0.3s ease forwards;
-        }
-
-        @keyframes slideUp2 {
-            to {
-                opacity: 0;
-                transform: translateX(-50%) translateY(-50px);
-            }
-        }
-
-        /* PWA - Update Available Banner */
-        .pwa-update-banner {
-            position: fixed;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-            color: white;
-            padding: 14px 20px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 10000;
-            animation: slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-            max-width: calc(100% - 32px);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            box-shadow: 0 8px 32px rgba(245, 158, 11, 0.4);
-        }
-
-        .pwa-update-banner svg {
-            width: 24px;
-            height: 24px;
-            flex-shrink: 0;
-        }
-
-        .pwa-update-banner .update-text {
-            flex: 1;
-            font-size: 13px;
-            font-weight: 600;
-        }
-
-        .pwa-update-banner button {
-            background: white;
-            color: #d97706;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-
-        .pwa-update-banner button:hover {
-            transform: scale(1.05);
-        }
-
-        /* Cache progress indicator */
-        .cache-progress {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: rgba(14, 165, 233, 0.2);
-            z-index: 10002;
-            overflow: hidden;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .cache-progress.active {
-            opacity: 1;
-        }
-
-        .cache-progress-bar {
-            height: 100%;
-            background: linear-gradient(90deg, #0ea5e9, #8b5cf6);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
     </style>
 </head>
 <body>
@@ -4528,8 +4289,6 @@
         initializeApp();
 
         function initApplication() {
-            console.log('🚀 APLICAÇÃO INICIANDO!!!');
-
             // Supabase initialization
             const SUPABASE_URL = 'https://wwvftlyvewetspombnky.supabase.co';
             const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind3dmZ0bHl2ZXdldHNwb21ibmt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzNjE5NjYsImV4cCI6MjA4MTkzNzk2Nn0.qvW0QconrSPOWWtB8SNalIpfWhlO2-Oc8LzJURk4zVs';
@@ -4537,7 +4296,6 @@
             const db = window.db;
 
             updateLoader('supabase', 'Conectando banco de dados...');
-            console.log('📦 Supabase conectado!');
 
         // ============================================
         // OFFLINE SYSTEM - IndexedDB & Sync
@@ -4545,7 +4303,6 @@
         let offlineDB = null;
         let isOnline = navigator.onLine;
         let isSyncing = false;
-        let offlineDBReady = false; // Flag para indicar quando DB está pronto
 
         // Initialize IndexedDB for offline storage
         function initOfflineDB() {
@@ -4600,10 +4357,9 @@
                         clientsCacheStore.createIndex('zipcode', 'zipcode', { unique: false });
                     }
 
-                    // Store for cached route markers (v4 - NEW)
+                    // Store for cached route markers (v4)
                     if (!db.objectStoreNames.contains('cachedRouteMarkers')) {
-                        const markersStore = db.createObjectStore('cachedRouteMarkers', { keyPath: 'id' });
-                        markersStore.createIndex('sequence', 'sequence', { unique: false });
+                        db.createObjectStore('cachedRouteMarkers', { keyPath: 'cacheKey' });
                     }
 
                 };
@@ -5335,6 +5091,37 @@
             });
         }
 
+        // Salvar GeoJSON dos marcadores no cache
+        function saveRouteMarkersToCache(geojsonData) {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    reject(new Error('IndexedDB não inicializado'));
+                    return;
+                }
+                const transaction = offlineDB.transaction(['cachedRouteMarkers'], 'readwrite');
+                const store = transaction.objectStore('cachedRouteMarkers');
+                store.clear();
+                const request = store.put({ cacheKey: 'routeMarkers', data: geojsonData, timestamp: Date.now() });
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // Carregar GeoJSON dos marcadores do cache
+        function loadRouteMarkersFromCache() {
+            return new Promise((resolve, reject) => {
+                if (!offlineDB) {
+                    resolve(null);
+                    return;
+                }
+                const transaction = offlineDB.transaction(['cachedRouteMarkers'], 'readonly');
+                const store = transaction.objectStore('cachedRouteMarkers');
+                const request = store.get('routeMarkers');
+                request.onsuccess = () => resolve(request.result ? request.result.data : null);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
         // Save cache to IndexedDB (replaces all data in cache)
         async function saveCacheToDB(storeName, dataArray) {
             if (!offlineDB) return;
@@ -5379,34 +5166,8 @@
             });
         }
 
-        // Save route markers to IndexedDB cache
-        async function saveMarkersToCache(markersData) {
-            if (!offlineDB || !markersData || markersData.length === 0) return;
-
-            try {
-                await saveCacheToDB('cachedRouteMarkers', markersData);
-            } catch (error) {
-                console.error('Erro ao salvar marcadores no cache:', error);
-            }
-        }
-
-        // Load route markers from IndexedDB cache
-        async function loadMarkersFromCache() {
-            if (!offlineDB) return [];
-
-            try {
-                const markers = await getAllFromOfflineDB('cachedRouteMarkers');
-                return markers || [];
-            } catch (error) {
-                console.error('Erro ao carregar marcadores do cache:', error);
-                return [];
-            }
-        }
-
         // Initialize offline system
         initOfflineDB().then(async () => {
-            offlineDBReady = true; // Marca DB como pronto
-            console.log('✅ IndexedDB inicializado e pronto!');
             updateOfflineIndicator();
 
             if (isOnline) {
@@ -5704,185 +5465,43 @@
                     }
                 }, 4000);
 
-                // Auto-load cached route markers após 5s (se existirem)
+                // AUTO-LOAD: Carrega marcadores salvos após 3s
                 setTimeout(async () => {
                     try {
-                        console.log('🔍 Tentando carregar marcadores do cache...');
-
-                        // Aguardar IndexedDB estar pronto (máximo 10s)
-                        let waitCount = 0;
-                        // eslint-disable-next-line no-unmodified-loop-condition
-                        while (!offlineDBReady && waitCount < 100) {
-                            await new Promise(r => setTimeout(r, 100));
-                            waitCount++;
-                        }
-
-                        if (!offlineDBReady) {
-                            console.error('❌ IndexedDB não está pronto após 10s');
-                            return;
-                        }
-
-                        const cachedMarkers = await loadMarkersFromCache();
-                        console.log('📦 Marcadores carregados do cache:', cachedMarkers ? cachedMarkers.length : 0);
-                        if (cachedMarkers && cachedMarkers.length > 0) {
-                            // Função para determinar a cor do ícone
-                            const getIconColor = (marker) => {
-                                if (marker.delivery_status === 'delivered') return 'gray';
-                                if (marker.delivery_status === 'not_delivered') return 'gray-x';
-
-                                // Se tem coordenadas, é registrado
-                                const isRegistered = marker.coordinates && marker.coordinates.length === 2;
-                                if (isRegistered) {
-                                    return marker.matchType === 'exact' ? 'green' : 'purple';
-                                }
-
-                                return 'red'; // Não cadastrado
-                            };
-
-                            // Função para gerar ícone SVG do pin
-                            const generatePinIcon = (number, color = 'red') => {
-                                const scale = 3;
-                                const baseWidth = 30;
-                                const baseHeight = 50;
-                                const width = baseWidth * scale;
-                                const height = baseHeight * scale;
-
-                                const canvas = document.createElement('canvas');
-                                canvas.width = width;
-                                canvas.height = height;
-                                const ctx = canvas.getContext('2d');
-
-                                ctx.scale(scale, scale);
-
-                                const colors = {
-                                    red: { needle: '#dc2626', light: '#f87171', mid: '#ef4444', dark: '#dc2626' },
-                                    green: { needle: '#16a34a', light: '#4ade80', mid: '#22c55e', dark: '#16a34a' },
-                                    purple: { needle: '#7c3aed', light: '#a78bfa', mid: '#8b5cf6', dark: '#7c3aed' },
-                                    gray: { needle: '#6b7280', light: '#9ca3af', mid: '#6b7280', dark: '#4b5563' },
-                                    'gray-x': { needle: '#6b7280', light: '#9ca3af', mid: '#6b7280', dark: '#4b5563' }
-                                };
-                                const colorSet = colors[color] || colors.red;
-
-                                // Desenhar agulha
-                                ctx.fillStyle = colorSet.needle;
-                                ctx.beginPath();
-                                ctx.moveTo(15 - 2, 24);
-                                ctx.lineTo(15 + 2, 24);
-                                ctx.lineTo(15 + 1.5, 46);
-                                ctx.lineTo(15 - 1.5, 46);
-                                ctx.closePath();
-                                ctx.fill();
-
-                                // Desenhar sombra
-                                ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-                                ctx.beginPath();
-                                ctx.ellipse(15, 48, 6, 3, 0, 0, Math.PI * 2);
-                                ctx.fill();
-
-                                // Desenhar círculo com gradiente
-                                const gradient = ctx.createLinearGradient(0, 0, 30, 24);
-                                gradient.addColorStop(0, colorSet.light);
-                                gradient.addColorStop(0.5, colorSet.mid);
-                                gradient.addColorStop(1, colorSet.dark);
-
-                                ctx.fillStyle = gradient;
-                                ctx.beginPath();
-                                ctx.arc(15, 12, 11, 0, Math.PI * 2);
-                                ctx.fill();
-
-                                // Desenhar borda branca
-                                ctx.strokeStyle = '#ffffff';
-                                ctx.lineWidth = 2.5;
-                                ctx.beginPath();
-                                ctx.arc(15, 12, 11, 0, Math.PI * 2);
-                                ctx.stroke();
-
-                                // Desenhar número ou X
-                                ctx.fillStyle = '#ffffff';
-                                ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-
-                                if (color === 'gray-x') {
-                                    ctx.strokeStyle = '#ffffff';
-                                    ctx.lineWidth = 2.5;
-                                    ctx.lineCap = 'round';
-                                    ctx.beginPath();
-                                    ctx.moveTo(10, 7);
-                                    ctx.lineTo(20, 17);
-                                    ctx.moveTo(20, 7);
-                                    ctx.lineTo(10, 17);
-                                    ctx.stroke();
-                                } else {
-                                    ctx.fillText(String(number), 15, 12.5);
-                                }
-
-                                return { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
-                            };
-
-                            // Criar ícones únicos necessários
+                        const cachedGeojson = await loadRouteMarkersFromCache();
+                        if (cachedGeojson && cachedGeojson.features && cachedGeojson.features.length > 0) {
+                            // Recriar ícones necessários
                             const iconConfigs = new Set();
-                            cachedMarkers.forEach(marker => {
-                                const color = getIconColor(marker);
-                                iconConfigs.add(`1-${color}`); // 1 pacote por marcador
+                            cachedGeojson.features.forEach(f => {
+                                if (f.properties && f.properties.icon) {
+                                    iconConfigs.add(f.properties.icon);
+                                }
                             });
 
-                            const iconPromises = Array.from(iconConfigs).map(config => {
-                                return new Promise((resolve) => {
-                                    const firstDash = config.indexOf('-');
-                                    const count = config.substring(0, firstDash);
-                                    const color = config.substring(firstDash + 1);
-                                    const iconName = `pin-${color}-${count}`;
+                            // Gerar ícones
+                            for (const iconName of iconConfigs) {
+                                if (!map.hasImage(iconName)) {
+                                    const parts = iconName.split('-');
+                                    const color = parts.slice(1, -1).join('-');
+                                    const count = parseInt(parts[parts.length - 1]);
+                                    const { dataUrl, pixelRatio } = generatePinIcon(count, color);
+                                    await new Promise(resolve => {
+                                        const img = new Image();
+                                        img.onload = () => {
+                                            if (!map.hasImage(iconName)) {
+                                                map.addImage(iconName, img, { pixelRatio });
+                                            }
+                                            resolve();
+                                        };
+                                        img.onerror = resolve;
+                                        img.src = dataUrl;
+                                    });
+                                }
+                            }
 
-                                    if (map.hasImage(iconName)) {
-                                        resolve();
-                                        return;
-                                    }
-
-                                    const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
-                                    const img = new Image();
-                                    img.onload = () => {
-                                        if (!map.hasImage(iconName)) {
-                                            map.addImage(iconName, img, { pixelRatio: pixelRatio });
-                                        }
-                                        resolve();
-                                    };
-                                    img.onerror = () => resolve();
-                                    img.src = dataUrl;
-                                });
-                            });
-
-                            await Promise.all(iconPromises);
-
-                            // Reconstrói os marcadores do cache
-                            const features = cachedMarkers.map(marker => {
-                                const color = getIconColor(marker);
-                                const { coordinates, ...properties } = marker;
-                                return {
-                                    type: 'Feature',
-                                    geometry: {
-                                        type: 'Point',
-                                        coordinates: coordinates
-                                    },
-                                    properties: {
-                                        ...properties,
-                                        icon: marker.icon || `pin-${color}-1`
-                                    }
-                                };
-                            });
-
-                            const geojson = {
-                                type: 'FeatureCollection',
-                                features: features
-                            };
-
-                            // Criar source e layer se não existirem
+                            // Criar source e layer
                             if (!map.getSource('route-stops')) {
-                                map.addSource('route-stops', {
-                                    type: 'geojson',
-                                    data: geojson
-                                });
-
+                                map.addSource('route-stops', { type: 'geojson', data: cachedGeojson });
                                 map.addLayer({
                                     id: 'route-stops-pins',
                                     type: 'symbol',
@@ -5895,22 +5514,18 @@
                                     }
                                 });
                             } else {
-                                // Source já existe, apenas atualiza os dados
-                                map.getSource('route-stops').setData(geojson);
+                                map.getSource('route-stops').setData(cachedGeojson);
                             }
 
                             map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
                             routeMarkersVisible = true;
-                            const routeBtn = document.getElementById('routeMarkersBtn');
-                            if (routeBtn) routeBtn.classList.add('active');
+                            if (routeMarkersBtn) routeMarkersBtn.classList.add('active');
                             updateFixedStatsPanel();
-                            console.log('✅ Marcadores carregados automaticamente no mapa!', cachedMarkers.length);
                         }
-                    } catch (error) {
-                        // Cache load failed silently
-                        console.error('❌ Erro ao carregar marcadores do cache:', error);
+                    } catch (e) {
+                        // Erro ao carregar cache (silencioso)
                     }
-                }, 5000);
+                }, 3000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -6570,18 +6185,6 @@
                         });
                         await saveCacheToDB('cachedPlanilha', updatedPlanilha);
                     }
-
-                    // Also update route markers cache
-                    const cachedMarkers = await loadMarkersFromCache();
-                    if (cachedMarkers && cachedMarkers.length > 0) {
-                        const updatedMarkers = cachedMarkers.map(marker => {
-                            if (ids.includes(marker.id)) {
-                                return { ...marker, delivery_status: status };
-                            }
-                            return marker;
-                        });
-                        await saveMarkersToCache(updatedMarkers);
-                    }
                 } catch (cacheErr) {
                     // Cache update failed, but Supabase update succeeded
                 }
@@ -6602,18 +6205,6 @@
                                 return item;
                             });
                             await saveCacheToDB('cachedPlanilha', updatedPlanilha);
-                        }
-
-                        // Also update route markers cache
-                        const cachedMarkers = await loadMarkersFromCache();
-                        if (cachedMarkers && cachedMarkers.length > 0) {
-                            const updatedMarkers = cachedMarkers.map(marker => {
-                                if (ids.includes(marker.id)) {
-                                    return { ...marker, delivery_status: status };
-                                }
-                                return marker;
-                            });
-                            await saveMarkersToCache(updatedMarkers);
                         }
                     } catch (cacheErr) {}
 
@@ -6676,18 +6267,6 @@
                         });
                         await saveCacheToDB('cachedPlanilha', updatedPlanilha);
                     }
-
-                    // Also update route markers cache
-                    const cachedMarkers = await loadMarkersFromCache();
-                    if (cachedMarkers && cachedMarkers.length > 0) {
-                        const updatedMarkers = cachedMarkers.map(marker => {
-                            if (ids.includes(marker.id)) {
-                                return { ...marker, ...updateData };
-                            }
-                            return marker;
-                        });
-                        await saveMarkersToCache(updatedMarkers);
-                    }
                 } catch (cacheErr) {
                     // Cache update failed, but Supabase update succeeded
                 }
@@ -6709,18 +6288,6 @@
                                 return item;
                             });
                             await saveCacheToDB('cachedPlanilha', updatedPlanilha);
-                        }
-
-                        // Also update route markers cache
-                        const cachedMarkers = await loadMarkersFromCache();
-                        if (cachedMarkers && cachedMarkers.length > 0) {
-                            const updatedMarkers = cachedMarkers.map(marker => {
-                                if (ids.includes(marker.id)) {
-                                    return { ...marker, ...updateData };
-                                }
-                                return marker;
-                            });
-                            await saveMarkersToCache(updatedMarkers);
                         }
                     } catch (cacheErr) {}
 
@@ -8533,17 +8100,11 @@
                 // Update fixed stats panel with route data
                 updateFixedStatsPanel();
 
-                // Save markers to IndexedDB cache for offline/auto-load
+                // Salvar marcadores no cache para carregar automaticamente
                 try {
-                    const markersDataToCache = features.map(f => ({
-                        // Salvar TODAS as propriedades para reconstruir completamente
-                        ...f.properties,
-                        coordinates: f.geometry.coordinates
-                    }));
-                    await saveMarkersToCache(markersDataToCache);
-                    console.log('✅ Marcadores salvos no cache:', markersDataToCache.length);
-                } catch (cacheError) {
-                    console.error('❌ Erro ao salvar marcadores no cache:', cacheError);
+                    await saveRouteMarkersToCache(geojson);
+                } catch (cacheErr) {
+                    // Erro ao salvar cache (silencioso)
                 }
 
             } catch (error) {
@@ -10483,444 +10044,6 @@
         });
 
         } // Fecha initApplication()
-
-        // ========================================
-        // PWA - Service Worker Registration & Install
-        // ========================================
-
-        // Service Worker code as a blob (embedded)
-        const swCode = `
-// Service Worker para Mapa Interativo - PWA
-const CACHE_NAME = 'mapa-interativo-v1.0.0';
-const TILES_CACHE_NAME = 'mapbox-tiles-v1';
-const STATIC_CACHE_NAME = 'static-assets-v1';
-
-// Recursos estáticos para cache imediato
-const STATIC_ASSETS = [
-    './',
-    './index.html',
-    'https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.css',
-    'https://cdn.jsdelivr.net/npm/mapbox-gl@3.4.0/dist/mapbox-gl.min.js',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
-    'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js',
-    'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js',
-    'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap'
-];
-
-// Padrões de URL para cachear tiles do Mapbox
-const TILE_URL_PATTERNS = [
-    /api\\.mapbox\\.com\\/v4/,
-    /api\\.mapbox\\.com\\/styles/,
-    /api\\.mapbox\\.com\\/fonts/,
-    /tiles\\.mapbox\\.com/,
-    /a\\.tiles\\.mapbox\\.com/,
-    /b\\.tiles\\.mapbox\\.com/,
-    /c\\.tiles\\.mapbox\\.com/,
-    /api\\.mapbox\\.com\\/directions/
-];
-
-// Instalar - cachear recursos estáticos
-self.addEventListener('install', event => {
-    self.skipWaiting();
-
-    event.waitUntil(
-        caches.open(STATIC_CACHE_NAME).then(cache => {
-            return cache.addAll(STATIC_ASSETS.filter(url => !url.startsWith('https://fonts')));
-        }).catch(err => {
-            console.log('SW: Erro ao cachear recursos estáticos:', err);
-        })
-    );
-});
-
-// Ativar - limpar caches antigos
-self.addEventListener('activate', event => {
-    event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== CACHE_NAME &&
-                        cacheName !== TILES_CACHE_NAME &&
-                        cacheName !== STATIC_CACHE_NAME) {
-                        console.log('SW: Removendo cache antigo:', cacheName);
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        }).then(() => {
-            return self.clients.claim();
-        })
-    );
-});
-
-// Função para verificar se é um tile do Mapbox
-function isMapboxTile(url) {
-    return TILE_URL_PATTERNS.some(pattern => pattern.test(url));
-}
-
-// Função para verificar se é um recurso estático
-function isStaticAsset(url) {
-    const staticPatterns = [
-        /\\.js$/,
-        /\\.css$/,
-        /\\.woff2?$/,
-        /\\.ttf$/,
-        /fonts\\.googleapis\\.com/,
-        /fonts\\.gstatic\\.com/,
-        /cdn\\.jsdelivr\\.net/
-    ];
-    return staticPatterns.some(pattern => pattern.test(url));
-}
-
-// Interceptar requests
-self.addEventListener('fetch', event => {
-    const url = event.request.url;
-
-    // Ignorar requests que não são GET
-    if (event.request.method !== 'GET') {
-        return;
-    }
-
-    // Ignorar requests para Supabase (dados dinâmicos - gerenciados pelo IndexedDB)
-    if (url.includes('supabase.co')) {
-        return;
-    }
-
-    // Estratégia para tiles do Mapbox: Cache First, then Network
-    if (isMapboxTile(url)) {
-        event.respondWith(
-            caches.open(TILES_CACHE_NAME).then(cache => {
-                return cache.match(event.request).then(cachedResponse => {
-                    if (cachedResponse) {
-                        // Tile no cache - retorna imediatamente
-                        // Opcionalmente atualiza em background
-                        fetch(event.request).then(networkResponse => {
-                            if (networkResponse && networkResponse.ok) {
-                                cache.put(event.request, networkResponse);
-                            }
-                        }).catch(() => {});
-
-                        return cachedResponse;
-                    }
-
-                    // Tile não está no cache - busca na rede e cacheia
-                    return fetch(event.request).then(networkResponse => {
-                        if (networkResponse && networkResponse.ok) {
-                            cache.put(event.request, networkResponse.clone());
-                        }
-                        return networkResponse;
-                    }).catch(() => {
-                        // Offline e sem cache - retorna resposta vazia para tile
-                        return new Response('', { status: 503, statusText: 'Tile not available offline' });
-                    });
-                });
-            })
-        );
-        return;
-    }
-
-    // Estratégia para recursos estáticos: Cache First
-    if (isStaticAsset(url)) {
-        event.respondWith(
-            caches.match(event.request).then(cachedResponse => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-
-                return fetch(event.request).then(networkResponse => {
-                    if (networkResponse && networkResponse.ok) {
-                        const responseClone = networkResponse.clone();
-                        caches.open(STATIC_CACHE_NAME).then(cache => {
-                            cache.put(event.request, responseClone);
-                        });
-                    }
-                    return networkResponse;
-                });
-            })
-        );
-        return;
-    }
-
-    // Estratégia para HTML e outros: Network First, fallback to Cache
-    event.respondWith(
-        fetch(event.request).then(networkResponse => {
-            if (networkResponse && networkResponse.ok) {
-                const responseClone = networkResponse.clone();
-                caches.open(CACHE_NAME).then(cache => {
-                    cache.put(event.request, responseClone);
-                });
-            }
-            return networkResponse;
-        }).catch(() => {
-            return caches.match(event.request).then(cachedResponse => {
-                if (cachedResponse) {
-                    return cachedResponse;
-                }
-
-                // Para navegação, retorna a página principal cacheada
-                if (event.request.mode === 'navigate') {
-                    return caches.match('./index.html');
-                }
-
-                return new Response('Offline', { status: 503 });
-            });
-        })
-    );
-});
-
-// Mensagens do cliente
-self.addEventListener('message', event => {
-    if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
-    }
-
-    if (event.data && event.data.type === 'CACHE_TILES') {
-        // Pre-cache tiles para uma área específica
-        const { tiles } = event.data;
-        if (tiles && Array.isArray(tiles)) {
-            caches.open(TILES_CACHE_NAME).then(cache => {
-                tiles.forEach(tileUrl => {
-                    fetch(tileUrl).then(response => {
-                        if (response.ok) {
-                            cache.put(tileUrl, response);
-                        }
-                    }).catch(() => {});
-                });
-            });
-        }
-    }
-
-    if (event.data && event.data.type === 'GET_CACHE_SIZE') {
-        // Retorna informações sobre o cache
-        Promise.all([
-            caches.open(TILES_CACHE_NAME).then(c => c.keys()),
-            caches.open(STATIC_CACHE_NAME).then(c => c.keys()),
-            caches.open(CACHE_NAME).then(c => c.keys())
-        ]).then(([tiles, staticAssets, main]) => {
-            event.ports[0].postMessage({
-                tiles: tiles.length,
-                static: staticAssets.length,
-                main: main.length,
-                total: tiles.length + staticAssets.length + main.length
-            });
-        });
-    }
-});
-`;
-
-        // Registrar Service Worker
-        async function registerServiceWorker() {
-            if (!('serviceWorker' in navigator)) {
-                console.log('Service Worker não suportado');
-                return;
-            }
-
-            try {
-                // Criar blob do SW
-                const swBlob = new Blob([swCode], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(swBlob);
-
-                // Tentar registrar via blob URL (funciona em alguns navegadores)
-                try {
-                    const registration = await navigator.serviceWorker.register(swUrl, {
-                        scope: './'
-                    });
-
-                    console.log('SW registrado via blob:', registration.scope);
-                    setupServiceWorkerEvents(registration);
-                    return;
-                } catch (blobError) {
-                    console.log('Blob SW falhou, tentando arquivo externo...');
-                }
-
-                // Fallback: tentar registrar arquivo sw.js externo
-                try {
-                    const registration = await navigator.serviceWorker.register('./sw.js', {
-                        scope: './'
-                    });
-
-                    console.log('SW registrado via arquivo:', registration.scope);
-                    setupServiceWorkerEvents(registration);
-                } catch (fileError) {
-                    console.log('SW externo não encontrado. Para funcionalidade offline completa, crie o arquivo sw.js');
-                }
-
-            } catch (error) {
-                console.log('Erro ao registrar SW:', error);
-            }
-        }
-
-        // Configurar eventos do Service Worker
-        function setupServiceWorkerEvents(registration) {
-            // Verificar atualizações periodicamente
-            setInterval(() => {
-                registration.update();
-            }, 60 * 60 * 1000); // A cada hora
-
-            // Detectar nova versão disponível
-            registration.addEventListener('updatefound', () => {
-                const newWorker = registration.installing;
-
-                newWorker.addEventListener('statechange', () => {
-                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                        // Nova versão disponível
-                        showUpdateBanner(registration);
-                    }
-                });
-            });
-
-            // Quando o SW assume controle
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                // Recarregar para usar nova versão
-                window.location.reload();
-            });
-
-            // Mostrar indicador de "pronto para offline" na primeira instalação
-            if (!navigator.serviceWorker.controller) {
-                registration.installing?.addEventListener('statechange', function() {
-                    if (this.state === 'activated') {
-                        showOfflineReady();
-                    }
-                });
-            }
-        }
-
-        // Mostrar banner de atualização disponível
-        function showUpdateBanner(registration) {
-            const banner = document.createElement('div');
-            banner.className = 'pwa-update-banner';
-            banner.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span class="update-text">Nova versão disponível!</span>
-                <button onclick="updateApp()">Atualizar</button>
-            `;
-            document.body.appendChild(banner);
-
-            // Salvar referência para atualização
-            window.pendingUpdate = registration;
-        }
-
-        // Atualizar app
-        window.updateApp = function() {
-            if (window.pendingUpdate && window.pendingUpdate.waiting) {
-                window.pendingUpdate.waiting.postMessage({ type: 'SKIP_WAITING' });
-            }
-        };
-
-        // Mostrar indicador de pronto para offline
-        function showOfflineReady() {
-            const toast = document.createElement('div');
-            toast.className = 'pwa-offline-ready';
-            toast.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-                <span>App pronto para uso offline!</span>
-            `;
-            document.body.appendChild(toast);
-
-            setTimeout(() => {
-                toast.classList.add('hiding');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        // ========================================
-        // PWA - Instalação
-        // ========================================
-
-        let deferredPrompt = null;
-        let installPromptShown = false;
-
-        // Capturar evento de instalação
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-
-            // Mostrar prompt de instalação após 5 segundos
-            if (!installPromptShown && !isAppInstalled()) {
-                setTimeout(() => {
-                    showInstallPrompt();
-                }, 5000);
-            }
-        });
-
-        // Verificar se o app já está instalado
-        function isAppInstalled() {
-            // Verifica se está rodando em modo standalone
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                return true;
-            }
-            // iOS
-            if (window.navigator.standalone === true) {
-                return true;
-            }
-            return false;
-        }
-
-        // Mostrar prompt de instalação customizado
-        function showInstallPrompt() {
-            if (!deferredPrompt || installPromptShown) return;
-            installPromptShown = true;
-
-            const prompt = document.createElement('button');
-            prompt.className = 'pwa-install-prompt';
-            prompt.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                <div class="pwa-text">
-                    <span class="pwa-title">Instalar Mapa Entregas</span>
-                    <span class="pwa-subtitle">Acesso rápido e funciona offline</span>
-                </div>
-                <div class="pwa-close" onclick="event.stopPropagation(); dismissInstallPrompt();">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </div>
-            `;
-
-            prompt.addEventListener('click', async () => {
-                if (!deferredPrompt) return;
-
-                deferredPrompt.prompt();
-                const { outcome } = await deferredPrompt.userChoice;
-
-                if (outcome === 'accepted') {
-                    console.log('PWA instalado!');
-                }
-
-                deferredPrompt = null;
-                dismissInstallPrompt();
-            });
-
-            document.body.appendChild(prompt);
-        }
-
-        // Dispensar prompt de instalação
-        window.dismissInstallPrompt = function() {
-            const prompt = document.querySelector('.pwa-install-prompt');
-            if (prompt) {
-                prompt.classList.add('hiding');
-                setTimeout(() => prompt.remove(), 300);
-            }
-        };
-
-        // Detectar quando app é instalado
-        window.addEventListener('appinstalled', () => {
-            console.log('PWA foi instalado');
-            deferredPrompt = null;
-            dismissInstallPrompt();
-        });
-
-        // Iniciar registro do Service Worker
-        if (document.readyState === 'complete') {
-            registerServiceWorker();
-        } else {
-            window.addEventListener('load', registerServiceWorker);
-        }
-
     </script>
 </body>
 </html>
