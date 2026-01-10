@@ -8497,6 +8497,7 @@
                                     let originalLat = null;
                                     let originalLng = null;
 
+                                    // Tenta buscar de window.currentRouteData primeiro
                                     if (window.currentRouteData) {
                                         const itemsForThisMarker = window.currentRouteData.filter(item =>
                                             ids.includes(item.id) && item.latitude && item.longitude
@@ -8505,6 +8506,25 @@
                                         if (itemsForThisMarker.length > 0) {
                                             originalLat = itemsForThisMarker.reduce((sum, item) => sum + item.latitude, 0) / itemsForThisMarker.length;
                                             originalLng = itemsForThisMarker.reduce((sum, item) => sum + item.longitude, 0) / itemsForThisMarker.length;
+                                        }
+                                    }
+
+                                    // Se não encontrou, busca do cache da planilha (para quando marcadores são carregados do cache)
+                                    if (!originalLat || !originalLng) {
+                                        try {
+                                            const cachedPlanilha = await getAllFromOfflineDB('cachedPlanilha');
+                                            if (cachedPlanilha && cachedPlanilha.length > 0) {
+                                                const itemsForThisMarker = cachedPlanilha.filter(item =>
+                                                    ids.includes(item.id) && item.latitude && item.longitude
+                                                );
+
+                                                if (itemsForThisMarker.length > 0) {
+                                                    originalLat = itemsForThisMarker.reduce((sum, item) => sum + item.latitude, 0) / itemsForThisMarker.length;
+                                                    originalLng = itemsForThisMarker.reduce((sum, item) => sum + item.longitude, 0) / itemsForThisMarker.length;
+                                                }
+                                            }
+                                        } catch (e) {
+                                            // Falha ao buscar do cache
                                         }
                                     }
 
