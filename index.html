@@ -7768,25 +7768,21 @@
                 } else {
                     map.addSource('route-stops', {
                         type: 'geojson',
-                        data: geojson,
-                        promoteId: 'ids' // Usa 'ids' como ID único para feature-state
+                        data: geojson
                     });
 
-                    // Add symbol layer with custom pin icons
-                    // Usa coalesce para tentar feature-state primeiro, depois fallback para property
                     map.addLayer({
                         id: 'route-stops-pins',
                         type: 'symbol',
                         source: 'route-stops',
                         layout: {
-                            'icon-image': ['coalesce', ['feature-state', 'icon'], ['get', 'icon']],
+                            'icon-image': ['get', 'icon'],
                             'icon-size': 1,
                             'icon-anchor': 'bottom',
                             'icon-allow-overlap': true
                         }
                     });
 
-                    // Configura event listeners (será chamado também pelo restoreRouteMarkers)
                     setupRouteStopsEventListeners();
                 }
 
@@ -7839,56 +7835,61 @@
         const fixedPopupClose = document.getElementById('routeStopPopupClose');
         let currentFixedPopupProps = null;
 
-        // ========== SISTEMA DE ATUALIZAÇÃO DEBOUNCED ==========
-        // Evita chamar setData() múltiplas vezes - agrupa atualizações
-        let pendingMapUpdate = null;
-        let pendingSourceData = null;
+        // OVERLAY MARKERS - marcadores HTML individuais para status alterados (evita setData freeze)
+        const overlayMarkers = new Map(); // ids -> mapboxgl.Marker
 
-        function scheduleMapUpdate(sourceData) {
-            pendingSourceData = sourceData;
-            if (pendingMapUpdate) return; // já agendado
-            pendingMapUpdate = setTimeout(() => {
-                if (pendingSourceData && map.getSource('route-stops')) {
-                    map.getSource('route-stops').setData(pendingSourceData);
-                }
-                pendingMapUpdate = null;
-                pendingSourceData = null;
-            }, 300); // Agrupa updates em 300ms
-        }
-
-        // ========== PRÉ-GERAÇÃO DE ÍCONES ==========
-        // Gera todos os ícones possíveis no início para evitar lag depois
-        function preGenerateIcons() {
-            const colors = ['gray', 'gray-x', 'green', 'purple', 'red'];
-            const counts = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-            let index = 0;
-            const icons = [];
-            colors.forEach(c => counts.forEach(n => icons.push({ c, n })));
-
-            function generateNext() {
-                if (index >= icons.length) return;
-                const { c, n } = icons[index++];
-                const iconName = `pin-${c}-${n}`;
-                if (!map.hasImage(iconName)) {
-                    const { dataUrl, pixelRatio } = generatePinIcon(n, c);
-                    const img = new Image();
-                    img.onload = () => {
-                        if (!map.hasImage(iconName)) {
-                            try { map.addImage(iconName, img, { pixelRatio }); } catch(e) {}
-                        }
-                        setTimeout(generateNext, 5); // próximo ícone
-                    };
-                    img.src = dataUrl;
-                } else {
-                    setTimeout(generateNext, 0);
-                }
+        // Cria marcador HTML overlay para mostrar atualização visual instantânea
+        function createOverlayMarker(coords, icon, ids) {
+            // Se já existe overlay para este ids, remove primeiro
+            if (overlayMarkers.has(ids)) {
+                overlayMarkers.get(ids).remove();
             }
-            // Inicia em background
-            setTimeout(generateNext, 1000);
+
+            // Extrai cor e count do nome do ícone (ex: pin-gray-5)
+            const parts = icon.replace('pin-', '').split('-');
+            const count = parts.pop();
+            const color = parts.join('-');
+
+            // Cores do pin
+            const colorMap = {
+                red: { bg: 'linear-gradient(135deg, #f87171 0%, #ef4444 50%, #dc2626 100%)', needle: '#dc2626' },
+                green: { bg: 'linear-gradient(135deg, #4ade80 0%, #22c55e 50%, #16a34a 100%)', needle: '#16a34a' },
+                purple: { bg: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 50%, #7c3aed 100%)', needle: '#7c3aed' },
+                gray: { bg: 'linear-gradient(135deg, #9ca3af 0%, #6b7280 50%, #4b5563 100%)', needle: '#6b7280' },
+                'gray-x': { bg: 'linear-gradient(135deg, #9ca3af 0%, #6b7280 50%, #4b5563 100%)', needle: '#6b7280' }
+            };
+            const colors = colorMap[color] || colorMap.red;
+
+            // Cria elemento HTML do pin
+            const el = document.createElement('div');
+            el.className = 'overlay-pin-marker';
+            el.style.cssText = 'width:30px;height:50px;position:relative;cursor:pointer;pointer-events:none;';
+
+            // Conteúdo do pin (número ou X)
+            const content = color === 'gray-x'
+                ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>`
+                : `<span style="color:white;font-size:11px;font-weight:700;">${count}</span>`;
+
+            el.innerHTML = `
+                <div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:4px;height:24px;background:${colors.needle};"></div>
+                <div style="position:absolute;bottom:4px;left:50%;transform:translate(-50%,-100%);width:6px;height:3px;background:rgba(0,0,0,0.35);border-radius:50%;filter:blur(1px);"></div>
+                <div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:22px;height:22px;background:${colors.bg};border-radius:50%;border:2.5px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;">${content}</div>
+            `;
+
+            // Cria marcador Mapbox
+            const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+                .setLngLat(coords)
+                .addTo(map);
+
+            overlayMarkers.set(ids, marker);
+            return marker;
         }
 
-        // Chama pré-geração quando mapa carrega
-        map.on('load', preGenerateIcons);
+        // Remove todos os overlay markers
+        function clearOverlayMarkers() {
+            overlayMarkers.forEach(marker => marker.remove());
+            overlayMarkers.clear();
+        }
 
         // Fecha popup fixo
         function closeFixedPopup() {
@@ -7923,33 +7924,35 @@
                     const action = btn.dataset.action;
                     const ids = btn.dataset.ids.split(',').map(id => parseInt(id));
                     const statusToSave = btn.classList.contains('active') ? 'pending' : action;
+
+                    // Captura coordenadas ANTES de fechar o popup
+                    const coords = [parseFloat(btn.dataset.lng || 0), parseFloat(btn.dataset.lat || 0)];
                     closeFixedPopup();
 
                     // Calcula novo ícone
                     const newColor = statusToSave === 'delivered' ? 'gray' : statusToSave === 'not_delivered' ? 'gray-x' : props.isRegistered ? (props.matchType === 'exact' ? 'green' : 'purple') : 'red';
                     const newIcon = `pin-${newColor}-${props.packageCount}`;
 
-                    // INSTANTÂNEO: usa setFeatureState em vez de setData
-                    map.setFeatureState(
-                        { source: 'route-stops', id: props.ids },
-                        { icon: newIcon }
-                    );
-
-                    // Atualiza dados internos para persistência
+                    // Atualiza dados internos
                     const sourceData = map.getSource('route-stops')._data;
                     const feature = sourceData.features.find(f => f.properties.ids === props.ids);
+                    let featureCoords = coords;
                     if (feature) {
                         feature.properties.deliveryStatus = statusToSave;
                         feature.properties.icon = newIcon;
+                        featureCoords = feature.geometry.coordinates;
                     }
 
+                    // SOLUÇÃO DEFINITIVA: Cria overlay marker HTML instantaneamente
+                    // Isso evita chamar setData() que causa travamento
+                    createOverlayMarker(featureCoords, newIcon, props.ids);
+
+                    // Atualiza estatísticas imediatamente
                     updateFixedStatsPanel();
 
-                    // Salva em background
-                    setTimeout(() => {
-                        saveRouteMarkersData(sourceData).catch(() => {});
-                        updateDeliveryStatus(ids, statusToSave).catch(() => {});
-                    }, 50);
+                    // Salva dados e sincroniza - SEM atualizar mapa visual via setData
+                    saveRouteMarkersData(sourceData).catch(() => {});
+                    updateDeliveryStatus(ids, statusToSave).catch(() => {});
                     return;
                 }
 
@@ -7981,14 +7984,14 @@
                             feature.properties.matchedClientAddress = '';
                             feature.properties.wasDeactivated = true;
                             feature.geometry.coordinates = [lng, lat];
-                            feature.properties.icon = `pin-red-${props.packageCount}`;
-                            scheduleMapUpdate(sourceData);
+                            const newIcon = `pin-red-${props.packageCount}`;
+                            feature.properties.icon = newIcon;
+                            // Cria overlay marker para atualização visual instantânea
+                            createOverlayMarker([lng, lat], newIcon, props.ids);
                             map.flyTo({ center: [lng, lat], zoom: 16, duration: 1500 });
                             updateFixedStatsPanel();
-                            setTimeout(() => {
-                                saveRouteMarkersData(sourceData).catch(() => {});
-                                updateSimilarityOverride(ids, true, lat, lng).catch(() => {});
-                            }, 50);
+                            saveRouteMarkersData(sourceData).catch(() => {});
+                            updateSimilarityOverride(ids, true, lat, lng).catch(() => {});
                         }
                     }
                     return;
@@ -8011,14 +8014,14 @@
                         feature.properties.originalMatchType = null;
                         feature.properties.originalMatchedClientAddress = null;
                         feature.properties.originalCoordinates = null;
-                        feature.properties.icon = `pin-purple-${props.packageCount}`;
-                        scheduleMapUpdate(sourceData);
+                        const newIcon = `pin-purple-${props.packageCount}`;
+                        feature.properties.icon = newIcon;
+                        // Cria overlay marker para atualização visual instantânea
+                        createOverlayMarker(origCoords, newIcon, props.ids);
                         map.flyTo({ center: origCoords, zoom: 16, duration: 1500 });
                         updateFixedStatsPanel();
-                        setTimeout(() => {
-                            saveRouteMarkersData(sourceData).catch(() => {});
-                            updateSimilarityOverride(ids, false).catch(() => {});
-                        }, 50);
+                        saveRouteMarkersData(sourceData).catch(() => {});
+                        updateSimilarityOverride(ids, false).catch(() => {});
                     }
                     return;
                 }
@@ -8073,7 +8076,8 @@
                 const orderSection = hasMultiple ? '' : `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;"><span style="font-size:11px;color:#64748b;">Ordem:</span><div class="route-popup-orders">${ordersHtml || '<span style="color:#94a3b8;">Sem ordem</span>'}</div></div>`;
 
                 // Atualiza conteúdo (apenas innerHTML, sem criar elementos)
-                fixedPopupContent.innerHTML = `<div class="route-popup-content">${addressDisplay}${orderSection}<div class="route-popup-actions"><button class="route-popup-btn ${isDel ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span class="btn-text">${isDel ? 'Desfazer' : 'Entregue'}</span></button><button class="route-popup-btn not-delivered ${isNotDel ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span class="btn-text">${isNotDel ? 'Desfazer' : 'Não entreg'}</span></button><button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>Navegar</button></div></div>`;
+                // NOTA: Adicionado data-lng e data-lat nos botões de status para o overlay marker
+                fixedPopupContent.innerHTML = `<div class="route-popup-content">${addressDisplay}${orderSection}<div class="route-popup-actions"><button class="route-popup-btn ${isDel ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}" data-lng="${coords[0]}" data-lat="${coords[1]}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span class="btn-text">${isDel ? 'Desfazer' : 'Entregue'}</span></button><button class="route-popup-btn not-delivered ${isNotDel ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}" data-lng="${coords[0]}" data-lat="${coords[1]}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg><span class="btn-text">${isNotDel ? 'Desfazer' : 'Não entreg'}</span></button><button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>Navegar</button></div></div>`;
 
                 // Posiciona popup na tela
                 const point = map.project(coords);
@@ -8094,6 +8098,7 @@
                 map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
             }
             closeFixedPopup();
+            clearOverlayMarkers(); // Limpa overlay markers ao remover marcadores
             routeMarkersVisible = false;
             routeMarkersBtn.classList.remove('active');
             hideFixedStatsPanel();
@@ -8206,8 +8211,7 @@
                 } else {
                     map.addSource('route-stops', {
                         type: 'geojson',
-                        data: savedGeojson,
-                        promoteId: 'ids' // Usa 'ids' como ID único para feature-state
+                        data: savedGeojson
                     });
 
                     map.addLayer({
@@ -8215,7 +8219,7 @@
                         type: 'symbol',
                         source: 'route-stops',
                         layout: {
-                            'icon-image': ['coalesce', ['feature-state', 'icon'], ['get', 'icon']],
+                            'icon-image': ['get', 'icon'],
                             'icon-size': 1,
                             'icon-anchor': 'bottom',
                             'icon-allow-overlap': true
@@ -8237,6 +8241,11 @@
                     routeBtn.classList.remove('loading');
                     routeBtn.style.pointerEvents = 'auto';
                 }
+
+                // OVERLAY MARKERS: Recria overlays para marcadores com status alterado
+                // Isso garante que marcadores salvos com status different de 'pending'
+                // mostrem a cor correta imediatamente (já que setData não travou aqui porque é inicial)
+                clearOverlayMarkers();
 
                 // Atualizar painel de estatísticas
                 updateFixedStatsPanel();
