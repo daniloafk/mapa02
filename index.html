@@ -7768,16 +7768,18 @@
                 } else {
                     map.addSource('route-stops', {
                         type: 'geojson',
-                        data: geojson
+                        data: geojson,
+                        promoteId: 'ids' // Usa 'ids' como ID único para feature-state
                     });
 
                     // Add symbol layer with custom pin icons
+                    // Usa coalesce para tentar feature-state primeiro, depois fallback para property
                     map.addLayer({
                         id: 'route-stops-pins',
                         type: 'symbol',
                         source: 'route-stops',
                         layout: {
-                            'icon-image': ['get', 'icon'],
+                            'icon-image': ['coalesce', ['feature-state', 'icon'], ['get', 'icon']],
                             'icon-size': 1,
                             'icon-anchor': 'bottom',
                             'icon-allow-overlap': true
@@ -7923,17 +7925,26 @@
                     const statusToSave = btn.classList.contains('active') ? 'pending' : action;
                     closeFixedPopup();
 
-                    // Atualiza dados localmente e usa debounce para atualizar mapa
+                    // Calcula novo ícone
+                    const newColor = statusToSave === 'delivered' ? 'gray' : statusToSave === 'not_delivered' ? 'gray-x' : props.isRegistered ? (props.matchType === 'exact' ? 'green' : 'purple') : 'red';
+                    const newIcon = `pin-${newColor}-${props.packageCount}`;
+
+                    // INSTANTÂNEO: usa setFeatureState em vez de setData
+                    map.setFeatureState(
+                        { source: 'route-stops', id: props.ids },
+                        { icon: newIcon }
+                    );
+
+                    // Atualiza dados internos para persistência
                     const sourceData = map.getSource('route-stops')._data;
                     const feature = sourceData.features.find(f => f.properties.ids === props.ids);
                     if (feature) {
                         feature.properties.deliveryStatus = statusToSave;
-                        const newColor = statusToSave === 'delivered' ? 'gray' : statusToSave === 'not_delivered' ? 'gray-x' : props.isRegistered ? (props.matchType === 'exact' ? 'green' : 'purple') : 'red';
-                        feature.properties.icon = `pin-${newColor}-${props.packageCount}`;
-                        // USA DEBOUNCE - não trava!
-                        scheduleMapUpdate(sourceData);
-                        updateFixedStatsPanel();
+                        feature.properties.icon = newIcon;
                     }
+
+                    updateFixedStatsPanel();
+
                     // Salva em background
                     setTimeout(() => {
                         saveRouteMarkersData(sourceData).catch(() => {});
@@ -8195,7 +8206,8 @@
                 } else {
                     map.addSource('route-stops', {
                         type: 'geojson',
-                        data: savedGeojson
+                        data: savedGeojson,
+                        promoteId: 'ids' // Usa 'ids' como ID único para feature-state
                     });
 
                     map.addLayer({
@@ -8203,7 +8215,7 @@
                         type: 'symbol',
                         source: 'route-stops',
                         layout: {
-                            'icon-image': ['get', 'icon'],
+                            'icon-image': ['coalesce', ['feature-state', 'icon'], ['get', 'icon']],
                             'icon-size': 1,
                             'icon-anchor': 'bottom',
                             'icon-allow-overlap': true
