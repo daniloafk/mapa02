@@ -4794,8 +4794,8 @@
             if (!map || !map.getSource || !map.getSource('route-stops')) return;
 
             try {
-                const source = map.getSource('route-stops');
-                const currentData = source._data;
+                // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
+                const currentData = cachedRouteStopsData;
                 if (!currentData || !currentData.features) return;
 
                 // Cria mapa de ID -> novo status
@@ -4947,8 +4947,8 @@
                 // Se os marcadores de rota estiverem visíveis, atualiza incrementalmente
                 if (routeMarkersVisible && map && map.getSource && map.getSource('route-stops')) {
                     // Só adicionamos os que já têm coordenadas
-                    const source = map.getSource('route-stops');
-                    const currentData = source._data;
+                    // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
+                    const currentData = cachedRouteStopsData;
                     if (currentData && currentData.features) {
                         const existingAddresses = new Set(
                             currentData.features.map(f => f.properties.destination_address)
@@ -6143,6 +6143,7 @@
         let routeMarkersVisible = false;
         let routePopup = null;
         let routeStopsListenersConfigured = false; // Controla se os event listeners já foram configurados
+        let cachedRouteStopsData = null; // PERFORMANCE: Cache do GeoJSON para evitar acesso lento ao _data do Mapbox
 
         // Update delivery status in Supabase or offline
         async function updateDeliveryStatus(ids, status) {
@@ -6418,9 +6419,9 @@
             // If no stats provided, calculate from current markers
             if (!stats) {
                 try {
-                    if (map && map.getSource && map.getSource('route-stops')) {
-                        const source = map.getSource('route-stops');
-                        const data = source._data;
+                    // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
+                    if (cachedRouteStopsData) {
+                        const data = cachedRouteStopsData;
 
                         if (data && data.features) {
                             let markersCount = 0; // Total de marcadores verdes + vermelhos
@@ -7700,6 +7701,7 @@
                     });
 
                     map.getSource('route-stops').setData(geojson);
+                    cachedRouteStopsData = geojson; // PERFORMANCE: Atualiza cache
                     // Force Mapbox to re-render the layer by toggling visibility
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
@@ -7708,6 +7710,7 @@
                         type: 'geojson',
                         data: geojson
                     });
+                    cachedRouteStopsData = geojson; // PERFORMANCE: Inicializa cache
 
                     // Add symbol layer with custom pin icons
                     map.addLayer({
@@ -7777,17 +7780,26 @@
 
             // Add click event for popup
             map.on('click', 'route-stops-pins', (e) => {
+                        // PERFORMANCE: Captura dados mínimos do evento imediatamente
                         const feature = e.features[0];
                         const coords = feature.geometry.coordinates.slice();
                         const props = feature.properties;
 
+                        // PERFORMANCE: Usa requestAnimationFrame para não bloquear a UI
+                        requestAnimationFrame(() => {
                         const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
                         const ordersHtml = sequencesArr.map(seq =>
                             `<span class="route-popup-order">${seq}</span>`
                         ).join('');
 
                         // Check if there are multiple addresses in this stop
-                        const addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
+                        // PERFORMANCE: Try/catch para evitar erros de JSON.parse bloqueando
+                        let addressSequencePairs = [];
+                        try {
+                            addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
+                        } catch (e) {
+                            addressSequencePairs = [];
+                        }
                         const hasMultipleAddresses = addressSequencePairs.length > 1;
 
                         // Build bairro and CEP info display
@@ -7908,7 +7920,8 @@
                                 routePopup.remove();
 
                                 // Atualiza a propriedade do marcador localmente
-                                const sourceData = map.getSource('route-stops')._data;
+                                // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
+                                const sourceData = cachedRouteStopsData;
                                 const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
                                 if (markerFeature) {
                                     markerFeature.properties.deliveryStatus = statusToSave;
@@ -7992,7 +8005,8 @@
                                 routePopup.remove();
 
                                 // Busca as coordenadas originais da planilha para esses IDs
-                                const sourceData = map.getSource('route-stops')._data;
+                                // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
+                                const sourceData = cachedRouteStopsData;
                                 const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
 
                                 if (markerFeature) {
@@ -8090,7 +8104,8 @@
                                 routePopup.remove();
 
                                 // Busca o marcador
-                                const sourceData = map.getSource('route-stops')._data;
+                                // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
+                                const sourceData = cachedRouteStopsData;
                                 const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
 
                                 if (markerFeature && props.originalCoordinates) {
@@ -8159,6 +8174,7 @@
                             });
                         }
 
+                        }); // Fim do requestAnimationFrame
             });
 
             // Change cursor on hover
@@ -8275,6 +8291,7 @@
                 }
 
                 // Adicionar ou atualizar source
+                cachedRouteStopsData = savedGeojson; // PERFORMANCE: Inicializa cache com dados restaurados
                 if (map.getSource('route-stops')) {
                     map.getSource('route-stops').setData(savedGeojson);
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
