@@ -6144,6 +6144,34 @@
         let routePopup = null;
         let routeStopsListenersConfigured = false; // Controla se os event listeners já foram configurados
         let cachedRouteStopsData = null; // PERFORMANCE: Cache do GeoJSON para evitar acesso lento ao _data do Mapbox
+        let routeStopsReady = false; // PERFORMANCE: Flag para indicar que o layer está pronto para interações
+        const parsedAddressSequencePairsCache = new Map(); // PERFORMANCE: Cache de addressSequencePairs já parseados
+
+        // PERFORMANCE: Pré-parseia todos os addressSequencePairs do GeoJSON
+        // Isso evita JSON.parse síncrono no momento do clique
+        function preCacheAddressSequencePairs(geojson) {
+            if (!geojson || !geojson.features) return;
+            parsedAddressSequencePairsCache.clear();
+            geojson.features.forEach(feature => {
+                const ids = feature.properties.ids;
+                const pairsStr = feature.properties.addressSequencePairs;
+                if (ids && pairsStr) {
+                    try {
+                        parsedAddressSequencePairsCache.set(ids, JSON.parse(pairsStr));
+                    } catch (e) {
+                        parsedAddressSequencePairsCache.set(ids, []);
+                    }
+                }
+            });
+        }
+
+        // PERFORMANCE: Obtém addressSequencePairs do cache (instantâneo)
+        function getCachedAddressSequencePairs(ids) {
+            if (parsedAddressSequencePairsCache.has(ids)) {
+                return parsedAddressSequencePairsCache.get(ids);
+            }
+            return [];
+        }
 
         // Update delivery status in Supabase or offline
         async function updateDeliveryStatus(ids, status) {
@@ -7702,15 +7730,19 @@
 
                     map.getSource('route-stops').setData(geojson);
                     cachedRouteStopsData = geojson; // PERFORMANCE: Atualiza cache
+                    preCacheAddressSequencePairs(geojson); // PERFORMANCE: Pré-parseia JSON
                     // Force Mapbox to re-render the layer by toggling visibility
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+                    routeStopsReady = true; // Layer já existe, está pronto
                 } else {
+                    routeStopsReady = false; // Marca como não pronto até idle
                     map.addSource('route-stops', {
                         type: 'geojson',
                         data: geojson
                     });
                     cachedRouteStopsData = geojson; // PERFORMANCE: Inicializa cache
+                    preCacheAddressSequencePairs(geojson); // PERFORMANCE: Pré-parseia JSON
 
                     // Add symbol layer with custom pin icons
                     map.addLayer({
@@ -7725,8 +7757,11 @@
                         }
                     });
 
-                    // Configura event listeners (será chamado também pelo restoreRouteMarkers)
-                    setupRouteStopsEventListeners();
+                    // PERFORMANCE: Aguarda o Mapbox terminar de indexar antes de habilitar cliques
+                    map.once('idle', () => {
+                        routeStopsReady = true;
+                        setupRouteStopsEventListeners();
+                    });
                 }
 
                 // Show layer
@@ -7780,10 +7815,19 @@
 
             // Add click event for popup
             map.on('click', 'route-stops-pins', (e) => {
+                        // PERFORMANCE: Bloqueia clique se o layer ainda não está pronto
+                        if (!routeStopsReady) {
+                            return;
+                        }
+
                         // PERFORMANCE: Captura dados mínimos do evento imediatamente
                         const feature = e.features[0];
                         const coords = feature.geometry.coordinates.slice();
                         const props = feature.properties;
+
+                        // PERFORMANCE: Obtém do cache pré-parseado (instantâneo, sem JSON.parse)
+                        const addressSequencePairs = getCachedAddressSequencePairs(props.ids);
+                        const hasMultipleAddresses = addressSequencePairs.length > 1;
 
                         // PERFORMANCE: Usa requestAnimationFrame para não bloquear a UI
                         requestAnimationFrame(() => {
@@ -7791,16 +7835,6 @@
                         const ordersHtml = sequencesArr.map(seq =>
                             `<span class="route-popup-order">${seq}</span>`
                         ).join('');
-
-                        // Check if there are multiple addresses in this stop
-                        // PERFORMANCE: Try/catch para evitar erros de JSON.parse bloqueando
-                        let addressSequencePairs = [];
-                        try {
-                            addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
-                        } catch (e) {
-                            addressSequencePairs = [];
-                        }
-                        const hasMultipleAddresses = addressSequencePairs.length > 1;
 
                         // Build bairro and CEP info display
                         const bairroDisplay = props.bairro ? `<span style="font-size: 10px; color: #8b5cf6; font-weight: 500; padding: 2px 6px; background: rgba(139, 92, 246, 0.1); border-radius: 4px;">🏘️ ${props.bairro}</span>` : '';
@@ -7834,13 +7868,20 @@
                             : '';
 
                         if (hasMultipleAddresses) {
+                            // PERFORMANCE: Limita a 10 endereços para evitar DOM pesado
+                            const MAX_ADDRESSES_TO_SHOW = 10;
+                            const pairsToShow = addressSequencePairs.slice(0, MAX_ADDRESSES_TO_SHOW);
+                            const hiddenCount = addressSequencePairs.length - pairsToShow.length;
+                            const hiddenMsg = hiddenCount > 0 ? `<div style="font-size: 10px; color: #94a3b8; font-style: italic; margin-top: 4px;">+${hiddenCount} endereços adicionais...</div>` : '';
+
                             addressDisplay = `
                                 ${similarityHeader}
                                 ${reactivateSimilarityHeader}
                                 <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
                                 ${locationInfo}
                                 <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
-                                    ${addressSequencePairs.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}
+                                    ${pairsToShow.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}
+                                    ${hiddenMsg}
                                 </div>
                             `;
                         } else if (addressSequencePairs.length === 1) {
@@ -8292,10 +8333,15 @@
 
                 // Adicionar ou atualizar source
                 cachedRouteStopsData = savedGeojson; // PERFORMANCE: Inicializa cache com dados restaurados
+                preCacheAddressSequencePairs(savedGeojson); // PERFORMANCE: Pré-parseia JSON imediatamente
+
                 if (map.getSource('route-stops')) {
                     map.getSource('route-stops').setData(savedGeojson);
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+                    routeStopsReady = true; // Source já existe, pronto para cliques
+                    setupRouteStopsEventListeners();
                 } else {
+                    routeStopsReady = false; // Marca como não pronto até idle
                     map.addSource('route-stops', {
                         type: 'geojson',
                         data: savedGeojson
@@ -8312,13 +8358,16 @@
                             'icon-allow-overlap': true
                         }
                     });
+
+                    // PERFORMANCE: Aguarda o Mapbox terminar de indexar antes de habilitar cliques
+                    map.once('idle', () => {
+                        routeStopsReady = true;
+                        setupRouteStopsEventListeners();
+                    });
                 }
 
                 // Mostrar layer
                 map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
-
-                // Configura event listeners para popups (reutiliza a mesma função do loadRouteMarkers)
-                setupRouteStopsEventListeners();
 
                 routeMarkersVisible = true;
                 routeMarkersBtn.classList.add('active');
