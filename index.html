@@ -6146,13 +6146,34 @@
         let cachedRouteStopsData = null; // PERFORMANCE: Cache do GeoJSON para evitar acesso lento ao _data do Mapbox
         let routeStopsReady = false; // PERFORMANCE: Flag para indicar que o layer está pronto para interações
         const parsedAddressSequencePairsCache = new Map(); // PERFORMANCE: Cache de addressSequencePairs já parseados
+        const featuresByIdIndex = new Map(); // PERFORMANCE: Índice para acesso O(1) aos features por ID
+
+        // PERFORMANCE: Cria índice de features por ID para acesso instantâneo
+        // Isso elimina busca linear O(n) no momento do clique
+        function buildFeatureIndex(geojson) {
+            featuresByIdIndex.clear();
+            if (!geojson || !geojson.features) return;
+            for (let i = 0; i < geojson.features.length; i++) {
+                const feature = geojson.features[i];
+                const ids = feature.properties.ids;
+                if (ids) {
+                    featuresByIdIndex.set(ids, feature);
+                }
+            }
+        }
+
+        // PERFORMANCE: Obtém feature pelo ID instantaneamente O(1)
+        function getFeatureById(ids) {
+            return featuresByIdIndex.get(ids) || null;
+        }
 
         // PERFORMANCE: Pré-parseia todos os addressSequencePairs do GeoJSON
         // Isso evita JSON.parse síncrono no momento do clique
         function preCacheAddressSequencePairs(geojson) {
             if (!geojson || !geojson.features) return;
             parsedAddressSequencePairsCache.clear();
-            geojson.features.forEach(feature => {
+            for (let i = 0; i < geojson.features.length; i++) {
+                const feature = geojson.features[i];
                 const ids = feature.properties.ids;
                 const pairsStr = feature.properties.addressSequencePairs;
                 if (ids && pairsStr) {
@@ -6162,15 +6183,12 @@
                         parsedAddressSequencePairsCache.set(ids, []);
                     }
                 }
-            });
+            }
         }
 
         // PERFORMANCE: Obtém addressSequencePairs do cache (instantâneo)
         function getCachedAddressSequencePairs(ids) {
-            if (parsedAddressSequencePairsCache.has(ids)) {
-                return parsedAddressSequencePairsCache.get(ids);
-            }
-            return [];
+            return parsedAddressSequencePairsCache.get(ids) || [];
         }
 
         // Update delivery status in Supabase or offline
@@ -7731,6 +7749,7 @@
                     map.getSource('route-stops').setData(geojson);
                     cachedRouteStopsData = geojson; // PERFORMANCE: Atualiza cache
                     preCacheAddressSequencePairs(geojson); // PERFORMANCE: Pré-parseia JSON
+                    buildFeatureIndex(geojson); // PERFORMANCE: Cria índice para acesso O(1)
                     // Force Mapbox to re-render the layer by toggling visibility
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
@@ -7743,6 +7762,7 @@
                     });
                     cachedRouteStopsData = geojson; // PERFORMANCE: Inicializa cache
                     preCacheAddressSequencePairs(geojson); // PERFORMANCE: Pré-parseia JSON
+                    buildFeatureIndex(geojson); // PERFORMANCE: Cria índice para acesso O(1)
 
                     // Add symbol layer with custom pin icons
                     map.addLayer({
@@ -7963,7 +7983,7 @@
                                 // Atualiza a propriedade do marcador localmente
                                 // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
                                 const sourceData = cachedRouteStopsData;
-                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
+                                const markerFeature = getFeatureById(props.ids); // PERFORMANCE: O(1) em vez de O(n)
                                 if (markerFeature) {
                                     markerFeature.properties.deliveryStatus = statusToSave;
 
@@ -8048,7 +8068,7 @@
                                 // Busca as coordenadas originais da planilha para esses IDs
                                 // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
                                 const sourceData = cachedRouteStopsData;
-                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
+                                const markerFeature = getFeatureById(props.ids); // PERFORMANCE: O(1) em vez de O(n)
 
                                 if (markerFeature) {
                                     // Busca as coordenadas originais da planilha
@@ -8147,7 +8167,7 @@
                                 // Busca o marcador
                                 // PERFORMANCE: Usa cache em vez de acessar _data interno do Mapbox
                                 const sourceData = cachedRouteStopsData;
-                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
+                                const markerFeature = getFeatureById(props.ids); // PERFORMANCE: O(1) em vez de O(n)
 
                                 if (markerFeature && props.originalCoordinates) {
                                     // Restaura as coordenadas originais (do cliente cadastrado)
@@ -8334,6 +8354,7 @@
                 // Adicionar ou atualizar source
                 cachedRouteStopsData = savedGeojson; // PERFORMANCE: Inicializa cache com dados restaurados
                 preCacheAddressSequencePairs(savedGeojson); // PERFORMANCE: Pré-parseia JSON imediatamente
+                buildFeatureIndex(savedGeojson); // PERFORMANCE: Cria índice para acesso O(1)
 
                 if (map.getSource('route-stops')) {
                     map.getSource('route-stops').setData(savedGeojson);
