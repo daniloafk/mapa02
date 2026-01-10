@@ -84,7 +84,6 @@
             width: 100%;
             height: 100%;
             touch-action: none; /* Let Mapbox handle all touch gestures */
-            contain: strict; /* PERFORMANCE: Isola renderização do mapa */
         }
 
         /* Location Error */
@@ -380,15 +379,12 @@
             z-index: 999;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            will-change: opacity; /* PERFORMANCE: Otimiza transição */
-            pointer-events: none;
+            transition: all 0.3s ease;
         }
 
         .overlay.active {
             opacity: 1;
             visibility: visible;
-            pointer-events: auto;
         }
 
         /* Sidebar */
@@ -406,8 +402,6 @@
             display: flex;
             flex-direction: column;
             box-shadow: var(--shadow);
-            will-change: transform; /* PERFORMANCE: Otimiza animação de slide */
-            contain: layout style; /* PERFORMANCE: Isola layout da sidebar */
         }
 
         body.dark .sidebar {
@@ -663,19 +657,16 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            contain: content; /* PERFORMANCE: Isola renderização da lista */
         }
 
         .cliente-item {
             background: var(--bg-light);
             border-radius: 12px;
             padding: 14px;
-            transition: transform 0.2s ease, border-color 0.2s ease;
+            transition: all 0.2s ease;
             cursor: pointer;
             border: 2px solid transparent;
             position: relative;
-            content-visibility: auto; /* PERFORMANCE: Pula renderização de itens fora da tela */
-            contain-intrinsic-size: 0 80px; /* Altura estimada do item */
         }
 
         body.dark .cliente-item {
@@ -1379,15 +1370,12 @@
             z-index: 10000;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            will-change: opacity; /* PERFORMANCE */
-            pointer-events: none;
+            transition: all 0.3s ease;
         }
 
         .upload-modal.active {
             opacity: 1;
             visibility: visible;
-            pointer-events: auto;
         }
 
         .upload-modal-content {
@@ -1861,13 +1849,14 @@
             gap: 6px;
             padding: 4px 8px;
             border-radius: 6px;
-            background: #ffffff;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-            /* PERFORMANCE: Removido backdrop-filter que causa lag no mapa */
         }
 
         body.dark .fixed-stat-item {
-            background: rgb(35, 35, 45);
+            background: rgba(30, 30, 40, 0.9);
             box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
         }
 
@@ -1956,15 +1945,12 @@
             z-index: 10000;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            will-change: opacity; /* PERFORMANCE */
-            pointer-events: none;
+            transition: all 0.3s ease;
         }
 
         .qr-modal.active {
             opacity: 1;
             visibility: visible;
-            pointer-events: auto;
         }
 
         .qr-modal-header {
@@ -4321,7 +4307,7 @@
         // Initialize IndexedDB for offline storage
         function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('MapaInterativoDB', 4);
+                const request = indexedDB.open('MapaInterativoDB', 3);
 
                 request.onerror = () => {
                     // Erro ao abrir IndexedDB
@@ -4371,71 +4357,8 @@
                         clientsCacheStore.createIndex('zipcode', 'zipcode', { unique: false });
                     }
 
-                    // Store for app settings (persistent UI state like routeMarkersVisible)
-                    if (!db.objectStoreNames.contains('appSettings')) {
-                        db.createObjectStore('appSettings', { keyPath: 'key' });
-                    }
-
                 };
             });
-        }
-
-        // Save app setting to IndexedDB
-        function saveAppSetting(key, value) {
-            return new Promise((resolve, reject) => {
-                if (!offlineDB) {
-                    reject(new Error('IndexedDB não inicializado'));
-                    return;
-                }
-
-                try {
-                    const transaction = offlineDB.transaction(['appSettings'], 'readwrite');
-                    const store = transaction.objectStore('appSettings');
-                    const request = store.put({ key: key, value: value, updatedAt: new Date().toISOString() });
-
-                    request.onsuccess = () => resolve(true);
-                    request.onerror = () => reject(request.error);
-                } catch (error) {
-                    reject(error);
-                }
-            });
-        }
-
-        // Get app setting from IndexedDB
-        function getAppSetting(key) {
-            return new Promise((resolve, reject) => {
-                if (!offlineDB) {
-                    resolve(null);
-                    return;
-                }
-
-                try {
-                    const transaction = offlineDB.transaction(['appSettings'], 'readonly');
-                    const store = transaction.objectStore('appSettings');
-                    const request = store.get(key);
-
-                    request.onsuccess = () => {
-                        if (request.result) {
-                            resolve(request.result.value);
-                        } else {
-                            resolve(null);
-                        }
-                    };
-                    request.onerror = () => resolve(null);
-                } catch (error) {
-                    resolve(null);
-                }
-            });
-        }
-
-        // Save route markers GeoJSON to IndexedDB for quick restore
-        function saveRouteMarkersData(geojson) {
-            return saveAppSetting('routeMarkersData', geojson);
-        }
-
-        // Get saved route markers GeoJSON from IndexedDB
-        function getSavedRouteMarkersData() {
-            return getAppSetting('routeMarkersData');
         }
 
         // Save data to IndexedDB
@@ -5505,33 +5428,6 @@
                         loadClientes();
                     }
                 }, 4000);
-
-                // Auto-load route markers se estavam visíveis na última sessão
-                // PERFORMANCE: Aguarda 6s para garantir que loadClientes() terminou
-                // e usa requestIdleCallback para não competir com UI
-                setTimeout(async () => {
-                    try {
-                        const wasVisible = await getAppSetting('routeMarkersVisible');
-                        if (wasVisible === true) {
-                            // Usa requestIdleCallback para restaurar quando o browser estiver ocioso
-                            const doRestore = async () => {
-                                const restored = await restoreRouteMarkers();
-                                if (!restored) {
-                                    // Se não conseguiu restaurar, carrega do zero
-                                    loadRouteMarkers(true);
-                                }
-                            };
-
-                            if ('requestIdleCallback' in window) {
-                                requestIdleCallback(() => doRestore(), { timeout: 8000 });
-                            } else {
-                                doRestore();
-                            }
-                        }
-                    } catch (e) {
-                        // Silencioso se falhar
-                    }
-                }, 6000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -6142,60 +6038,6 @@
         const routeMarkersBtn = document.getElementById('routeMarkersBtn');
         let routeMarkersVisible = false;
         let routePopup = null;
-        let routeStopsListenersConfigured = false; // Controla se os event listeners já foram configurados
-
-        // PERFORMANCE: Cache global do GeoJSON para evitar acesso lento a map.getSource()._data
-        let cachedRouteStopsData = null;
-
-        // PERFORMANCE: Flag para indicar que o layer está pronto para interação
-        let routeStopsReady = false;
-
-        // PERFORMANCE: Cache de JSON parseado para evitar JSON.parse no clique
-        const parsedAddressSequencePairsCache = new Map();
-
-        // PERFORMANCE: Índice de features por ID para acesso O(1) em vez de O(n)
-        const featuresByIdIndex = new Map();
-
-        // PERFORMANCE: Constrói índice de features por ID
-        function buildFeatureIndex(geojson) {
-            featuresByIdIndex.clear();
-            if (!geojson || !geojson.features) return;
-            for (let i = 0; i < geojson.features.length; i++) {
-                const feature = geojson.features[i];
-                const ids = feature.properties.ids;
-                if (ids) {
-                    featuresByIdIndex.set(ids, feature);
-                }
-            }
-        }
-
-        // PERFORMANCE: Obtém feature pelo ID instantaneamente O(1)
-        function getFeatureById(ids) {
-            return featuresByIdIndex.get(ids) || null;
-        }
-
-        // PERFORMANCE: Pré-parseia todos os addressSequencePairs de uma vez
-        function preCacheAddressSequencePairs(geojson) {
-            parsedAddressSequencePairsCache.clear();
-            if (!geojson || !geojson.features) return;
-            for (let i = 0; i < geojson.features.length; i++) {
-                const feature = geojson.features[i];
-                const ids = feature.properties.ids;
-                const pairsStr = feature.properties.addressSequencePairs;
-                if (ids && pairsStr) {
-                    try {
-                        parsedAddressSequencePairsCache.set(ids, JSON.parse(pairsStr));
-                    } catch (e) {
-                        parsedAddressSequencePairsCache.set(ids, []);
-                    }
-                }
-            }
-        }
-
-        // PERFORMANCE: Obtém addressSequencePairs do cache (instantâneo, sem JSON.parse)
-        function getCachedAddressSequencePairs(ids) {
-            return parsedAddressSequencePairsCache.get(ids) || [];
-        }
 
         // Update delivery status in Supabase or offline
         async function updateDeliveryStatus(ids, status) {
@@ -6359,25 +6201,10 @@
             }
         }
 
-        // Cache para ícones gerados (evita regenerar o mesmo ícone várias vezes)
-        const pinIconCache = new Map();
-
-        // PERFORMANCE: Detecta se é mobile para usar escala menor
-        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                               window.innerWidth <= 768;
-
-        // Generate high-resolution pin icon with number using Canvas
-        // PERFORMANCE: Usa 2x em mobile (menos memória), 3x em desktop (mais qualidade)
+        // Generate high-resolution pin icon with number using Canvas (3x for Retina/HiDPI)
         // Colors: red (pending), green (registered), gray (delivered), gray-x (not delivered)
         function generatePinIcon(number, color = 'red') {
-            // Verifica cache primeiro
-            const cacheKey = `${number}-${color}`;
-            if (pinIconCache.has(cacheKey)) {
-                return pinIconCache.get(cacheKey);
-            }
-
-            // PERFORMANCE: Escala menor em mobile para economizar memória e GPU
-            const scale = isMobileDevice ? 2 : 3;
+            const scale = 3;
             const baseWidth = 30;
             const baseHeight = 50;
             const width = baseWidth * scale;
@@ -6455,12 +6282,7 @@
                 ctx.fillText(String(number), 15, 12.5);
             }
 
-            const result = { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
-
-            // Salva no cache para reutilização
-            pinIconCache.set(cacheKey, result);
-
-            return result;
+            return { dataUrl: canvas.toDataURL('image/png'), pixelRatio: scale };
         }
 
         // Update fixed stats panel with current route data
@@ -6470,48 +6292,54 @@
 
             // If no stats provided, calculate from current markers
             if (!stats) {
-                // PERFORMANCE: Usa cache global em vez de acessar source._data
-                const data = cachedRouteStopsData;
+                try {
+                    if (map && map.getSource && map.getSource('route-stops')) {
+                        const source = map.getSource('route-stops');
+                        const data = source._data;
 
-                if (data && data.features) {
-                    let markersCount = 0; // Total de marcadores verdes + vermelhos
-                    let registered = 0; // Marcadores verdes (cadastrados)
-                    let unregistered = 0; // Marcadores vermelhos (não cadastrados)
-                    let pending = 0; // Pacotes pendentes de entrega
-                    let delivered = 0; // Entregas realizadas
+                        if (data && data.features) {
+                            let markersCount = 0; // Total de marcadores verdes + vermelhos
+                            let registered = 0; // Marcadores verdes (cadastrados)
+                            let unregistered = 0; // Marcadores vermelhos (não cadastrados)
+                            let pending = 0; // Pacotes pendentes de entrega
+                            let delivered = 0; // Entregas realizadas
 
-                    data.features.forEach(feature => {
-                        const props = feature.properties;
-                        const count = props.packageCount || 1;
-                        const isDelivered = props.deliveryStatus === 'delivered' || props.deliveryStatus === 'not_delivered';
+                            data.features.forEach(feature => {
+                                const props = feature.properties;
+                                const count = props.packageCount || 1;
+                                const isDelivered = props.deliveryStatus === 'delivered' || props.deliveryStatus === 'not_delivered';
 
-                        if (isDelivered) {
-                            // Entregue ou não entregue (cinza)
-                            delivered += count;
-                        } else {
-                            // Marcador ativo (verde ou vermelho)
-                            markersCount++;
+                                if (isDelivered) {
+                                    // Entregue ou não entregue (cinza)
+                                    delivered += count;
+                                } else {
+                                    // Marcador ativo (verde ou vermelho)
+                                    markersCount++;
 
-                            if (props.isRegistered) {
-                                // Verde - cadastrado
-                                registered++;
-                            } else {
-                                // Vermelho - não cadastrado
-                                unregistered++;
-                            }
+                                    if (props.isRegistered) {
+                                        // Verde - cadastrado
+                                        registered++;
+                                    } else {
+                                        // Vermelho - não cadastrado
+                                        unregistered++;
+                                    }
 
-                            // Pendentes = pacotes que faltam entregar
-                            pending += count;
+                                    // Pendentes = pacotes que faltam entregar
+                                    pending += count;
+                                }
+                            });
+
+                            stats = {
+                                total: markersCount, // Verde + vermelho
+                                registered: registered, // Verdes
+                                unregistered: unregistered, // Vermelhos
+                                pending: pending, // Pacotes a entregar
+                                delivered: delivered
+                            };
                         }
-                    });
-
-                    stats = {
-                        total: markersCount, // Verde + vermelho
-                        registered: registered, // Verdes
-                        unregistered: unregistered, // Vermelhos
-                        pending: pending, // Pacotes a entregar
-                        delivered: delivered
-                    };
+                    }
+                } catch (e) {
+                    // Silently fail
                 }
             }
 
@@ -7723,15 +7551,6 @@
                     features: features
                 };
 
-                // Salvar GeoJSON e dados da planilha no IndexedDB para restauração rápida
-                try {
-                    await saveRouteMarkersData(geojson);
-                    // Salva também os dados originais da planilha para permitir desativar similaridade
-                    await saveAppSetting('currentRouteData', data);
-                } catch (e) {
-                    // Silencioso se falhar
-                }
-
                 // Add or update source
                 if (map.getSource('route-stops')) {
                     // Remove old images to force regeneration with new colors
@@ -7747,27 +7566,14 @@
                     });
 
                     map.getSource('route-stops').setData(geojson);
-                    // PERFORMANCE: Atualiza cache e índices
-                    cachedRouteStopsData = geojson;
-                    preCacheAddressSequencePairs(geojson);
-                    buildFeatureIndex(geojson);
-                    routeStopsReady = true;
                     // Force Mapbox to re-render the layer by toggling visibility
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'none');
                     map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
                 } else {
-                    // PERFORMANCE: Desabilita cliques até o Mapbox estar pronto
-                    routeStopsReady = false;
-
                     map.addSource('route-stops', {
                         type: 'geojson',
                         data: geojson
                     });
-
-                    // PERFORMANCE: Atualiza cache e índices ANTES de adicionar layer
-                    cachedRouteStopsData = geojson;
-                    preCacheAddressSequencePairs(geojson);
-                    buildFeatureIndex(geojson);
 
                     // Add symbol layer with custom pin icons
                     map.addLayer({
@@ -7782,71 +7588,8 @@
                         }
                     });
 
-                    // Configura event listeners (será chamado também pelo restoreRouteMarkers)
-                    setupRouteStopsEventListeners();
-
-                    // PERFORMANCE: Aguarda Mapbox terminar de indexar antes de habilitar cliques
-                    map.once('idle', () => {
-                        routeStopsReady = true;
-                    });
-                }
-
-                // Show layer
-                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
-
-                // Progresso: marcadores exibidos (100%)
-                updateProgress(100);
-
-                routeMarkersVisible = true;
-                routeMarkersBtn.classList.add('active');
-
-                // Fit map to show all markers (only on first load, not on status updates)
-                if (features.length > 0 && !skipFitBounds) {
-                    const bounds = new mapboxgl.LngLatBounds();
-                    features.forEach(f => bounds.extend(f.geometry.coordinates));
-                    map.fitBounds(bounds, { padding: 50, duration: 1500 });
-                }
-
-                // PERFORMANCE: Restaurar botão após carregamento com delay para animação
-                if (routeBtn) {
-                    setTimeout(() => {
-                        routeBtn.classList.remove('loading');
-                        routeBtn.style.pointerEvents = 'auto';
-                        updateProgress(0); // Reset para próximo uso
-                    }, 300);
-                }
-
-                // Update fixed stats panel with route data
-                updateFixedStatsPanel();
-
-            } catch (error) {
-                // PERFORMANCE: Restaurar botão em caso de erro
-                const routeBtn = document.getElementById('routeMarkersBtn');
-                const progressFill = document.getElementById('routeProgressFill');
-                if (routeBtn) {
-                    routeBtn.classList.remove('loading');
-                    routeBtn.style.pointerEvents = 'auto';
-                }
-                if (progressFill) {
-                    progressFill.style.height = '0%';
-                }
-                showErrorModal('Erro ao carregar as paradas da planilha.');
-            }
-        }
-
-        // Função para configurar event listeners dos marcadores de rota (reutilizável)
-        function setupRouteStopsEventListeners() {
-            // Evita registrar múltiplos listeners
-            if (routeStopsListenersConfigured) return;
-            routeStopsListenersConfigured = true;
-
-            // Add click event for popup
-            map.on('click', 'route-stops-pins', (e) => {
-                        // PERFORMANCE: Bloqueia clique se o layer ainda não está pronto
-                        if (!routeStopsReady) {
-                            return;
-                        }
-
+                    // Add click event for popup
+                    map.on('click', 'route-stops-pins', (e) => {
                         const feature = e.features[0];
                         const coords = feature.geometry.coordinates.slice();
                         const props = feature.properties;
@@ -7856,8 +7599,8 @@
                             `<span class="route-popup-order">${seq}</span>`
                         ).join('');
 
-                        // PERFORMANCE: Usa cache pré-parseado em vez de JSON.parse a cada clique
-                        const addressSequencePairs = getCachedAddressSequencePairs(props.ids);
+                        // Check if there are multiple addresses in this stop
+                        const addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
                         const hasMultipleAddresses = addressSequencePairs.length > 1;
 
                         // Build bairro and CEP info display
@@ -7977,12 +7720,9 @@
                                 // OPTIMISTIC UPDATE - Atualiza UI imediatamente
                                 routePopup.remove();
 
-                                // PERFORMANCE: Usa cache global em vez de acessar map.getSource()._data
-                                const sourceData = cachedRouteStopsData;
-                                if (!sourceData) return; // Proteção contra cache vazio
-
-                                // PERFORMANCE: Usa índice O(1) em vez de busca linear O(n)
-                                const markerFeature = getFeatureById(props.ids);
+                                // Atualiza a propriedade do marcador localmente
+                                const sourceData = map.getSource('route-stops')._data;
+                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
                                 if (markerFeature) {
                                     markerFeature.properties.deliveryStatus = statusToSave;
 
@@ -8002,9 +7742,9 @@
                                     const newIconName = `pin-${newColor}-${props.packageCount}`;
                                     markerFeature.properties.icon = newIconName;
 
-                                    // PERFORMANCE: Usa requestAnimationFrame para não bloquear a thread
-                                    requestAnimationFrame(() => {
-                                        // Garante que o ícone existe antes de atualizar
+
+                                    // Garante que o ícone existe antes de atualizar
+                                    const ensureIconExists = () => {
                                         if (!map.hasImage(newIconName)) {
                                             const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
                                             const img = new Image();
@@ -8020,16 +7760,13 @@
                                             // Ícone já existe, apenas re-renderiza
                                             map.getSource('route-stops').setData(sourceData);
                                         }
+                                    };
 
-                                        // Update fixed stats panel after status change
-                                        updateFixedStatsPanel();
-                                    });
+                                    ensureIconExists();
                                 }
 
-                                // Salva o GeoJSON atualizado no IndexedDB para persistir o status (não bloqueia)
-                                setTimeout(() => {
-                                    saveRouteMarkersData(sourceData).catch(() => {});
-                                }, 0);
+                                // Update fixed stats panel after status change
+                                updateFixedStatsPanel();
 
                                 // Sincroniza em background (não bloqueia a UI)
                                 updateDeliveryStatus(ids, statusToSave).catch(err => {
@@ -8064,12 +7801,9 @@
                                 // Fecha o popup
                                 routePopup.remove();
 
-                                // PERFORMANCE: Usa cache global em vez de acessar map.getSource()._data
-                                const sourceData = cachedRouteStopsData;
-                                if (!sourceData) return; // Proteção contra cache vazio
-
-                                // PERFORMANCE: Usa índice O(1) em vez de busca linear O(n)
-                                const markerFeature = getFeatureById(props.ids);
+                                // Busca as coordenadas originais da planilha para esses IDs
+                                const sourceData = map.getSource('route-stops')._data;
+                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
 
                                 if (markerFeature) {
                                     // Busca as coordenadas originais da planilha
@@ -8141,9 +7875,6 @@
                                         // Atualiza estatísticas
                                         updateFixedStatsPanel();
 
-                                        // Salva o GeoJSON atualizado no IndexedDB
-                                        saveRouteMarkersData(sourceData).catch(() => {});
-
                                         // Salva no banco de dados
                                         updateSimilarityOverride(ids, true, originalLat, originalLng).catch(err => {
                                             console.error('Erro ao salvar desativação de similaridade:', err);
@@ -8165,12 +7896,9 @@
                                 // Fecha o popup
                                 routePopup.remove();
 
-                                // PERFORMANCE: Usa cache global em vez de acessar map.getSource()._data
-                                const sourceData = cachedRouteStopsData;
-                                if (!sourceData) return; // Proteção contra cache vazio
-
-                                // PERFORMANCE: Usa índice O(1) em vez de busca linear O(n)
-                                const markerFeature = getFeatureById(props.ids);
+                                // Busca o marcador
+                                const sourceData = map.getSource('route-stops')._data;
+                                const markerFeature = sourceData.features.find(f => f.properties.ids === props.ids);
 
                                 if (markerFeature && props.originalCoordinates) {
                                     // Restaura as coordenadas originais (do cliente cadastrado)
@@ -8227,9 +7955,6 @@
                                     // Atualiza estatísticas
                                     updateFixedStatsPanel();
 
-                                    // Salva o GeoJSON atualizado no IndexedDB
-                                    saveRouteMarkersData(sourceData).catch(() => {});
-
                                     // Salva no banco de dados (reativa similaridade)
                                     updateSimilarityOverride(ids, false).catch(err => {
                                         console.error('Erro ao salvar reativação de similaridade:', err);
@@ -8238,15 +7963,58 @@
                             });
                         }
 
-            });
+                    });
 
-            // Change cursor on hover
-            map.on('mouseenter', 'route-stops-pins', () => {
-                map.getCanvas().style.cursor = 'pointer';
-            });
-            map.on('mouseleave', 'route-stops-pins', () => {
-                map.getCanvas().style.cursor = '';
-            });
+                    // Change cursor on hover
+                    map.on('mouseenter', 'route-stops-pins', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+                    map.on('mouseleave', 'route-stops-pins', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                }
+
+                // Show layer
+                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+
+                // Progresso: marcadores exibidos (100%)
+                updateProgress(100);
+
+                routeMarkersVisible = true;
+                routeMarkersBtn.classList.add('active');
+
+                // Fit map to show all markers (only on first load, not on status updates)
+                if (features.length > 0 && !skipFitBounds) {
+                    const bounds = new mapboxgl.LngLatBounds();
+                    features.forEach(f => bounds.extend(f.geometry.coordinates));
+                    map.fitBounds(bounds, { padding: 50, duration: 1500 });
+                }
+
+                // PERFORMANCE: Restaurar botão após carregamento com delay para animação
+                if (routeBtn) {
+                    setTimeout(() => {
+                        routeBtn.classList.remove('loading');
+                        routeBtn.style.pointerEvents = 'auto';
+                        updateProgress(0); // Reset para próximo uso
+                    }, 300);
+                }
+
+                // Update fixed stats panel with route data
+                updateFixedStatsPanel();
+
+            } catch (error) {
+                // PERFORMANCE: Restaurar botão em caso de erro
+                const routeBtn = document.getElementById('routeMarkersBtn');
+                const progressFill = document.getElementById('routeProgressFill');
+                if (routeBtn) {
+                    routeBtn.classList.remove('loading');
+                    routeBtn.style.pointerEvents = 'auto';
+                }
+                if (progressFill) {
+                    progressFill.style.height = '0%';
+                }
+                showErrorModal('Erro ao carregar as paradas da planilha.');
+            }
         }
 
         function removeRouteMarkers() {
@@ -8264,178 +8032,11 @@
             hideFixedStatsPanel();
         }
 
-        // Restauração rápida dos marcadores usando dados salvos (sem recalcular)
-        async function restoreRouteMarkers() {
-            try {
-                const savedGeojson = await getSavedRouteMarkersData();
-                if (!savedGeojson || !savedGeojson.features || savedGeojson.features.length === 0) {
-                    // Sem dados salvos, precisa carregar do zero
-                    return false;
-                }
-
-                const routeBtn = document.getElementById('routeMarkersBtn');
-                if (routeBtn) {
-                    routeBtn.classList.add('loading');
-                    routeBtn.style.pointerEvents = 'none';
-                }
-
-                // Restaurar também os dados originais da planilha para desativar similaridade
-                try {
-                    const savedRouteData = await getAppSetting('currentRouteData');
-                    if (savedRouteData) {
-                        window.currentRouteData = savedRouteData;
-                    }
-                } catch (e) {
-                    // Silencioso se falhar
-                }
-
-                // Extrair configs de ícones únicos dos features salvos
-                const iconConfigs = new Set();
-                savedGeojson.features.forEach(feature => {
-                    const icon = feature.properties.icon; // formato: pin-color-count
-                    if (icon) {
-                        const parts = icon.replace('pin-', '').split('-');
-                        // Suporta cores compostas como "gray-x"
-                        const count = parts.pop();
-                        const color = parts.join('-');
-                        iconConfigs.add(`${count}-${color}`);
-                    }
-                });
-
-                // OTIMIZAÇÃO: Gerar ícones em batches pequenos com requestAnimationFrame
-                // para não bloquear a thread principal
-                const iconConfigsArray = Array.from(iconConfigs);
-                const BATCH_SIZE = 3; // Processa 3 ícones por frame
-
-                const processIconBatch = (startIndex) => {
-                    return new Promise((resolve) => {
-                        requestAnimationFrame(() => {
-                            const endIndex = Math.min(startIndex + BATCH_SIZE, iconConfigsArray.length);
-                            const batchPromises = [];
-
-                            for (let i = startIndex; i < endIndex; i++) {
-                                const config = iconConfigsArray[i];
-                                const firstDash = config.indexOf('-');
-                                const count = config.substring(0, firstDash);
-                                const color = config.substring(firstDash + 1);
-                                const iconName = `pin-${color}-${count}`;
-
-                                if (!map.hasImage(iconName)) {
-                                    batchPromises.push(new Promise((resolveIcon) => {
-                                        const { dataUrl, pixelRatio } = generatePinIcon(parseInt(count), color);
-                                        const img = new Image();
-                                        img.onload = () => {
-                                            if (!map.hasImage(iconName)) {
-                                                map.addImage(iconName, img, { pixelRatio: pixelRatio });
-                                            }
-                                            resolveIcon();
-                                        };
-                                        img.onerror = () => resolveIcon();
-                                        img.src = dataUrl;
-                                    }));
-                                }
-                            }
-
-                            Promise.all(batchPromises).then(() => {
-                                if (endIndex < iconConfigsArray.length) {
-                                    // Ainda tem mais ícones, processa próximo batch
-                                    processIconBatch(endIndex).then(resolve);
-                                } else {
-                                    resolve();
-                                }
-                            });
-                        });
-                    });
-                };
-
-                // Processa todos os ícones em batches
-                if (iconConfigsArray.length > 0) {
-                    await processIconBatch(0);
-                }
-
-                // PERFORMANCE: Desabilita cliques até estar pronto
-                routeStopsReady = false;
-
-                // PERFORMANCE: Constrói cache e índices ANTES de adicionar ao mapa
-                cachedRouteStopsData = savedGeojson;
-                preCacheAddressSequencePairs(savedGeojson);
-                buildFeatureIndex(savedGeojson);
-
-                // Adicionar ou atualizar source
-                if (map.getSource('route-stops')) {
-                    map.getSource('route-stops').setData(savedGeojson);
-                    map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
-                    // Se a source já existe, pode habilitar imediatamente
-                    routeStopsReady = true;
-                } else {
-                    map.addSource('route-stops', {
-                        type: 'geojson',
-                        data: savedGeojson
-                    });
-
-                    map.addLayer({
-                        id: 'route-stops-pins',
-                        type: 'symbol',
-                        source: 'route-stops',
-                        layout: {
-                            'icon-image': ['get', 'icon'],
-                            'icon-size': 1,
-                            'icon-anchor': 'bottom',
-                            'icon-allow-overlap': true
-                        }
-                    });
-
-                    // PERFORMANCE: Aguarda Mapbox terminar de indexar antes de habilitar cliques
-                    map.once('idle', () => {
-                        routeStopsReady = true;
-                    });
-                }
-
-                // Mostrar layer
-                map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
-
-                // Configura event listeners para popups (reutiliza a mesma função do loadRouteMarkers)
-                setupRouteStopsEventListeners();
-
-                routeMarkersVisible = true;
-                routeMarkersBtn.classList.add('active');
-
-                // Restaurar botão
-                if (routeBtn) {
-                    routeBtn.classList.remove('loading');
-                    routeBtn.style.pointerEvents = 'auto';
-                }
-
-                // Atualizar painel de estatísticas
-                updateFixedStatsPanel();
-
-                return true;
-            } catch (error) {
-                const routeBtn = document.getElementById('routeMarkersBtn');
-                if (routeBtn) {
-                    routeBtn.classList.remove('loading');
-                    routeBtn.style.pointerEvents = 'auto';
-                }
-                return false;
-            }
-        }
-
-        routeMarkersBtn.addEventListener('click', async () => {
+        routeMarkersBtn.addEventListener('click', () => {
             if (routeMarkersVisible) {
                 removeRouteMarkers();
-                // Salvar estado como desativado e limpar dados salvos
-                try {
-                    await saveAppSetting('routeMarkersVisible', false);
-                    await saveAppSetting('routeMarkersData', null);
-                    await saveAppSetting('currentRouteData', null);
-                    window.currentRouteData = null;
-                } catch (e) {}
             } else {
                 loadRouteMarkers();
-                // Salvar estado como ativado
-                try {
-                    await saveAppSetting('routeMarkersVisible', true);
-                } catch (e) {}
             }
         });
 
