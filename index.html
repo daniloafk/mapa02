@@ -7642,32 +7642,40 @@
                     stop.stops.sort((a, b) => a - b);
                     const packageCount = stop.sequences.length;
                     const color = getIconColor(stop);
+                    const coords = [stop.longitude, stop.latitude];
+
+                    // Criar properties primeiro
+                    const props = {
+                        packageCount: packageCount,
+                        allStops: stop.stops.join(', '),
+                        icon: `pin-${color}-${packageCount}`,
+                        address: stop.address || 'Endereço não disponível',
+                        allAddresses: stop.allAddresses ? stop.allAddresses.join('|||') : '',
+                        addressSequencePairs: stop.addressSequencePairs ? JSON.stringify(stop.addressSequencePairs) : '',
+                        sequences: stop.sequences.join(', '),
+                        isRegistered: stop.isRegistered,
+                        matchType: stop.matchType || null,
+                        matchedClientAddress: stop.matchedClientAddress || '',
+                        wasDeactivated: stop.wasDeactivated || false,
+                        originalMatchType: stop.originalMatchType || null,
+                        originalMatchedClientAddress: stop.originalMatchedClientAddress || '',
+                        originalCoordinates: stop.originalCoordinates || null,
+                        ids: stop.ids.join(','),
+                        deliveryStatus: stop.deliveryStatus || 'pending',
+                        bairro: stop.bairro || '',
+                        zipcode: stop.zipcode || ''
+                    };
+
+                    // Pré-gerar HTML do popup para performance
+                    props.popupHTML = generatePopupHTML(props, coords);
+
                     return {
                         type: 'Feature',
                         geometry: {
                             type: 'Point',
-                            coordinates: [stop.longitude, stop.latitude]
+                            coordinates: coords
                         },
-                        properties: {
-                            packageCount: packageCount,
-                            allStops: stop.stops.join(', '),
-                            icon: `pin-${color}-${packageCount}`,
-                            address: stop.address || 'Endereço não disponível',
-                            allAddresses: stop.allAddresses ? stop.allAddresses.join('|||') : '', // Store all addresses separated by |||
-                            addressSequencePairs: stop.addressSequencePairs ? JSON.stringify(stop.addressSequencePairs) : '', // Store address+sequence pairs
-                            sequences: stop.sequences.join(', '),
-                            isRegistered: stop.isRegistered,
-                            matchType: stop.matchType || null, // 'exact', 'similarity', or null
-                            matchedClientAddress: stop.matchedClientAddress || '', // Endereço do cliente encontrado por similaridade
-                            wasDeactivated: stop.wasDeactivated || false, // Flag de desativação pelo usuário
-                            originalMatchType: stop.originalMatchType || null, // Match type original (para reativação)
-                            originalMatchedClientAddress: stop.originalMatchedClientAddress || '', // Endereço original (para reativação)
-                            originalCoordinates: stop.originalCoordinates || null, // Coordenadas originais do cliente (para reativação)
-                            ids: stop.ids.join(','),
-                            deliveryStatus: stop.deliveryStatus || 'pending',
-                            bairro: stop.bairro || '',
-                            zipcode: stop.zipcode || ''
-                        }
+                        properties: props
                     };
                 });
 
@@ -7769,6 +7777,110 @@
             }
         }
 
+        // Função para gerar HTML do popup (pré-gerado para performance)
+        function generatePopupHTML(props, coords) {
+            const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
+            const ordersHtml = sequencesArr.map(seq =>
+                `<span class="route-popup-order">${seq}</span>`
+            ).join('');
+
+            // Parse addressSequencePairs - se já for objeto, usa direto; se for string, faz parse
+            let addressSequencePairs = [];
+            if (props.addressSequencePairs) {
+                if (typeof props.addressSequencePairs === 'string') {
+                    try {
+                        addressSequencePairs = JSON.parse(props.addressSequencePairs);
+                    } catch (e) {
+                        addressSequencePairs = [];
+                    }
+                } else {
+                    addressSequencePairs = props.addressSequencePairs;
+                }
+            }
+            const hasMultipleAddresses = addressSequencePairs.length > 1;
+
+            // Build bairro and CEP info display
+            const bairroDisplay = props.bairro ? `<span style="font-size: 10px; color: #8b5cf6; font-weight: 500; padding: 2px 6px; background: rgba(139, 92, 246, 0.1); border-radius: 4px;">🏘️ ${props.bairro}</span>` : '';
+            const cepDisplay = props.zipcode ? `<span style="font-size: 10px; color: #0ea5e9; font-weight: 500; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;">📮 ${props.zipcode}</span>` : '';
+            const locationInfo = (bairroDisplay || cepDisplay) ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; margin-bottom: 8px;">${bairroDisplay}${cepDisplay}</div>` : '';
+
+            // Build address display with matched client address for similarity matches
+            let addressDisplay = '';
+
+            // Se for match por similaridade, mostrar endereço do cliente cadastrado acima
+            const similarityHeader = (props.matchType === 'similarity' && props.matchedClientAddress)
+                ? `<div class="similarity-matched-address" data-ids="${props.ids}" style="font-size: 12px; font-weight: 600; color: #8b5cf6; margin-bottom: 4px; padding: 6px 8px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border-left: 3px solid #8b5cf6; cursor: pointer; transition: all 0.2s ease;"
+                        onmouseover="this.style.background='rgba(139, 92, 246, 0.2)'; this.style.borderLeftWidth='4px';"
+                        onmouseout="this.style.background='rgba(139, 92, 246, 0.1)'; this.style.borderLeftWidth='3px';">
+                       📍 ${props.matchedClientAddress}
+                       <div style="font-size: 9px; color: #7c3aed; margin-top: 3px; font-weight: 500;">🖱️ Clique para usar coordenadas da planilha</div>
+                   </div>
+                   <div style="font-size: 10px; color: #64748b; margin-bottom: 8px; font-weight: 500;">
+                       ↓ Endereço da planilha:
+                   </div>`
+                : '';
+
+            // Se for marcador vermelho que foi desativado, mostrar opção de reativar similaridade
+            const reactivateSimilarityHeader = (props.wasDeactivated && props.originalMatchedClientAddress)
+                ? `<div class="reactivate-similarity-address" data-ids="${props.ids}" style="font-size: 11px; font-weight: 600; color: #ef4444; margin-bottom: 8px; padding: 6px 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border-left: 3px solid #ef4444; cursor: pointer; transition: all 0.2s ease;"
+                        onmouseover="this.style.background='rgba(139, 92, 246, 0.15)'; this.style.borderLeftColor='#8b5cf6';"
+                        onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderLeftColor='#ef4444';">
+                       🔄 Voltar para: ${props.originalMatchedClientAddress}
+                       <div style="font-size: 9px; color: #7c3aed; margin-top: 3px; font-weight: 500;">🖱️ Clique para reativar similaridade</div>
+                   </div>`
+                : '';
+
+            if (hasMultipleAddresses) {
+                addressDisplay = `
+                    ${similarityHeader}
+                    ${reactivateSimilarityHeader}
+                    <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
+                    ${locationInfo}
+                    <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
+                        ${addressSequencePairs.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}
+                    </div>
+                `;
+            } else if (addressSequencePairs.length === 1) {
+                addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
+            } else {
+                addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div class="route-popup-address">${props.address}</div>${locationInfo}`;
+            }
+
+            // Determine current status for button styling
+            const currentStatus = props.deliveryStatus || 'pending';
+            const isDelivered = currentStatus === 'delivered';
+            const isNotDelivered = currentStatus === 'not_delivered';
+
+            // Only show order section at bottom if single address
+            const orderSection = hasMultipleAddresses ? '' : `
+                <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
+                    <span style="font-size: 11px; color: #64748b;">Ordem:</span>
+                    <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
+                </div>
+            `;
+
+            return `
+                <div class="route-popup-content">
+                    ${addressDisplay}
+                    ${orderSection}
+                    <div class="route-popup-actions">
+                        <button class="route-popup-btn ${isDelivered ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}" data-current-status="${currentStatus}">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+                            <span class="btn-text">${isDelivered ? 'Desfazer' : 'Entregue'}</span>
+                        </button>
+                        <button class="route-popup-btn not-delivered ${isNotDelivered ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}" data-current-status="${currentStatus}">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                            <span class="btn-text">${isNotDelivered ? 'Desfazer' : 'Não entreg'}</span>
+                        </button>
+                        <button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+                            Navegar
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
         // Função para configurar event listeners dos marcadores de rota (reutilizável)
         function setupRouteStopsEventListeners() {
             // Evita registrar múltiplos listeners
@@ -7781,80 +7893,14 @@
                         const coords = feature.geometry.coordinates.slice();
                         const props = feature.properties;
 
-                        const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
-                        const ordersHtml = sequencesArr.map(seq =>
-                            `<span class="route-popup-order">${seq}</span>`
-                        ).join('');
-
-                        // Check if there are multiple addresses in this stop
-                        const addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
-                        const hasMultipleAddresses = addressSequencePairs.length > 1;
-
-                        // Build bairro and CEP info display
-                        const bairroDisplay = props.bairro ? `<span style="font-size: 10px; color: #8b5cf6; font-weight: 500; padding: 2px 6px; background: rgba(139, 92, 246, 0.1); border-radius: 4px;">🏘️ ${props.bairro}</span>` : '';
-                        const cepDisplay = props.zipcode ? `<span style="font-size: 10px; color: #0ea5e9; font-weight: 500; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;">📮 ${props.zipcode}</span>` : '';
-                        const locationInfo = (bairroDisplay || cepDisplay) ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; margin-bottom: 8px;">${bairroDisplay}${cepDisplay}</div>` : '';
-
-                        // Build address display with matched client address for similarity matches
-                        let addressDisplay = '';
-
-                        // Se for match por similaridade, mostrar endereço do cliente cadastrado acima (clicável para desativar similaridade)
-                        const similarityHeader = (props.matchType === 'similarity' && props.matchedClientAddress)
-                            ? `<div class="similarity-matched-address" data-ids="${props.ids}" style="font-size: 12px; font-weight: 600; color: #8b5cf6; margin-bottom: 4px; padding: 6px 8px; background: rgba(139, 92, 246, 0.1); border-radius: 6px; border-left: 3px solid #8b5cf6; cursor: pointer; transition: all 0.2s ease;"
-                                    onmouseover="this.style.background='rgba(139, 92, 246, 0.2)'; this.style.borderLeftWidth='4px';"
-                                    onmouseout="this.style.background='rgba(139, 92, 246, 0.1)'; this.style.borderLeftWidth='3px';">
-                                   📍 ${props.matchedClientAddress}
-                                   <div style="font-size: 9px; color: #7c3aed; margin-top: 3px; font-weight: 500;">🖱️ Clique para usar coordenadas da planilha</div>
-                               </div>
-                               <div style="font-size: 10px; color: #64748b; margin-bottom: 8px; font-weight: 500;">
-                                   ↓ Endereço da planilha:
-                               </div>`
-                            : '';
-
-                        // Se for marcador vermelho que foi desativado, mostrar opção de reativar similaridade
-                        const reactivateSimilarityHeader = (props.wasDeactivated && props.originalMatchedClientAddress)
-                            ? `<div class="reactivate-similarity-address" data-ids="${props.ids}" style="font-size: 11px; font-weight: 600; color: #ef4444; margin-bottom: 8px; padding: 6px 8px; background: rgba(239, 68, 68, 0.1); border-radius: 6px; border-left: 3px solid #ef4444; cursor: pointer; transition: all 0.2s ease;"
-                                    onmouseover="this.style.background='rgba(139, 92, 246, 0.15)'; this.style.borderLeftColor='#8b5cf6';"
-                                    onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderLeftColor='#ef4444';">
-                                   🔄 Voltar para: ${props.originalMatchedClientAddress}
-                                   <div style="font-size: 9px; color: #7c3aed; margin-top: 3px; font-weight: 500;">🖱️ Clique para reativar similaridade</div>
-                               </div>`
-                            : '';
-
-                        if (hasMultipleAddresses) {
-                            addressDisplay = `
-                                ${similarityHeader}
-                                ${reactivateSimilarityHeader}
-                                <div style="font-size: 11px; color: #8b5cf6; font-weight: 600; margin-bottom: 4px;">📦 ${addressSequencePairs.length} pacotes nesta parada:</div>
-                                ${locationInfo}
-                                <div style="font-size: 11px; line-height: 1.5; max-height: 120px; overflow-y: auto; margin-bottom: 8px;">
-                                    ${addressSequencePairs.map(pair => `<div style="margin-bottom: 3px;"><span style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: white; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-right: 4px; font-size: 10px;">${pair.sequence}</span> ${pair.address}</div>`).join('')}
-                                </div>
-                            `;
-                        } else if (addressSequencePairs.length === 1) {
-                            addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div class="route-popup-address">${addressSequencePairs[0].address}</div>${locationInfo}`;
-                        } else {
-                            addressDisplay = `${similarityHeader}${reactivateSimilarityHeader}<div class="route-popup-address">${props.address}</div>${locationInfo}`;
-                        }
-
-                        // Determine current status for button styling
-                        const currentStatus = props.deliveryStatus || 'pending';
-                        const isDelivered = currentStatus === 'delivered';
-                        const isNotDelivered = currentStatus === 'not_delivered';
-
                         if (routePopup) routePopup.remove();
 
-                        // Only show order section at bottom if single address (multiple addresses show order inline)
-                        const orderSection = hasMultipleAddresses ? '' : `
-                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 6px;">
-                                <span style="font-size: 11px; color: #64748b;">Ordem:</span>
-                                <div class="route-popup-orders">${ordersHtml || '<span style="color: #94a3b8;">Sem ordem</span>'}</div>
-                            </div>
-                        `;
-
-                        // Responsive maxWidth for popup - aumentado para acomodar 3 botões
+                        // Responsive maxWidth for popup
                         const isMobile = window.innerWidth <= 480;
                         const popupMaxWidth = isMobile ? '280px' : '320px';
+
+                        // Usa HTML pré-gerado se disponível, senão gera na hora (fallback)
+                        const popupHTML = props.popupHTML || generatePopupHTML(props, coords);
 
                         routePopup = new mapboxgl.Popup({
                             offset: [0, -50],
@@ -7863,26 +7909,7 @@
                             maxWidth: popupMaxWidth
                         })
                             .setLngLat(coords)
-                            .setHTML(`
-                                <div class="route-popup-content">
-                                    ${addressDisplay}
-                                    ${orderSection}
-                                    <div class="route-popup-actions">
-                                        <button class="route-popup-btn ${isDelivered ? 'active' : ''}" data-action="delivered" data-ids="${props.ids}" data-current-status="${currentStatus}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
-                                            <span class="btn-text">${isDelivered ? 'Desfazer' : 'Entregue'}</span>
-                                        </button>
-                                        <button class="route-popup-btn not-delivered ${isNotDelivered ? 'active' : ''}" data-action="not_delivered" data-ids="${props.ids}" data-current-status="${currentStatus}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                                            <span class="btn-text">${isNotDelivered ? 'Desfazer' : 'Não entreg'}</span>
-                                        </button>
-                                        <button class="route-popup-btn navigate" data-lng="${coords[0]}" data-lat="${coords[1]}" data-address="${props.address}">
-                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
-                                            Navegar
-                                        </button>
-                                    </div>
-                                </div>
-                            `)
+                            .setHTML(popupHTML)
                             .addTo(map);
 
                         // Add click handlers for delivery buttons
@@ -7919,21 +7946,23 @@
                                         newColor = 'gray';
                                     } else if (statusToSave === 'not_delivered') {
                                         newColor = 'gray-x';
-                                    } else if (props.isRegistered) {
+                                    } else if (markerFeature.properties.isRegistered === true || markerFeature.properties.isRegistered === 'true') {
                                         // Verde se match exato, roxo se match por similaridade
-                                        newColor = props.matchType === 'exact' ? 'green' : 'purple';
+                                        newColor = markerFeature.properties.matchType === 'exact' ? 'green' : 'purple';
                                     } else {
                                         newColor = 'red';
                                     }
 
-                                    const newIconName = `pin-${newColor}-${props.packageCount}`;
+                                    const newIconName = `pin-${newColor}-${markerFeature.properties.packageCount}`;
                                     markerFeature.properties.icon = newIconName;
 
+                                    // Regenera o popupHTML com o novo status
+                                    markerFeature.properties.popupHTML = generatePopupHTML(markerFeature.properties, markerFeature.geometry.coordinates);
 
                                     // Garante que o ícone existe antes de atualizar
                                     const ensureIconExists = () => {
                                         if (!map.hasImage(newIconName)) {
-                                            const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
+                                            const { dataUrl, pixelRatio } = generatePinIcon(markerFeature.properties.packageCount, newColor);
                                             const img = new Image();
                                             img.onload = () => {
                                                 if (!map.hasImage(newIconName)) {
@@ -8028,12 +8057,15 @@
 
                                         // Atualiza o ícone para vermelho (não cadastrado)
                                         const newColor = 'red';
-                                        const newIconName = `pin-${newColor}-${props.packageCount}`;
+                                        const newIconName = `pin-${newColor}-${markerFeature.properties.packageCount}`;
                                         markerFeature.properties.icon = newIconName;
+
+                                        // Regenera o popupHTML com as novas propriedades
+                                        markerFeature.properties.popupHTML = generatePopupHTML(markerFeature.properties, markerFeature.geometry.coordinates);
 
                                         // Garante que o ícone existe
                                         if (!map.hasImage(newIconName)) {
-                                            const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
+                                            const { dataUrl, pixelRatio } = generatePinIcon(markerFeature.properties.packageCount, newColor);
                                             const img = new Image();
                                             img.onload = () => {
                                                 if (!map.hasImage(newIconName)) {
@@ -8111,12 +8143,15 @@
 
                                     // Atualiza o ícone para roxo (similaridade)
                                     const newColor = 'purple';
-                                    const newIconName = `pin-${newColor}-${props.packageCount}`;
+                                    const newIconName = `pin-${newColor}-${markerFeature.properties.packageCount}`;
                                     markerFeature.properties.icon = newIconName;
+
+                                    // Regenera o popupHTML com as novas propriedades
+                                    markerFeature.properties.popupHTML = generatePopupHTML(markerFeature.properties, markerFeature.geometry.coordinates);
 
                                     // Garante que o ícone existe
                                     if (!map.hasImage(newIconName)) {
-                                        const { dataUrl, pixelRatio } = generatePinIcon(props.packageCount, newColor);
+                                        const { dataUrl, pixelRatio } = generatePinIcon(markerFeature.properties.packageCount, newColor);
                                         const img = new Image();
                                         img.onload = () => {
                                             if (!map.hasImage(newIconName)) {
