@@ -4307,7 +4307,7 @@
         // Initialize IndexedDB for offline storage
         function initOfflineDB() {
             return new Promise((resolve, reject) => {
-                const request = indexedDB.open('MapaInterativoDB', 3);
+                const request = indexedDB.open('MapaInterativoDB', 4);
 
                 request.onerror = () => {
                     // Erro ao abrir IndexedDB
@@ -4355,6 +4355,17 @@
                         clientsCacheStore.createIndex('bairro', 'bairro', { unique: false });
                         clientsCacheStore.createIndex('city', 'city', { unique: false });
                         clientsCacheStore.createIndex('zipcode', 'zipcode', { unique: false });
+                    }
+
+                    // Store for cached route markers (persistent markers on map)
+                    if (!db.objectStoreNames.contains('cachedRouteMarkers')) {
+                        db.createObjectStore('cachedRouteMarkers', { keyPath: 'id' });
+                    }
+
+                    // Store for pending similarity overrides
+                    if (!db.objectStoreNames.contains('pendingSimilarityOverrides')) {
+                        const similarityStore = db.createObjectStore('pendingSimilarityOverrides', { keyPath: 'localId', autoIncrement: true });
+                        similarityStore.createIndex('synced', 'synced', { unique: false });
                     }
 
                 };
@@ -4754,10 +4765,35 @@
 
                 // Só atualiza o mapa se houve mudanças reais
                 if (updated) {
-                    source.setData({
+                    const newGeojson = {
                         type: 'FeatureCollection',
                         features: updatedFeatures
-                    });
+                    };
+                    source.setData(newGeojson);
+
+                    // Also update the cached route markers
+                    try {
+                        const statsToSave = {
+                            total: updatedFeatures.filter(f => f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                            registered: updatedFeatures.filter(f => f.properties.isRegistered && f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                            unregistered: updatedFeatures.filter(f => !f.properties.isRegistered && f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                            pending: updatedFeatures.reduce((sum, f) => {
+                                if (f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered') {
+                                    return sum + (f.properties.packageCount || 1);
+                                }
+                                return sum;
+                            }, 0),
+                            delivered: updatedFeatures.reduce((sum, f) => {
+                                if (f.properties.deliveryStatus === 'delivered' || f.properties.deliveryStatus === 'not_delivered') {
+                                    return sum + (f.properties.packageCount || 1);
+                                }
+                                return sum;
+                            }, 0)
+                        };
+                        saveRouteMarkersToCache(newGeojson, statsToSave);
+                    } catch (cacheErr) {
+                        // Silently fail - cache update is not critical
+                    }
                 }
             } catch (err) {
                 // Erro ao atualizar marcadores - falha silenciosa
@@ -5130,6 +5166,105 @@
             });
         }
 
+        // Save route markers GeoJSON to cache (for persistence across page reloads)
+        async function saveRouteMarkersToCache(geojson, stats) {
+            if (!offlineDB) return;
+
+            return new Promise((resolve, reject) => {
+                try {
+                    const transaction = offlineDB.transaction(['cachedRouteMarkers'], 'readwrite');
+                    const store = transaction.objectStore('cachedRouteMarkers');
+
+                    // Clear old cache first
+                    const clearRequest = store.clear();
+                    clearRequest.onsuccess = () => {
+                        // Save GeoJSON with metadata
+                        const data = {
+                            id: 'route-markers-data',
+                            geojson: geojson,
+                            stats: stats,
+                            savedAt: new Date().toISOString()
+                        };
+
+                        const putRequest = store.put(data);
+                        putRequest.onsuccess = () => resolve();
+                        putRequest.onerror = () => reject(putRequest.error);
+                    };
+                    clearRequest.onerror = () => reject(clearRequest.error);
+
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        // Load cached route markers
+        async function getCachedRouteMarkers() {
+            if (!offlineDB) return null;
+
+            return new Promise((resolve, reject) => {
+                try {
+                    const transaction = offlineDB.transaction(['cachedRouteMarkers'], 'readonly');
+                    const store = transaction.objectStore('cachedRouteMarkers');
+                    const request = store.get('route-markers-data');
+
+                    request.onsuccess = () => resolve(request.result || null);
+                    request.onerror = () => reject(request.error);
+
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        // Clear route markers cache (called when new spreadsheet is uploaded)
+        async function clearRouteMarkersCache() {
+            if (!offlineDB) return;
+
+            return new Promise((resolve, reject) => {
+                try {
+                    const transaction = offlineDB.transaction(['cachedRouteMarkers'], 'readwrite');
+                    const store = transaction.objectStore('cachedRouteMarkers');
+                    const request = store.clear();
+
+                    request.onsuccess = () => resolve();
+                    request.onerror = () => reject(request.error);
+
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        // Update route markers cache with current geojson data
+        function updateRouteMarkersCache(geojsonData) {
+            if (!offlineDB || !geojsonData || !geojsonData.features) return;
+
+            try {
+                const features = geojsonData.features;
+                const statsToSave = {
+                    total: features.filter(f => f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                    registered: features.filter(f => f.properties.isRegistered && f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                    unregistered: features.filter(f => !f.properties.isRegistered && f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                    pending: features.reduce((sum, f) => {
+                        if (f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered') {
+                            return sum + (f.properties.packageCount || 1);
+                        }
+                        return sum;
+                    }, 0),
+                    delivered: features.reduce((sum, f) => {
+                        if (f.properties.deliveryStatus === 'delivered' || f.properties.deliveryStatus === 'not_delivered') {
+                            return sum + (f.properties.packageCount || 1);
+                        }
+                        return sum;
+                    }, 0)
+                };
+                saveRouteMarkersToCache(geojsonData, statsToSave);
+            } catch (err) {
+                // Silently fail - cache update is not critical
+            }
+        }
+
         // Initialize offline system
         initOfflineDB().then(async () => {
             updateOfflineIndicator();
@@ -5428,6 +5563,19 @@
                         loadClientes();
                     }
                 }, 4000);
+
+                // PERSISTENCE: Carrega marcadores de rota do cache após 2s
+                // Os marcadores são carregados automaticamente se existirem no cache
+                setTimeout(async () => {
+                    try {
+                        const loaded = await loadCachedRouteMarkers();
+                        if (loaded) {
+                            // Marcadores carregados do cache com sucesso
+                        }
+                    } catch (e) {
+                        // Silently fail - cache not critical
+                    }
+                }, 2000);
             });
 
             // Fallback: esconde loader após 5 segundos
@@ -7754,11 +7902,15 @@
                                                 }
                                                 // Re-renderiza após adicionar o ícone
                                                 map.getSource('route-stops').setData(sourceData);
+                                                // Update route markers cache after delivery status change
+                                                updateRouteMarkersCache(sourceData);
                                             };
                                             img.src = dataUrl;
                                         } else {
                                             // Ícone já existe, apenas re-renderiza
                                             map.getSource('route-stops').setData(sourceData);
+                                            // Update route markers cache after delivery status change
+                                            updateRouteMarkersCache(sourceData);
                                         }
                                     };
 
@@ -7851,6 +8003,8 @@
                                                 }
                                                 // Re-renderiza após adicionar o ícone
                                                 map.getSource('route-stops').setData(sourceData);
+                                                // Update route markers cache
+                                                updateRouteMarkersCache(sourceData);
 
                                                 // Move o mapa para a nova posição
                                                 map.flyTo({
@@ -7863,8 +8017,10 @@
                                         } else {
                                             // Ícone já existe, apenas re-renderiza
                                             map.getSource('route-stops').setData(sourceData);
+                                            // Update route markers cache
+                                            updateRouteMarkersCache(sourceData);
 
-                                            // Move o mapa para a nova posiç��o
+                                            // Move o mapa para a nova posição
                                             map.flyTo({
                                                 center: [originalLng, originalLat],
                                                 zoom: 16,
@@ -7931,6 +8087,8 @@
                                             }
                                             // Re-renderiza após adicionar o ícone
                                             map.getSource('route-stops').setData(sourceData);
+                                            // Update route markers cache
+                                            updateRouteMarkersCache(sourceData);
 
                                             // Move o mapa de volta para a posição original
                                             map.flyTo({
@@ -7943,6 +8101,8 @@
                                     } else {
                                         // Ícone já existe, apenas re-renderiza
                                         map.getSource('route-stops').setData(sourceData);
+                                        // Update route markers cache
+                                        updateRouteMarkersCache(sourceData);
 
                                         // Move o mapa de volta para a posição original
                                         map.flyTo({
@@ -8002,6 +8162,30 @@
                 // Update fixed stats panel with route data
                 updateFixedStatsPanel();
 
+                // Save route markers to cache for persistence across page reloads
+                try {
+                    const statsToSave = {
+                        total: features.filter(f => f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                        registered: features.filter(f => f.properties.isRegistered && f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                        unregistered: features.filter(f => !f.properties.isRegistered && f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered').length,
+                        pending: features.reduce((sum, f) => {
+                            if (f.properties.deliveryStatus !== 'delivered' && f.properties.deliveryStatus !== 'not_delivered') {
+                                return sum + (f.properties.packageCount || 1);
+                            }
+                            return sum;
+                        }, 0),
+                        delivered: features.reduce((sum, f) => {
+                            if (f.properties.deliveryStatus === 'delivered' || f.properties.deliveryStatus === 'not_delivered') {
+                                return sum + (f.properties.packageCount || 1);
+                            }
+                            return sum;
+                        }, 0)
+                    };
+                    await saveRouteMarkersToCache(geojson, statsToSave);
+                } catch (cacheErr) {
+                    // Silently fail - cache is not critical
+                }
+
             } catch (error) {
                 // PERFORMANCE: Restaurar botão em caso de erro
                 const routeBtn = document.getElementById('routeMarkersBtn');
@@ -8030,6 +8214,150 @@
 
             // Hide fixed stats panel when markers are removed
             hideFixedStatsPanel();
+        }
+
+        // Load route markers from cache (fast, skips all calculations)
+        async function loadCachedRouteMarkers() {
+            try {
+                const cachedData = await getCachedRouteMarkers();
+                if (!cachedData || !cachedData.geojson || !cachedData.geojson.features || cachedData.geojson.features.length === 0) {
+                    return false; // No cached data
+                }
+
+                const geojson = cachedData.geojson;
+                const stats = cachedData.stats;
+
+                // Generate and add pin icons for each unique config needed
+                const iconConfigs = new Set();
+                geojson.features.forEach(feature => {
+                    const icon = feature.properties.icon;
+                    if (icon) {
+                        iconConfigs.add(icon);
+                    }
+                });
+
+                const iconPromises = Array.from(iconConfigs).map(iconName => {
+                    return new Promise((resolve) => {
+                        if (map.hasImage(iconName)) {
+                            resolve();
+                            return;
+                        }
+
+                        // Parse icon name: pin-{color}-{count}
+                        const parts = iconName.replace('pin-', '').split('-');
+                        let color, count;
+                        if (parts.length === 2 && parts[0] === 'gray' && parts[1] === 'x') {
+                            // Handle gray-x-{count}
+                            color = 'gray-x';
+                            count = parseInt(iconName.split('-').pop());
+                        } else if (parts[0] === 'gray' && parts.length === 3) {
+                            // Handle gray-x-{count}
+                            color = 'gray-x';
+                            count = parseInt(parts[2]);
+                        } else {
+                            // Handle normal: {color}-{count}
+                            count = parseInt(parts.pop());
+                            color = parts.join('-');
+                        }
+
+                        const { dataUrl, pixelRatio } = generatePinIcon(count, color);
+                        const img = new Image();
+                        img.onload = () => {
+                            if (!map.hasImage(iconName)) {
+                                map.addImage(iconName, img, { pixelRatio: pixelRatio });
+                            }
+                            resolve();
+                        };
+                        img.onerror = () => resolve();
+                        img.src = dataUrl;
+                    });
+                });
+
+                await Promise.all(iconPromises);
+
+                // Add or update source
+                if (map.getSource('route-stops')) {
+                    map.getSource('route-stops').setData(geojson);
+                    map.setLayoutProperty('route-stops-pins', 'visibility', 'visible');
+                } else {
+                    map.addSource('route-stops', {
+                        type: 'geojson',
+                        data: geojson
+                    });
+
+                    // Add symbol layer with custom pin icons
+                    map.addLayer({
+                        id: 'route-stops-pins',
+                        type: 'symbol',
+                        source: 'route-stops',
+                        layout: {
+                            'icon-image': ['get', 'icon'],
+                            'icon-size': 1,
+                            'icon-anchor': 'bottom',
+                            'icon-allow-overlap': true
+                        }
+                    });
+
+                    // Add click event for popup (same as in loadRouteMarkers)
+                    map.on('click', 'route-stops-pins', (e) => {
+                        const feature = e.features[0];
+                        const coords = feature.geometry.coordinates.slice();
+                        const props = feature.properties;
+
+                        const sequencesArr = props.sequences ? props.sequences.split(', ') : [];
+                        const ordersHtml = sequencesArr.map(seq =>
+                            `<span class="route-popup-order">${seq}</span>`
+                        ).join('');
+
+                        // Check if there are multiple addresses in this stop
+                        const addressSequencePairs = props.addressSequencePairs ? JSON.parse(props.addressSequencePairs) : [];
+
+                        // Build bairro and CEP info display
+                        const bairroDisplay = props.bairro ? `<span style="font-size: 10px; color: #8b5cf6; font-weight: 500; padding: 2px 6px; background: rgba(139, 92, 246, 0.1); border-radius: 4px;">🏘️ ${props.bairro}</span>` : '';
+                        const cepDisplay = props.zipcode ? `<span style="font-size: 10px; color: #0ea5e9; font-weight: 500; padding: 2px 6px; background: rgba(14, 165, 233, 0.1); border-radius: 4px;">📮 ${props.zipcode}</span>` : '';
+                        const locationInfo = (bairroDisplay || cepDisplay) ? `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; margin-bottom: 8px;">${bairroDisplay}${cepDisplay}</div>` : '';
+
+                        // Build address display
+                        let addressDisplay = props.address || 'Endereço não disponível';
+
+                        const popupContent = `
+                            <div class="route-popup">
+                                <div class="route-popup-orders">${ordersHtml}</div>
+                                ${locationInfo}
+                                <div class="route-popup-address">${addressDisplay}</div>
+                            </div>
+                        `;
+
+                        if (routePopup) routePopup.remove();
+                        routePopup = new mapboxgl.Popup({ closeOnClick: true, maxWidth: '300px' })
+                            .setLngLat(coords)
+                            .setHTML(popupContent)
+                            .addTo(map);
+                    });
+
+                    // Change cursor on hover
+                    map.on('mouseenter', 'route-stops-pins', () => {
+                        map.getCanvas().style.cursor = 'pointer';
+                    });
+                    map.on('mouseleave', 'route-stops-pins', () => {
+                        map.getCanvas().style.cursor = '';
+                    });
+                }
+
+                routeMarkersVisible = true;
+                routeMarkersBtn.classList.add('active');
+
+                // Update fixed stats panel with cached stats
+                if (stats) {
+                    updateFixedStatsPanel(stats);
+                } else {
+                    updateFixedStatsPanel();
+                }
+
+                return true; // Successfully loaded from cache
+            } catch (error) {
+                return false; // Failed to load from cache
+            }
         }
 
         routeMarkersBtn.addEventListener('click', () => {
@@ -8215,6 +8543,15 @@
             uploadPreview.classList.remove('active');
             uploadProgress.classList.add('active');
             uploadModalFooter.style.display = 'none';
+
+            // Clear cached route markers (new planilha = new markers will be generated)
+            try {
+                await clearRouteMarkersCache();
+                // Also remove visible markers from map
+                removeRouteMarkers();
+            } catch (e) {
+                // Silently fail - cache clear is not critical
+            }
 
             // If offline, save locally
             if (!isOnline) {
